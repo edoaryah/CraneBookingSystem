@@ -1,0 +1,442 @@
+@model AspnetCoreMvcFull.ViewModels.Role.RoleUsersViewModel
+@{
+  ViewData["Title"] = $"Users in {Model.RoleName} Role";
+  Layout = "_ContentNavbarLayout";
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+  <h4 class="fw-bold py-3 mb-4">
+    <span class="text-muted fw-light">System Admin / <a href="@Url.Action("Index")">Role Management</a> /</span>
+    @Model.RoleName
+  </h4>
+
+  <div id="alertContainer">
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+      <div class="alert alert-danger alert-dismissible" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+      <div class="alert alert-success alert-dismissible" role="alert">
+        @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    }
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Users in @Model.RoleName Role</h5>
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <i class="bx bx-user-plus me-1"></i> Add User
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive text-nowrap">
+            <table class="table table-hover" id="usersTable">
+              <thead>
+                <tr>
+                  <th>Employee ID</th>
+                  <th>Name</th>
+                  <th>Department</th>
+                  <th>Position</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody class="table-border-bottom-0">
+                @foreach (var user in Model.Users)
+                {
+                  <tr data-id="@user.Id">
+                    <td>@user.EmployeeId</td>
+                    <td>@user.EmployeeName</td>
+                    <td>@user.Department</td>
+                    <td>@user.Position</td>
+                    <td>@user.Notes</td>
+                    <td>
+                      <div class="dropdown">
+                        <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                          <i class="bx bx-dots-vertical-rounded"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                          <a class="dropdown-item edit-user-btn" href="javascript:void(0);" data-id="@user.Id"
+                            data-notes="@user.Notes">
+                            <i class="bx bx-edit-alt me-1"></i> Edit
+                          </a>
+                          <a class="dropdown-item delete-user-btn" href="javascript:void(0);" data-id="@user.Id"
+                            data-name="@user.EmployeeName">
+                            <i class="bx bx-trash me-1"></i> Delete
+                          </a>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add User to @Model.RoleName Role</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addUserForm">
+          @Html.AntiForgeryToken()
+          <div class="mb-3">
+            <label class="form-label">Department Filter</label>
+            <select id="departmentFilter" class="form-select">
+              <option value="">All Departments</option>
+              <!-- Departments will be populated dynamically -->
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">User</label>
+            <select id="userSelect" name="LdapUser" class="form-select" required>
+              <option value="">Select User</option>
+              <!-- Users will be populated dynamically -->
+            </select>
+            <div class="invalid-feedback">Please select a user.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea id="userNotes" name="Notes" class="form-control" rows="3"></textarea>
+          </div>
+          <input type="hidden" name="RoleName" value="@Model.RoleName" />
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveUserBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit User Role</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editUserForm">
+          @Html.AntiForgeryToken()
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea id="editUserNotes" name="Notes" class="form-control" rows="3"></textarea>
+          </div>
+          <input type="hidden" id="editUserId" name="Id" value="" />
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="updateUserBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to remove <span id="deleteUserName"></span> from the @Model.RoleName role?</p>
+        <form id="deleteUserForm">
+          @Html.AntiForgeryToken()
+          <input type="hidden" id="deleteUserId" value="" />
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section PageScripts {
+  <script>
+    // Global variables
+    const roleName = '@Model.RoleName';
+    let departments = new Set();
+    let availableEmployees = [];
+
+    $(document).ready(function () {
+      // Initialize any necessary scripts
+      loadAvailableEmployees();
+      setupEventHandlers();
+    });
+
+    function setupEventHandlers() {
+      // Department filter change event
+      $('#departmentFilter').on('change', function () {
+        const department = $(this).val();
+        filterEmployeesByDepartment(department);
+      });
+
+      // Add user event
+      $('#saveUserBtn').on('click', function () {
+        addUser();
+      });
+
+      // Edit user button click
+      $('.edit-user-btn').on('click', function () {
+        const id = $(this).data('id');
+        const notes = $(this).data('notes');
+        $('#editUserId').val(id);
+        $('#editUserNotes').val(notes);
+        $('#editUserModal').modal('show');
+      });
+
+      // Update user event
+      $('#updateUserBtn').on('click', function () {
+        updateUser();
+      });
+
+      // Delete user button click
+      $('.delete-user-btn').on('click', function () {
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+        $('#deleteUserId').val(id);
+        $('#deleteUserName').text(name);
+        $('#deleteUserModal').modal('show');
+      });
+
+      // Confirm delete event
+      $('#confirmDeleteBtn').on('click', function () {
+        deleteUser();
+      });
+    }
+
+    function loadAvailableEmployees(department = null) {
+      // Clear existing options
+      $('#userSelect').html('<option value="">Select User</option>');
+
+      // Show loading
+      $('#userSelect').prop('disabled', true);
+      $('#departmentFilter').prop('disabled', true);
+
+      // Make AJAX request
+      $.ajax({
+        url: '@Url.Action("GetAvailableEmployees")',
+        type: 'GET',
+        data: {
+          roleName: roleName,
+          department: department
+        },
+        success: function (response) {
+          if (response.success) {
+            availableEmployees = response.employees;
+
+            // Reset departments set
+            departments = new Set();
+
+            // Populate departments dropdown
+            availableEmployees.forEach(function (employee) {
+              if (employee.department) {
+                departments.add(employee.department);
+              }
+            });
+
+            // Populate department filter
+            const deptSelect = $('#departmentFilter');
+            deptSelect.html('<option value="">All Departments</option>');
+            [...departments].sort().forEach(function (dept) {
+              deptSelect.append(`<option value="${dept}">${dept}</option>`);
+            });
+
+            // Populate user select
+            populateUserSelect(availableEmployees);
+          } else {
+            showAlert('danger', response.message || 'Failed to load available employees.');
+          }
+        },
+        error: function () {
+          showAlert('danger', 'Failed to load available employees. Please try again.');
+        },
+        complete: function () {
+          $('#userSelect').prop('disabled', false);
+          $('#departmentFilter').prop('disabled', false);
+        }
+      });
+    }
+
+    function filterEmployeesByDepartment(department) {
+      if (!department) {
+        populateUserSelect(availableEmployees);
+        return;
+      }
+
+      const filtered = availableEmployees.filter(e => e.department === department);
+      populateUserSelect(filtered);
+    }
+
+    function populateUserSelect(employees) {
+      const userSelect = $('#userSelect');
+      userSelect.html('<option value="">Select User</option>');
+
+      if (employees.length === 0) {
+        userSelect.append('<option value="" disabled>No available employees found</option>');
+        return;
+      }
+
+      // Sort employees by name
+      employees.sort((a, b) => a.name.localeCompare(b.name));
+
+      employees.forEach(function (employee) {
+        userSelect.append(`<option value="${employee.ldapUser}">${employee.name} (${employee.empId}) - ${employee.department}</option>`);
+      });
+    }
+
+    function addUser() {
+      const ldapUser = $('#userSelect').val();
+      const notes = $('#userNotes').val();
+
+      if (!ldapUser) {
+        $('#userSelect').addClass('is-invalid');
+        return;
+      }
+
+      $('#userSelect').removeClass('is-invalid');
+      $('#saveUserBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...');
+
+      // Make AJAX request
+      $.ajax({
+        url: '@Url.Action("AddUser")',
+        type: 'POST',
+        data: {
+          LdapUser: ldapUser,
+          RoleName: roleName,
+          Notes: notes,
+          __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        },
+        success: function (response) {
+          if (response.success) {
+            showAlert('success', response.message);
+            // Reload page after short delay
+            setTimeout(function () {
+              window.location.reload();
+            }, 1000);
+          } else {
+            showAlert('danger', response.message || 'Failed to add user.');
+            $('#saveUserBtn').prop('disabled', false).text('Save');
+          }
+        },
+        error: function () {
+          showAlert('danger', 'Failed to add user. Please try again.');
+          $('#saveUserBtn').prop('disabled', false).text('Save');
+        }
+      });
+    }
+
+    function updateUser() {
+      const id = $('#editUserId').val();
+      const notes = $('#editUserNotes').val();
+
+      $('#updateUserBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...');
+
+      // Make AJAX request
+      $.ajax({
+        url: '@Url.Action("UpdateUser")',
+        type: 'POST',
+        data: {
+          Id: id,
+          Notes: notes,
+          __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        },
+        success: function (response) {
+          if (response.success) {
+            $('#editUserModal').modal('hide');
+            showAlert('success', response.message);
+
+            // Update the row
+            const row = $(`tr[data-id="${id}"]`);
+            row.find('td:eq(4)').text(notes); // 5th column is Notes
+          } else {
+            showAlert('danger', response.message || 'Failed to update user.');
+          }
+        },
+        error: function () {
+          showAlert('danger', 'Failed to update user. Please try again.');
+        },
+        complete: function () {
+          $('#updateUserBtn').prop('disabled', false).text('Save Changes');
+        }
+      });
+    }
+
+    function deleteUser() {
+      const id = $('#deleteUserId').val();
+
+      $('#confirmDeleteBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...');
+
+      // Make AJAX request
+      $.ajax({
+        url: '@Url.Action("RemoveUser")',
+        type: 'POST',
+        data: {
+          id: id,
+          __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        },
+        success: function (response) {
+          if (response.success) {
+            $('#deleteUserModal').modal('hide');
+            showAlert('success', response.message);
+
+            // Remove the row
+            $(`tr[data-id="${id}"]`).fadeOut(400, function () {
+              $(this).remove();
+            });
+          } else {
+            showAlert('danger', response.message || 'Failed to delete user.');
+          }
+        },
+        error: function () {
+          showAlert('danger', 'Failed to delete user. Please try again.');
+        },
+        complete: function () {
+          $('#confirmDeleteBtn').prop('disabled', false).text('Delete');
+        }
+      });
+    }
+
+    function showAlert(type, message) {
+      const alertHtml = `
+          <div class="alert alert-${type} alert-dismissible" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        `;
+
+      $('#alertContainer').html(alertHtml);
+
+      // Scroll to alert
+      $('html, body').animate({
+        scrollTop: $('#alertContainer').offset().top - 100
+      }, 200);
+    }
+  </script>
+}

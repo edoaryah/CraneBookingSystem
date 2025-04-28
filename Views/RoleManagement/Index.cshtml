@@ -1,0 +1,71 @@
+@model AspnetCoreMvcFull.ViewModels.Role.RoleIndexViewModel
+@{
+  ViewData["Title"] = "Role Management";
+  Layout = "_ContentNavbarLayout";
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+  <h4 class="fw-bold py-3 mb-4">
+    <span class="text-muted fw-light">System Admin /</span> Role Management
+  </h4>
+
+  @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+  {
+    <div class="alert alert-danger alert-dismissible" role="alert">
+      @Model.ErrorMessage
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  }
+
+  @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+  {
+    <div class="alert alert-success alert-dismissible" role="alert">
+      @Model.SuccessMessage
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  }
+
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <h5 class="mb-0">Role List</h5>
+    </div>
+
+    <div class="card-body">
+      <div class="table-responsive text-nowrap">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Role Name</th>
+              <th>Description</th>
+              <th>User Count</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody class="table-border-bottom-0">
+            @foreach (var role in Model.Roles)
+            {
+              <tr>
+                <td><strong>@role.Name</strong></td>
+                <td>@role.Description</td>
+                <td>@role.UserCount</td>
+                <td>
+                  <a href="@Url.Action("Users", new { roleName = role.Name })" class="btn btn-sm btn-primary">
+                    <i class="bx bx-user me-1"></i> Manage Users
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section PageScripts {
+  <script>
+    $(document).ready(function() {
+      // Initialize any necessary scripts here
+    });
+  </script>
+}

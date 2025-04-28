@@ -1,15 +1,31 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
+using AspnetCoreMvcFull.Data;
 using AspnetCoreMvcFull.Filters;
 using AspnetCoreMvcFull.Middleware;
 using AspnetCoreMvcFull.Services.Auth;
 using AspnetCoreMvcFull.Services.Common;
+using AspnetCoreMvcFull.Services.Role;
 using AspnetCoreMvcFull.Services.Security;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.Extensions.Caching.Memory;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Tambahkan ini di bagian awal Program.cs, sebelum kode konfigurasi apapun
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+// Add services to the container
+builder.Services.AddControllersWithViews();
+
+// Register DbContext dengan connection string
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+// Registrasi Filter
+builder.Services.AddScoped<AuthorizationFilter>();
+builder.Services.AddScoped<RateLimitFilter>();
 
 // Menambahkan HttpClient untuk digunakan di AuthService
 builder.Services.AddHttpClient("AuthClient", client =>
@@ -24,9 +40,11 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICacheService, MemoryCacheService>();
 builder.Services.AddScoped<ISecurityService, SecurityService>();
-builder.Services.AddScoped<RateLimitFilter>();
 
-// Konfigurasi autentikasi
+// Register Role service
+builder.Services.AddScoped<IRoleService, RoleService>();
+
+// Konfigurasi Autentikasi
 builder.Services.AddAuthentication(options =>
 {
   options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -52,12 +70,12 @@ builder.Services.AddAuthentication(options =>
       // Cek apakah cookie akan segera kedaluwarsa
       if (context.Properties.AllowRefresh != true) return;
 
-      var timeElapsed = DateTimeOffset.Now.Subtract(context.Properties.IssuedUtc ?? DateTimeOffset.Now);
+      var timeElapsed = DateTimeOffset.UtcNow.Subtract(context.Properties.IssuedUtc ?? DateTimeOffset.UtcNow);
       if (timeElapsed > TimeSpan.FromHours(7)) // Refresh setelah 7 jam (sebelum 8 jam kedaluwarsa)
       {
         var authService = context.HttpContext.RequestServices.GetRequiredService<IAuthService>();
         if (context.HttpContext.Request.Cookies.TryGetValue("jwt_token", out var token) &&
-                context.HttpContext.Request.Cookies.TryGetValue("refresh_token", out var refreshToken))
+                    context.HttpContext.Request.Cookies.TryGetValue("refresh_token", out var refreshToken))
         {
           var response = await authService.RefreshTokenAsync(token, refreshToken);
           if (!response.Success)
@@ -80,12 +98,12 @@ builder.Services.AddAuthentication(options =>
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Strict,
-            Expires = DateTime.Now.AddDays(7)
+            Expires = DateTime.UtcNow.AddDays(7)
           });
 
           // Update properti authentication ticket
-          context.Properties.IssuedUtc = DateTimeOffset.Now;
-          context.Properties.ExpiresUtc = DateTimeOffset.Now.Add(options.ExpireTimeSpan);
+          context.Properties.IssuedUtc = DateTimeOffset.UtcNow;
+          context.Properties.ExpiresUtc = DateTimeOffset.UtcNow.Add(options.ExpireTimeSpan);
           context.ShouldRenew = true;
         }
         else
@@ -96,9 +114,6 @@ builder.Services.AddAuthentication(options =>
     }
   };
 });
-
-// Add services to the container.
-builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
@@ -115,7 +130,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-// Tambahkan middleware autentikasi SEBELUM otorisasi
+// Tambahkan middleware autentikasi SEBELUM middleware otorisasi
 app.UseAuthentication();
 app.UseAuthorization();
 
