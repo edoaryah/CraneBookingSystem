@@ -3,6 +3,7 @@ using System;
 using AspnetCoreMvcFull.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AspnetCoreMvcFull.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250429114810_CraneManagement")]
+    partial class CraneManagement
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -135,7 +138,7 @@ namespace AspnetCoreMvcFull.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2023, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2025, 4, 29, 19, 48, 10, 448, DateTimeKind.Local).AddTicks(7690),
                             CreatedBy = "system",
                             LdapUser = "PIC1",
                             Notes = "Default admin user created by seeder",
@@ -144,7 +147,7 @@ namespace AspnetCoreMvcFull.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2023, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2025, 4, 29, 19, 48, 10, 448, DateTimeKind.Local).AddTicks(7980),
                             CreatedBy = "system",
                             LdapUser = "PIC1",
                             Notes = "Default admin user created by seeder",

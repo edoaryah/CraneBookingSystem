@@ -16,7 +16,7 @@ namespace AspnetCoreMvcFull.Data.Seeders
             LdapUser = "PIC1", // Ganti dengan username LDAP Anda
             RoleName = Roles.Admin,
             Notes = "Default admin user created by seeder",
-            CreatedAt = DateTime.Now,
+            CreatedAt = new DateTime(2023, 1, 1), // Nilai statis
             CreatedBy = "system"
           },
           new UserRole
@@ -25,7 +25,7 @@ namespace AspnetCoreMvcFull.Data.Seeders
             LdapUser = "PIC1", // Ganti dengan username LDAP Anda
             RoleName = Roles.PIC,
             Notes = "Default admin user created by seeder",
-            CreatedAt = DateTime.Now,
+            CreatedAt = new DateTime(2023, 1, 1), // Nilai statis
             CreatedBy = "system"
           }
       );

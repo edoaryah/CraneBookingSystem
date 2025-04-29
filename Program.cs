@@ -1,13 +1,17 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
+using AspnetCoreMvcFull.Events;
 using AspnetCoreMvcFull.Filters;
 using AspnetCoreMvcFull.Middleware;
 using AspnetCoreMvcFull.Services.Auth;
 using AspnetCoreMvcFull.Services.Common;
 using AspnetCoreMvcFull.Services.Role;
 using AspnetCoreMvcFull.Services.Security;
+using AspnetCoreMvcFull.Services;
 using System.Text;
+using Hangfire;
+using Hangfire.PostgreSql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +31,11 @@ builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddScoped<AuthorizationFilter>();
 builder.Services.AddScoped<RateLimitFilter>();
 
+// Tambahkan setelah registrasi service yang ada
+// Registrasi event infrastructure
+builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
+// builder.Services.AddScoped<IEventHandler<CraneMaintenanceEvent>, BookingRelocationHandler>();
+
 // Menambahkan HttpClient untuk digunakan di AuthService
 builder.Services.AddHttpClient("AuthClient", client =>
 {
@@ -40,6 +49,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICacheService, MemoryCacheService>();
 builder.Services.AddScoped<ISecurityService, SecurityService>();
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+builder.Services.AddScoped<ICraneService, CraneService>();
 
 // Register Role service
 builder.Services.AddScoped<IRoleService, RoleService>();
@@ -115,6 +126,16 @@ builder.Services.AddAuthentication(options =>
   };
 });
 
+// hangfire
+builder.Services.AddHangfire(config =>
+    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+          .UseSimpleAssemblyNameTypeSerializer()
+          .UsePostgreSqlStorage(options =>
+              options.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"))
+          ));
+
+builder.Services.AddHangfireServer();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -124,6 +145,8 @@ if (!app.Environment.IsDevelopment())
   // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
   app.UseHsts();
 }
+
+app.UseHangfireDashboard(); // Dashboard untuk memonitor background jobs dengan Hangfire
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
