@@ -7,9 +7,9 @@ using AspnetCoreMvcFull.Filters;
 namespace AspnetCoreMvcFull.Controllers;
 
 [Authorize]
-[ServiceFilter(typeof(AuthorizationFilter))]
+// [ServiceFilter(typeof(AuthorizationFilter))]
 public class DashboardsController : Controller
 {
-  [RequireRole("admin")]
+  // [RequireRole("admin")]
   public IActionResult Index() => View();
 }

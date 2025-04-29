@@ -1,177 +1,264 @@
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@using System.Web
+@using System.Globalization
 @model AspnetCoreMvcFull.ViewModels.Role.RoleUsersViewModel
 @{
-  ViewData["Title"] = $"Users in {Model.RoleName} Role";
+  // Fungsi untuk mengubah teks menjadi Title Case
+  string ToTitleCase(string text)
+  {
+    if (string.IsNullOrEmpty(text))
+      return text;
+
+    // Menggunakan TextInfo dari culture saat ini untuk mengubah ke Title Case
+    return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(text.ToLower());
+  }
+
+  // Ubah role name ke Title Case
+  string formattedRoleName = ToTitleCase(Model.RoleName);
+
+  // Gunakan formattedRoleName di ViewData["Title"]
+  ViewData["Title"] = $"Users in {System.Web.HttpUtility.HtmlEncode(formattedRoleName)} Role";
   Layout = "_ContentNavbarLayout";
 }
 
-<div class="container-xxl flex-grow-1 container-p-y">
-  <h4 class="fw-bold py-3 mb-4">
-    <span class="text-muted fw-light">System Admin / <a href="@Url.Action("Index")">Role Management</a> /</span>
-    @Model.RoleName
-  </h4>
-
-  <div id="alertContainer">
-    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-    {
-      <div class="alert alert-danger alert-dismissible" role="alert">
-        @Model.ErrorMessage
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
+@section PageStyles {
+  <style>
+    .table th,
+    .table td {
+      vertical-align: middle;
     }
 
-    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
-    {
-      <div class="alert alert-success alert-dismissible" role="alert">
-        @Model.SuccessMessage
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: #696cff;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+      margin-right: 0.75rem;
     }
-  </div>
 
-  <div class="row">
-    <div class="col-12">
-      <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Users in @Model.RoleName Role</h5>
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-            <i class="bx bx-user-plus me-1"></i> Add User
+    .action-buttons .btn {
+      margin-right: 0.25rem;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .action-buttons .btn:last-child {
+      margin-right: 0;
+    }
+
+    .action-buttons .btn i {
+      font-size: 1.25rem;
+    }
+  </style>
+}
+
+<div id="alertContainer">
+  @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+  {
+    <div class="alert alert-danger alert-dismissible" role="alert">
+      @System.Web.HttpUtility.HtmlEncode(Model.ErrorMessage)
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  }
+
+  @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+  {
+    <div class="alert alert-success alert-dismissible" role="alert">
+      @System.Web.HttpUtility.HtmlEncode(Model.SuccessMessage)
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  }
+</div>
+
+<!-- Content wrapper -->
+<div class="row">
+  <div class="col-12">
+    <!-- Users with Role -->
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-0" id="roleTitle">Role @System.Web.HttpUtility.HtmlEncode(formattedRoleName)</h5>
+          <span class="text-muted" id="roleDescription"></span>
+        </div>
+        <div>
+          <a href="/RoleManagement" class="btn btn-outline-secondary me-2">
+            <i class="bx bx-arrow-back me-1"></i> Back to Roles
+          </a>
+          <button type="button" class="btn btn-primary" id="addUserBtn">
+            <i class="bx bx-plus me-1"></i> Add User
           </button>
         </div>
-        <div class="card-body">
-          <div class="table-responsive text-nowrap">
-            <table class="table table-hover" id="usersTable">
-              <thead>
-                <tr>
-                  <th>Employee ID</th>
-                  <th>Name</th>
-                  <th>Department</th>
-                  <th>Position</th>
-                  <th>Notes</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody class="table-border-bottom-0">
-                @foreach (var user in Model.Users)
+      </div>
+
+      <!-- User table -->
+      <div class="table-responsive text-nowrap" id="userTableContainer" style="display: none;">
+        <table class="table table-hover" id="usersTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Department</th>
+              <th>Position</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody class="table-border-bottom-0">
+            @foreach (var user in Model.Users)
+            {
+              string initials = "";
+              if (!string.IsNullOrEmpty(user.EmployeeName))
+              {
+                var parts = user.EmployeeName.Split(' ');
+                foreach (var part in parts)
                 {
-                  <tr data-id="@user.Id">
-                    <td>@user.EmployeeId</td>
-                    <td>@user.EmployeeName</td>
-                    <td>@user.Department</td>
-                    <td>@user.Position</td>
-                    <td>@user.Notes</td>
-                    <td>
-                      <div class="dropdown">
-                        <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
-                          <i class="bx bx-dots-vertical-rounded"></i>
-                        </button>
-                        <div class="dropdown-menu">
-                          <a class="dropdown-item edit-user-btn" href="javascript:void(0);" data-id="@user.Id"
-                            data-notes="@user.Notes">
-                            <i class="bx bx-edit-alt me-1"></i> Edit
-                          </a>
-                          <a class="dropdown-item delete-user-btn" href="javascript:void(0);" data-id="@user.Id"
-                            data-name="@user.EmployeeName">
-                            <i class="bx bx-trash me-1"></i> Delete
-                          </a>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
+                  if (!string.IsNullOrEmpty(part) && initials.Length < 2)
+                  {
+                    initials += part[0];
+                  }
                 }
-              </tbody>
-            </table>
-          </div>
+                initials = initials.ToUpper();
+              }
+              <tr data-id="@user.Id">
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="user-avatar">@initials</div>
+                    <div>
+                      <strong>@System.Web.HttpUtility.HtmlEncode(user.EmployeeName)</strong>
+                      <div class="text-muted small">@System.Web.HttpUtility.HtmlEncode(user.LdapUser)</div>
+                    </div>
+                  </div>
+                </td>
+                <td>@user.Department</td>
+                <td>@user.Position</td>
+                <td>@(string.IsNullOrEmpty(user.Notes) ? "-" : user.Notes)</td>
+                <td>
+                  <div class="action-buttons">
+                    <button type="button" class="btn btn-sm btn-outline-primary edit-user-btn" data-id="@user.Id"
+                      title="Edit">
+                      <i class="bx bx-edit-alt"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger delete-user-btn" data-id="@user.Id"
+                      data-name="@System.Web.HttpUtility.HtmlAttributeEncode(user.EmployeeName ?? "")" title="Delete">
+                      <i class="bx bx-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- No data message -->
+      <div id="noDataMessage" class="text-center py-5" style="display: none;">
+        <i class="bx bx-user-x text-secondary mb-2" style="font-size: 3rem;"></i>
+        <p class="mb-0">No users found with this role</p>
+        <p class="text-muted">Start by adding a user to this role</p>
+      </div>
+
+      <!-- Error message -->
+      <div id="errorMessage" class="alert alert-danger mx-4 mb-4" style="display: none;">
+        An error occurred while loading users. Please try again later.
+      </div>
+    </div>
+  </div>
+
+  <!-- Add User Modal -->
+  <div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add User to @System.Web.HttpUtility.HtmlEncode(Model.RoleName) Role</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addUserForm">
+            @Html.AntiForgeryToken()
+            <div class="mb-3">
+              <label class="form-label" for="departmentFilter">Department</label>
+              <select id="departmentFilter" class="form-select" required>
+                <option value="">Pilih Departemen</option>
+                <!-- Departments will be populated dynamically -->
+              </select>
+              <div class="invalid-feedback">Silakan pilih departemen.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="userSelect">User</label>
+              <select id="userSelect" name="LdapUser" class="form-select" required disabled>
+                <option value="">Pilih Departemen Terlebih Dahulu</option>
+              </select>
+              <div class="invalid-feedback">Silakan pilih pengguna.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="userNotes">Notes</label>
+              <textarea id="userNotes" name="Notes" class="form-control" rows="3"></textarea>
+            </div>
+            <input type="hidden" name="RoleName" value="@System.Web.HttpUtility.HtmlAttributeEncode(Model.RoleName)" />
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" id="saveUserBtn">Simpan</button>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Add User Modal -->
-<div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add User to @Model.RoleName Role</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="addUserForm">
-          @Html.AntiForgeryToken()
-          <div class="mb-3">
-            <label class="form-label">Department Filter</label>
-            <select id="departmentFilter" class="form-select">
-              <option value="">All Departments</option>
-              <!-- Departments will be populated dynamically -->
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">User</label>
-            <select id="userSelect" name="LdapUser" class="form-select" required>
-              <option value="">Select User</option>
-              <!-- Users will be populated dynamically -->
-            </select>
-            <div class="invalid-feedback">Please select a user.</div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Notes</label>
-            <textarea id="userNotes" name="Notes" class="form-control" rows="3"></textarea>
-          </div>
-          <input type="hidden" name="RoleName" value="@Model.RoleName" />
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="saveUserBtn">Save</button>
+  <!-- Edit User Modal -->
+  <div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit User Role</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editUserForm">
+            @Html.AntiForgeryToken()
+            <div class="mb-3">
+              <label class="form-label" for="editUserNotes">Notes</label>
+              <textarea id="editUserNotes" name="Notes" class="form-control" rows="3"></textarea>
+            </div>
+            <input type="hidden" id="editUserId" name="Id" value="" />
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" id="updateUserBtn">Simpan Perubahan</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Edit User Modal -->
-<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Edit User Role</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="editUserForm">
-          @Html.AntiForgeryToken()
-          <div class="mb-3">
-            <label class="form-label">Notes</label>
-            <textarea id="editUserNotes" name="Notes" class="form-control" rows="3"></textarea>
-          </div>
-          <input type="hidden" id="editUserId" name="Id" value="" />
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="updateUserBtn">Save Changes</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Confirm Deletion</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Are you sure you want to remove <span id="deleteUserName"></span> from the @Model.RoleName role?</p>
-        <form id="deleteUserForm">
-          @Html.AntiForgeryToken()
-          <input type="hidden" id="deleteUserId" value="" />
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+  <!-- Delete Confirmation Modal -->
+  <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Deletion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to remove <span id="deleteUserName"></span> from the
+            @System.Web.HttpUtility.HtmlEncode(Model.RoleName) role?</p>
+          <form id="deleteUserForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="deleteUserId" value="" />
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Hapus</button>
+        </div>
       </div>
     </div>
   </div>
@@ -180,21 +267,56 @@
 @section PageScripts {
   <script>
     // Global variables
-    const roleName = '@Model.RoleName';
-    let departments = new Set();
-    let availableEmployees = [];
+    const roleName = '@System.Web.HttpUtility.JavaScriptStringEncode(Model.RoleName)';
 
     $(document).ready(function () {
-      // Initialize any necessary scripts
-      loadAvailableEmployees();
+      // Initialize necessary scripts
+      loadDepartments();
       setupEventHandlers();
+
+      // Check if we need to show the user table or no data message
+      updateTableVisibility();
     });
+
+    function updateTableVisibility() {
+      const hasUsers = $('#usersTable tbody tr').length > 0;
+
+      if (hasUsers) {
+        $('#userTableContainer').show();
+        $('#noDataMessage').hide();
+      } else {
+        $('#userTableContainer').hide();
+        $('#noDataMessage').show();
+      }
+    }
 
     function setupEventHandlers() {
       // Department filter change event
       $('#departmentFilter').on('change', function () {
         const department = $(this).val();
-        filterEmployeesByDepartment(department);
+
+        if (department) {
+          $('#departmentFilter').removeClass('is-invalid');
+          $('#userSelect').prop('disabled', true);
+          $('#userSelect').html('<option value="">Memuat data pengguna...</option>');
+
+          // Load users for the selected department
+          loadUsersForDepartment(department);
+        } else {
+          $('#userSelect').prop('disabled', true);
+          $('#userSelect').html('<option value="">Pilih Departemen Terlebih Dahulu</option>');
+        }
+      });
+
+      // Add user button click
+      $('#addUserBtn').on('click', function () {
+        // Reset the form
+        $('#departmentFilter').val('');
+        $('#userSelect').prop('disabled', true);
+        $('#userSelect').html('<option value="">Pilih Departemen Terlebih Dahulu</option>');
+        $('#userNotes').val('');
+
+        $('#addUserModal').modal('show');
       });
 
       // Add user event
@@ -202,12 +324,16 @@
         addUser();
       });
 
-      // Edit user button click
-      $('.edit-user-btn').on('click', function () {
+      // Setup delegated event handlers for dynamically created elements
+      $(document).on('click', '.edit-user-btn', function () {
         const id = $(this).data('id');
-        const notes = $(this).data('notes');
+
+        // Dapatkan notes langsung dari kolom tabel yang sudah ter-decode
+        const notes = $(`tr[data-id="${id}"]`).find('td:eq(3)').text();
+        const notesText = notes === '-' ? '' : notes;
+
         $('#editUserId').val(id);
-        $('#editUserNotes').val(notes);
+        $('#editUserNotes').val(notesText);
         $('#editUserModal').modal('show');
       });
 
@@ -216,10 +342,10 @@
         updateUser();
       });
 
-      // Delete user button click
-      $('.delete-user-btn').on('click', function () {
+      // Setup delegated event handler for delete buttons
+      $(document).on('click', '.delete-user-btn', function () {
         const id = $(this).data('id');
-        const name = $(this).data('name');
+        const name = $(this).data('name') || 'pengguna ini';
         $('#deleteUserId').val(id);
         $('#deleteUserName').text(name);
         $('#deleteUserModal').modal('show');
@@ -231,14 +357,42 @@
       });
     }
 
-    function loadAvailableEmployees(department = null) {
-      // Clear existing options
-      $('#userSelect').html('<option value="">Select User</option>');
-
+    function loadDepartments() {
       // Show loading
-      $('#userSelect').prop('disabled', true);
       $('#departmentFilter').prop('disabled', true);
+      $('#departmentFilter').html('<option value="">Memuat departemen...</option>');
 
+      // Make AJAX request to get all departments
+      $.ajax({
+        url: '@Url.Action("GetDepartments", "RoleManagement")',
+        type: 'GET',
+        success: function (response) {
+          if (response && response.success) {
+            const departments = response.departments || [];
+
+            // Populate department filter
+            const deptSelect = $('#departmentFilter');
+            deptSelect.html('<option value="">Pilih Departemen</option>');
+
+            departments.forEach(function (dept) {
+              if (dept) {
+                deptSelect.append($('<option></option>').val(dept).text(dept));
+              }
+            });
+          } else {
+            showAlert('danger', (response && response.message) || 'Gagal memuat data departemen.');
+          }
+        },
+        error: function () {
+          showAlert('danger', 'Gagal memuat data departemen. Silakan coba lagi.');
+        },
+        complete: function () {
+          $('#departmentFilter').prop('disabled', false);
+        }
+      });
+    }
+
+    function loadUsersForDepartment(department) {
       // Make AJAX request
       $.ajax({
         url: '@Url.Action("GetAvailableEmployees")',
@@ -248,80 +402,73 @@
           department: department
         },
         success: function (response) {
-          if (response.success) {
-            availableEmployees = response.employees;
-
-            // Reset departments set
-            departments = new Set();
-
-            // Populate departments dropdown
-            availableEmployees.forEach(function (employee) {
-              if (employee.department) {
-                departments.add(employee.department);
-              }
-            });
-
-            // Populate department filter
-            const deptSelect = $('#departmentFilter');
-            deptSelect.html('<option value="">All Departments</option>');
-            [...departments].sort().forEach(function (dept) {
-              deptSelect.append(`<option value="${dept}">${dept}</option>`);
-            });
-
-            // Populate user select
-            populateUserSelect(availableEmployees);
+          if (response && response.success) {
+            const employees = response.employees || [];
+            populateUserSelect(employees);
           } else {
-            showAlert('danger', response.message || 'Failed to load available employees.');
+            showAlert('danger', (response && response.message) || 'Gagal memuat data pengguna untuk departemen yang dipilih.');
+            $('#userSelect').html('<option value="">Error memuat data pengguna</option>');
           }
         },
         error: function () {
-          showAlert('danger', 'Failed to load available employees. Please try again.');
+          showAlert('danger', 'Gagal memuat data pengguna. Silakan coba lagi.');
+          $('#userSelect').html('<option value="">Error memuat data pengguna</option>');
         },
         complete: function () {
           $('#userSelect').prop('disabled', false);
-          $('#departmentFilter').prop('disabled', false);
         }
       });
     }
 
-    function filterEmployeesByDepartment(department) {
-      if (!department) {
-        populateUserSelect(availableEmployees);
-        return;
-      }
-
-      const filtered = availableEmployees.filter(e => e.department === department);
-      populateUserSelect(filtered);
-    }
-
     function populateUserSelect(employees) {
       const userSelect = $('#userSelect');
-      userSelect.html('<option value="">Select User</option>');
+      userSelect.html('<option value="">Pilih Pengguna</option>');
 
-      if (employees.length === 0) {
-        userSelect.append('<option value="" disabled>No available employees found</option>');
+      if (!employees || employees.length === 0) {
+        userSelect.append('<option value="" disabled>Tidak ada karyawan tersedia di departemen ini</option>');
         return;
       }
 
       // Sort employees by name
-      employees.sort((a, b) => a.name.localeCompare(b.name));
+      employees.sort((a, b) => {
+        if (!a || !a.name) return 1;
+        if (!b || !b.name) return -1;
+        return a.name.localeCompare(b.name);
+      });
 
       employees.forEach(function (employee) {
-        userSelect.append(`<option value="${employee.ldapUser}">${employee.name} (${employee.empId}) - ${employee.department}</option>`);
+        if (employee && employee.ldapUser && employee.name) {
+          const empId = employee.empId || '';
+          userSelect.append($('<option></option>').val(employee.ldapUser).text(`${employee.name} (${empId})`));
+        }
       });
     }
 
     function addUser() {
+      const department = $('#departmentFilter').val();
       const ldapUser = $('#userSelect').val();
       const notes = $('#userNotes').val();
 
-      if (!ldapUser) {
-        $('#userSelect').addClass('is-invalid');
-        return;
+      // Validate required fields
+      let isValid = true;
+
+      if (!department) {
+        $('#departmentFilter').addClass('is-invalid');
+        isValid = false;
+      } else {
+        $('#departmentFilter').removeClass('is-invalid');
       }
 
-      $('#userSelect').removeClass('is-invalid');
-      $('#saveUserBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...');
+      if (!ldapUser) {
+        $('#userSelect').addClass('is-invalid');
+        isValid = false;
+      } else {
+        $('#userSelect').removeClass('is-invalid');
+      }
+
+      if (!isValid) return;
+
+      $('#saveUserBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Menyimpan...');
 
       // Make AJAX request
       $.ajax({
@@ -331,23 +478,24 @@
           LdapUser: ldapUser,
           RoleName: roleName,
           Notes: notes,
-          __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+          __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').first().val()
         },
         success: function (response) {
-          if (response.success) {
-            showAlert('success', response.message);
+          if (response && response.success) {
+            $('#addUserModal').modal('hide');
+            showAlert('success', response.message || 'Pengguna berhasil ditambahkan.');
             // Reload page after short delay
             setTimeout(function () {
               window.location.reload();
             }, 1000);
           } else {
-            showAlert('danger', response.message || 'Failed to add user.');
-            $('#saveUserBtn').prop('disabled', false).text('Save');
+            showAlert('danger', (response && response.message) || 'Gagal menambahkan pengguna.');
+            $('#saveUserBtn').prop('disabled', false).text('Simpan');
           }
         },
         error: function () {
-          showAlert('danger', 'Failed to add user. Please try again.');
-          $('#saveUserBtn').prop('disabled', false).text('Save');
+          showAlert('danger', 'Gagal menambahkan pengguna. Silakan coba lagi.');
+          $('#saveUserBtn').prop('disabled', false).text('Simpan');
         }
       });
     }
@@ -356,7 +504,12 @@
       const id = $('#editUserId').val();
       const notes = $('#editUserNotes').val();
 
-      $('#updateUserBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...');
+      if (!id) {
+        showAlert('danger', 'ID pengguna tidak valid.');
+        return;
+      }
+
+      $('#updateUserBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Menyimpan...');
 
       // Make AJAX request
       $.ajax({
@@ -365,25 +518,27 @@
         data: {
           Id: id,
           Notes: notes,
-          __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+          __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').first().val()
         },
         success: function (response) {
-          if (response.success) {
+          if (response && response.success) {
             $('#editUserModal').modal('hide');
-            showAlert('success', response.message);
+            showAlert('success', response.message || 'Pengguna berhasil diperbarui.');
 
             // Update the row
             const row = $(`tr[data-id="${id}"]`);
-            row.find('td:eq(4)').text(notes); // 5th column is Notes
+            if (row.length) {
+              row.find('td:eq(3)').text(notes || '-'); // 4th column is Notes (0-based index)
+            }
           } else {
-            showAlert('danger', response.message || 'Failed to update user.');
+            showAlert('danger', (response && response.message) || 'Gagal memperbarui pengguna.');
           }
         },
         error: function () {
-          showAlert('danger', 'Failed to update user. Please try again.');
+          showAlert('danger', 'Gagal memperbarui pengguna. Silakan coba lagi.');
         },
         complete: function () {
-          $('#updateUserBtn').prop('disabled', false).text('Save Changes');
+          $('#updateUserBtn').prop('disabled', false).text('Simpan Perubahan');
         }
       });
     }
@@ -391,7 +546,12 @@
     function deleteUser() {
       const id = $('#deleteUserId').val();
 
-      $('#confirmDeleteBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...');
+      if (!id) {
+        showAlert('danger', 'ID pengguna tidak valid.');
+        return;
+      }
+
+      $('#confirmDeleteBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Menghapus...');
 
       // Make AJAX request
       $.ajax({
@@ -399,39 +559,47 @@
         type: 'POST',
         data: {
           id: id,
-          __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+          __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').first().val()
         },
         success: function (response) {
-          if (response.success) {
+          if (response && response.success) {
             $('#deleteUserModal').modal('hide');
-            showAlert('success', response.message);
+            showAlert('success', response.message || 'Pengguna berhasil dihapus dari role.');
 
             // Remove the row
             $(`tr[data-id="${id}"]`).fadeOut(400, function () {
               $(this).remove();
+              updateTableVisibility();
             });
           } else {
-            showAlert('danger', response.message || 'Failed to delete user.');
+            showAlert('danger', (response && response.message) || 'Gagal menghapus pengguna.');
           }
         },
         error: function () {
-          showAlert('danger', 'Failed to delete user. Please try again.');
+          showAlert('danger', 'Gagal menghapus pengguna. Silakan coba lagi.');
         },
         complete: function () {
-          $('#confirmDeleteBtn').prop('disabled', false).text('Delete');
+          $('#confirmDeleteBtn').prop('disabled', false).text('Hapus');
         }
       });
     }
 
     function showAlert(type, message) {
-      const alertHtml = `
-          <div class="alert alert-${type} alert-dismissible" role="alert">
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        `;
+      // Create new alert element
+      const alertEl = $(`
+                <div class="alert alert-${type} alert-dismissible" role="alert">
+                  ${message}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              `);
 
-      $('#alertContainer').html(alertHtml);
+      // Add to container without removing existing alerts
+      $('#alertContainer').append(alertEl);
+
+      // Auto dismiss after 5 seconds
+      setTimeout(function () {
+        alertEl.alert('close');
+      }, 5000);
 
       // Scroll to alert
       $('html, body').animate({

@@ -230,6 +230,19 @@ namespace AspnetCoreMvcFull.Controllers
 
         var employees = await _roleService.GetEmployeesNotInRoleAsync(roleName, department);
 
+        // Decode HTML entities pada semua kolom teks
+        foreach (var employee in employees)
+        {
+          if (employee.Name != null)
+            employee.Name = System.Web.HttpUtility.HtmlDecode(employee.Name);
+
+          if (employee.Department != null)
+            employee.Department = System.Web.HttpUtility.HtmlDecode(employee.Department);
+
+          if (employee.Position != null)
+            employee.Position = System.Web.HttpUtility.HtmlDecode(employee.Position);
+        }
+
         return Json(new
         {
           success = true,
@@ -240,6 +253,31 @@ namespace AspnetCoreMvcFull.Controllers
       {
         _logger.LogError(ex, "Error getting available employees for role {RoleName}", roleName);
         return Json(new { success = false, message = "Terjadi kesalahan saat mengambil data karyawan." });
+      }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetDepartments()
+    {
+      try
+      {
+        // Menggunakan service untuk mengambil data departemen
+        var departments = await _roleService.GetAllDepartmentsAsync();
+
+        // Decode HTML entities sebelum dikirim ke client
+        var decodedDepartments = departments.Select(dept =>
+            System.Web.HttpUtility.HtmlDecode(dept)).ToList();
+
+        return Json(new
+        {
+          success = true,
+          departments = decodedDepartments
+        });
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error mengambil data departemen");
+        return Json(new { success = false, message = "Terjadi kesalahan saat mengambil data departemen." });
       }
     }
 

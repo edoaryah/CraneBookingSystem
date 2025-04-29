@@ -19,6 +19,9 @@ namespace AspnetCoreMvcFull.Services.Role
     Task<bool> UserHasRoleAsync(string ldapUser, string roleName);
     Task<List<AvailableEmployeeViewModel>> GetEmployeesNotInRoleAsync(string roleName, string? department = null);
 
+    // Tambahkan method ini ke interface IRoleService.cs
+    Task<List<string>> GetAllDepartmentsAsync();
+
     // Helper methods
     Task<bool> IsRoleValidAsync(string roleName);
   }

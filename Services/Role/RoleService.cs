@@ -90,9 +90,9 @@ namespace AspnetCoreMvcFull.Services.Role
       }
     }
 
-    public async Task<bool> IsRoleValidAsync(string roleName)
+    public Task<bool> IsRoleValidAsync(string roleName)
     {
-      return Roles.AllRoles.Contains(roleName.ToLower());
+      return Task.FromResult(Roles.AllRoles.Contains(roleName.ToLower()));
     }
 
     #endregion
@@ -118,15 +118,17 @@ namespace AspnetCoreMvcFull.Services.Role
             Id = userRole.Id,
             LdapUser = userRole.LdapUser,
             RoleName = userRole.RoleName,
-            Notes = userRole.Notes,
+            Notes = userRole.Notes != null ? System.Web.HttpUtility.HtmlDecode(userRole.Notes) : null,
             CreatedAt = userRole.CreatedAt,
             CreatedBy = userRole.CreatedBy,
             UpdatedAt = userRole.UpdatedAt,
             UpdatedBy = userRole.UpdatedBy,
             EmployeeName = employee?.Name,
             EmployeeId = employee?.EmpId,
-            Department = employee?.Department,
-            Position = employee?.PositionTitle
+            Department = employee?.Department != null ?
+                System.Web.HttpUtility.HtmlDecode(employee.Department) : null,
+            Position = employee?.PositionTitle != null ?
+                  System.Web.HttpUtility.HtmlDecode(employee.PositionTitle) : null
           });
         }
 
@@ -411,6 +413,46 @@ namespace AspnetCoreMvcFull.Services.Role
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error getting employees not in role: {RoleName}, {Department}", roleName, department);
+        throw;
+      }
+    }
+
+    // Tambahkan method ini ke kelas RoleService.cs
+    public async Task<List<string>> GetAllDepartmentsAsync()
+    {
+      try
+      {
+        var departments = new List<string>();
+
+        using (SqlConnection connection = new SqlConnection(_sqlServerConnectionString))
+        {
+          await connection.OpenAsync();
+
+          // Mengambil daftar departemen unik
+          string query = "SELECT DISTINCT DEPARTMENT FROM SP_EMPLIST WHERE DEPARTMENT IS NOT NULL ORDER BY DEPARTMENT";
+          using (SqlCommand command = new SqlCommand(query, connection))
+          {
+            command.CommandTimeout = 30; // Timeout yang wajar
+
+            using (SqlDataReader reader = await command.ExecuteReaderAsync())
+            {
+              while (await reader.ReadAsync())
+              {
+                string department = reader["DEPARTMENT"]?.ToString() ?? string.Empty;
+                if (!string.IsNullOrEmpty(department))
+                {
+                  departments.Add(department);
+                }
+              }
+            }
+          }
+        }
+
+        return departments;
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error mengambil data departemen");
         throw;
       }
     }
