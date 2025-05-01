@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
-using AspnetCoreMvcFull.DTOs;
 using AspnetCoreMvcFull.Models;
+using AspnetCoreMvcFull.ViewModels.ShiftManagement;
 
 namespace AspnetCoreMvcFull.Services
 {
@@ -16,24 +16,23 @@ namespace AspnetCoreMvcFull.Services
       _logger = logger;
     }
 
-    public async Task<IEnumerable<ShiftDefinitionDto>> GetAllShiftDefinitionsAsync()
+    public async Task<IEnumerable<ShiftViewModel>> GetAllShiftDefinitionsAsync()
     {
       var shifts = await _context.ShiftDefinitions
           .OrderBy(s => s.StartTime)
           .ToListAsync();
 
-      return shifts.Select(s => new ShiftDefinitionDto
+      return shifts.Select(s => new ShiftViewModel
       {
         Id = s.Id,
         Name = s.Name,
         StartTime = s.StartTime,
         EndTime = s.EndTime,
-        Category = s.Category,
         IsActive = s.IsActive
       }).ToList();
     }
 
-    public async Task<ShiftDefinitionDto> GetShiftDefinitionByIdAsync(int id)
+    public async Task<ShiftViewModel> GetShiftDefinitionByIdAsync(int id)
     {
       var shift = await _context.ShiftDefinitions.FindAsync(id);
 
@@ -42,29 +41,27 @@ namespace AspnetCoreMvcFull.Services
         throw new KeyNotFoundException($"Shift definition with ID {id} not found");
       }
 
-      return new ShiftDefinitionDto
+      return new ShiftViewModel
       {
         Id = shift.Id,
         Name = shift.Name,
         StartTime = shift.StartTime,
         EndTime = shift.EndTime,
-        Category = shift.Category,
         IsActive = shift.IsActive
       };
     }
 
-    public async Task<ShiftDefinitionDto> CreateShiftDefinitionAsync(ShiftDefinitionCreateDto shiftDto)
+    public async Task<ShiftViewModel> CreateShiftDefinitionAsync(ShiftCreateViewModel shiftViewModel)
     {
       // Validate time range
-      if (shiftDto.StartTime >= shiftDto.EndTime)
+      if (shiftViewModel.StartTime >= shiftViewModel.EndTime)
       {
         throw new ArgumentException("Start time must be before end time");
       }
 
       // Check for overlapping shifts
       var overlappingShifts = await _context.ShiftDefinitions
-          .Where(s => (shiftDto.StartTime < s.EndTime && shiftDto.EndTime > s.StartTime) &&
-                 (shiftDto.Category == s.Category || string.IsNullOrEmpty(shiftDto.Category)))
+          .Where(s => shiftViewModel.StartTime < s.EndTime && shiftViewModel.EndTime > s.StartTime)
           .ToListAsync();
 
       if (overlappingShifts.Any())
@@ -74,28 +71,26 @@ namespace AspnetCoreMvcFull.Services
 
       var shift = new ShiftDefinition
       {
-        Name = shiftDto.Name,
-        StartTime = shiftDto.StartTime,
-        EndTime = shiftDto.EndTime,
-        Category = shiftDto.Category,
-        IsActive = shiftDto.IsActive
+        Name = shiftViewModel.Name,
+        StartTime = shiftViewModel.StartTime,
+        EndTime = shiftViewModel.EndTime,
+        IsActive = shiftViewModel.IsActive
       };
 
       _context.ShiftDefinitions.Add(shift);
       await _context.SaveChangesAsync();
 
-      return new ShiftDefinitionDto
+      return new ShiftViewModel
       {
         Id = shift.Id,
         Name = shift.Name,
         StartTime = shift.StartTime,
         EndTime = shift.EndTime,
-        Category = shift.Category,
         IsActive = shift.IsActive
       };
     }
 
-    public async Task<ShiftDefinitionDto> UpdateShiftDefinitionAsync(int id, ShiftDefinitionUpdateDto shiftDto)
+    public async Task<ShiftViewModel> UpdateShiftDefinitionAsync(int id, ShiftUpdateViewModel shiftViewModel)
     {
       var shift = await _context.ShiftDefinitions.FindAsync(id);
 
@@ -105,7 +100,7 @@ namespace AspnetCoreMvcFull.Services
       }
 
       // Validate time range
-      if (shiftDto.StartTime >= shiftDto.EndTime)
+      if (shiftViewModel.StartTime >= shiftViewModel.EndTime)
       {
         throw new ArgumentException("Start time must be before end time");
       }
@@ -113,8 +108,7 @@ namespace AspnetCoreMvcFull.Services
       // Check for overlapping shifts (excluding the current one)
       var overlappingShifts = await _context.ShiftDefinitions
           .Where(s => s.Id != id &&
-                 (shiftDto.StartTime < s.EndTime && shiftDto.EndTime > s.StartTime) &&
-                 (shiftDto.Category == s.Category || string.IsNullOrEmpty(shiftDto.Category)))
+                 (shiftViewModel.StartTime < s.EndTime && shiftViewModel.EndTime > s.StartTime))
           .ToListAsync();
 
       if (overlappingShifts.Any())
@@ -123,21 +117,19 @@ namespace AspnetCoreMvcFull.Services
       }
 
       // Update shift properties
-      shift.Name = shiftDto.Name;
-      shift.StartTime = shiftDto.StartTime;
-      shift.EndTime = shiftDto.EndTime;
-      shift.Category = shiftDto.Category;
-      shift.IsActive = shiftDto.IsActive;
+      shift.Name = shiftViewModel.Name;
+      shift.StartTime = shiftViewModel.StartTime;
+      shift.EndTime = shiftViewModel.EndTime;
+      shift.IsActive = shiftViewModel.IsActive;
 
       await _context.SaveChangesAsync();
 
-      return new ShiftDefinitionDto
+      return new ShiftViewModel
       {
         Id = shift.Id,
         Name = shift.Name,
         StartTime = shift.StartTime,
         EndTime = shift.EndTime,
-        Category = shift.Category,
         IsActive = shift.IsActive
       };
     }

@@ -113,6 +113,9 @@
           <!-- Hidden fields for user data -->
           <input type="hidden" id="userName" value="@ViewData["UserName"]" />
           <input type="hidden" id="userDepartment" value="@ViewData["UserDepartment"]" />
+          <!-- Hidden field to store shift definitions -->
+          <input type="hidden" id="shiftDefinitionsData"
+            value="@System.Text.Json.JsonSerializer.Serialize(Model.ShiftDefinitions)" />
 
           <!-- Requestor Information Section -->
           <div class="form-section">
@@ -201,7 +204,15 @@
                       <thead class="table-border-top-0">
                         <tr>
                           <th>Date</th>
-                          <!-- Shift columns will be added dynamically -->
+                          @foreach (var shift in Model.ShiftDefinitions.Where(s => s.IsActive).OrderBy(s =>
+                                                    s.StartTime))
+                          {
+                            <th data-shift-id="@shift.Id" data-shift-name="@shift.Name"
+                              data-shift-start="@shift.FormattedStartTime" data-shift-end="@shift.FormattedEndTime"
+                              data-shift-is-active="@shift.IsActive.ToString().ToLower()">
+                              @shift.Name<br /><small class="text-muted">@shift.TimeRange</small>
+                            </th>
+                          }
                         </tr>
                       </thead>
                       <tbody class="table-border-bottom-0" id="shiftTableBody">
@@ -367,11 +378,9 @@
 @section PageScripts {
   <script>
     // Global variables for data
-    let cranes = [];
-    let hazards = [];
     let shiftDefinitions = [];
 
-    // DOM Elements
+    // DOM Elements - with validation checks
     const startDateInput = document.getElementById('startDate');
     const endDateInput = document.getElementById('endDate');
     const shiftTableContainer = document.getElementById('shiftTableContainer');
@@ -380,32 +389,32 @@
     const craneIdSelect = document.getElementById('craneId');
     const hazardsContainer = document.getElementById('hazardsContainer');
     const addItemBtn = document.getElementById('addItemBtn');
-    const shiftLabel = document.getElementById('shiftLabel'); // Tambahkan ini
-    const spacerDiv = document.getElementById('spacerDiv'); // Tambahkan ini
+    const shiftLabel = document.getElementById('shiftLabel');
+    const spacerDiv = document.getElementById('spacerDiv');
+
+    // Log any missing critical elements
+    if (!shiftTableContainer || !shiftTableBody || !shiftLabel || !spacerDiv) {
+      console.error('Critical DOM elements for shift table missing:', {
+        shiftTableContainer: !!shiftTableContainer,
+        shiftTableBody: !!shiftTableBody,
+        shiftLabel: !!shiftLabel,
+        spacerDiv: !!spacerDiv
+      });
+    }
 
     // Set min date to today
     const today = new Date();
     const formattedToday = today.toISOString().split('T')[0];
-    startDateInput.min = formattedToday;
-    endDateInput.min = formattedToday;
 
-    // Initially, don't set default date values
-    startDateInput.value = '';
-    endDateInput.value = '';
+    if (startDateInput) {
+      startDateInput.min = formattedToday;
+      startDateInput.addEventListener('change', generateShiftTable);
+    }
 
-    // Load data on page load
-    document.addEventListener('DOMContentLoaded', async function () {
-      // Set user data from ViewData
-      setUserData();
-
-      await loadShiftDefinitions();
-      @* await loadCranes(); *@
-        await loadHazards();
-      initLiftedItemsTable();
-
-      // Add event listener for the add item button
-      addItemBtn.addEventListener('click', addLiftedItemRow);
-    });
+    if (endDateInput) {
+      endDateInput.min = formattedToday;
+      endDateInput.addEventListener('change', generateShiftTable);
+    }
 
     // Set user data from ViewData
     function setUserData() {
@@ -414,134 +423,82 @@
       const userDepartment = document.getElementById('userDepartment')?.value || '';
 
       // Set values to form fields
-      document.getElementById('name').value = userName;
-      document.getElementById('department').value = userDepartment;
+      const nameInput = document.getElementById('name');
+      const departmentInput = document.getElementById('department');
+
+      if (nameInput) nameInput.value = userName;
+      if (departmentInput) departmentInput.value = userDepartment;
+
+      console.log('User data set:', { userName, userDepartment });
     }
 
-    // Fetch shift definitions from API
-    async function loadShiftDefinitions() {
+    // Load shift definitions from the hidden input or from table headers
+    function loadShiftDefinitions() {
       try {
-        const response = await fetch('/api/ShiftDefinitions');
-        if (!response.ok) {
-          throw new Error('Failed to load shift definitions');
+        // First try to load from the hidden input
+        const shiftDefinitionsInput = document.getElementById('shiftDefinitionsData');
+        if (shiftDefinitionsInput && shiftDefinitionsInput.value) {
+          console.log('Loading shift definitions from hidden input');
+          shiftDefinitions = JSON.parse(shiftDefinitionsInput.value);
+          console.log('Loaded shift definitions from input:', shiftDefinitions);
+          return true;
         }
 
-        shiftDefinitions = await response.json();
+        // If hidden input doesn't exist or is empty, try loading from table headers
+        console.log('Loading shift definitions from table headers');
+        const shiftHeaders = document.querySelectorAll('#shiftTableContainer thead th[data-shift-id]');
 
-        // Sort shift definitions by start time
-        shiftDefinitions.sort((a, b) => {
-          const timeA = a.startTime.split(':').map(Number);
-          const timeB = b.startTime.split(':').map(Number);
-          return timeA[0] * 60 + timeA[1] - (timeB[0] * 60 + timeB[1]);
-        });
+        if (shiftHeaders && shiftHeaders.length > 0) {
+          console.log('Found shift headers in table:', shiftHeaders.length);
+          shiftDefinitions = Array.from(shiftHeaders).map(header => {
+            return {
+              id: parseInt(header.dataset.shiftId),
+              name: header.dataset.shiftName,
+              formattedStartTime: header.dataset.shiftStart,
+              formattedEndTime: header.dataset.shiftEnd,
+              timeRange: `${header.dataset.shiftStart} - ${header.dataset.shiftEnd}`,
+              isActive: header.dataset.shiftIsActive === 'true'
+            };
+          });
+          console.log('Loaded shift definitions from table headers:', shiftDefinitions);
+          return true;
+        }
 
-        console.log('Loaded shift definitions:', shiftDefinitions);
+        console.error('Could not load shift definitions from either source');
+        return false;
       } catch (error) {
         console.error('Error loading shift definitions:', error);
-        alert('Failed to load shift definitions. Please refresh the page or contact support.');
+        return false;
       }
-    }
-
-    // Fetch cranes from API
-    @* async function loadCranes() {
-      try {
-        const response = await fetch('/api/Cranes');
-        if (!response.ok) {
-          throw new Error('Failed to load cranes');
-        }
-
-        cranes = await response.json();
-        populateCraneDropdown();
-      } catch (error) {
-        console.error('Error loading cranes:', error);
-        alert('Failed to load crane data. Please refresh the page or contact support.');
-      }
-    } *@
-
-      // Populate crane dropdown
-      @* function populateCraneDropdown() {
-      // Clear existing options except the first one
-      while (craneIdSelect.options.length > 1) {
-        craneIdSelect.remove(1);
-      }
-
-      // Add crane options
-      cranes.forEach(crane => {
-        const option = document.createElement('option');
-        option.value = crane.id;
-        option.textContent = `${crane.code} (${crane.capacity} ton) - ${crane.status}`;
-
-        // Disable options if crane is not available
-        if (crane.status !== 'Available') {
-          option.disabled = true;
-        }
-
-        craneIdSelect.appendChild(option);
-      });
-    } *@
-
-      // Fetch hazards from API
-      async function loadHazards() {
-        try {
-          const response = await fetch('/api/Hazards');
-          if (!response.ok) {
-            throw new Error('Failed to load hazards');
-          }
-
-          hazards = await response.json();
-          populateHazardsCheckboxes();
-        } catch (error) {
-          console.error('Error loading hazards:', error);
-          alert('Failed to load hazard data. Please refresh the page or contact support.');
-        }
-      }
-
-    // Populate hazards checkboxes
-    function populateHazardsCheckboxes() {
-      hazardsContainer.innerHTML = '';
-
-      hazards.forEach(hazard => {
-        const col = document.createElement('div');
-        col.className = 'col-md-4 mb-2';
-
-        col.innerHTML = `
-                <div class="form-check">
-                  <input class="form-check-input hazard-checkbox" type="checkbox"
-                         name="hazard-${hazard.id}"
-                         id="hazard-${hazard.id}"
-                         value="${hazard.id}" />
-                  <label class="form-check-label" for="hazard-${hazard.id}">
-                    ${hazard.name}
-                  </label>
-                </div>
-              `;
-
-        hazardsContainer.appendChild(col);
-      });
     }
 
     // Validation functions
     function validateDates() {
+      if (!startDateInput || !endDateInput) {
+        console.error('Date inputs not found');
+        return false;
+      }
+
       const startDate = new Date(startDateInput.value);
       const endDate = new Date(endDateInput.value);
       const startDateError = document.getElementById('startDateError');
       const endDateError = document.getElementById('endDateError');
 
-      startDateError.textContent = '';
-      endDateError.textContent = '';
+      if (startDateError) startDateError.textContent = '';
+      if (endDateError) endDateError.textContent = '';
 
       if (!startDateInput.value) {
-        startDateError.textContent = 'Start date is required';
+        if (startDateError) startDateError.textContent = 'Start date is required';
         return false;
       }
 
       if (!endDateInput.value) {
-        endDateError.textContent = 'End date is required';
+        if (endDateError) endDateError.textContent = 'End date is required';
         return false;
       }
 
       if (startDate > endDate) {
-        endDateError.textContent = 'End date cannot be before start date';
+        if (endDateError) endDateError.textContent = 'End date cannot be before start date';
         return false;
       }
 
@@ -550,25 +507,52 @@
 
     // Function to generate shift table
     function generateShiftTable() {
+      console.log('generateShiftTable called');
+
+      // Verify elements exist
+      if (!shiftTableContainer || !shiftLabel || !spacerDiv || !startDateInput || !endDateInput) {
+        console.error('Critical DOM elements missing for generateShiftTable');
+        return;
+      }
+
       // Check if both dates are selected
       const startDate = startDateInput.value;
       const endDate = endDateInput.value;
 
       if (!startDate || !endDate) {
-        // Hide the shift table if dates are not complete
+        console.log('Dates not selected, hiding table');
         shiftTableContainer.style.display = 'none';
         shiftLabel.style.display = 'none';
-        spacerDiv.style.display = 'block'; // Show spacer when shift table is hidden
+        spacerDiv.style.display = 'block';
         return;
       }
 
+      console.log('Dates selected:', { startDate, endDate });
+
       if (!validateDates()) {
-        // Hide the shift table if dates are invalid
+        console.log('Dates validation failed');
         shiftTableContainer.style.display = 'none';
         shiftLabel.style.display = 'none';
-        spacerDiv.style.display = 'block'; // Show spacer when shift table is hidden
+        spacerDiv.style.display = 'block';
         return;
       }
+
+      // Make sure we have shift definitions
+      if (!shiftDefinitions || shiftDefinitions.length === 0) {
+        console.log('No shift definitions, trying to load');
+        if (!loadShiftDefinitions()) {
+          console.error('Failed to load shift definitions');
+          return;
+        }
+      }
+
+      // Check active shifts
+      const activeShifts = shiftDefinitions.filter(s =>
+        // Check both IsActive and isActive (capital I and lowercase i)
+        s.IsActive === true || s.isActive === true
+      );
+
+      console.log('Active shifts found:', activeShifts.length);
 
       // Generate dates between start and end date
       const start = new Date(startDate);
@@ -585,34 +569,33 @@
         currentDate.setDate(currentDate.getDate() + 1);
       }
 
-      renderShiftTable(dateArray);
+      console.log(`Generated ${dateArray.length} days for shift table`);
+
+      // Make sure the table container is visible
+      shiftTableContainer.style.display = 'block';
+      shiftLabel.style.display = 'block';
+      spacerDiv.style.display = 'none';
+
+      // We'll use the shift table that's already in the DOM
+      // But we need to populate the body with the dates
+      renderShiftTableBody(dateArray);
     }
 
-    function renderShiftTable(shiftTable) {
-      if (!shiftTable || shiftTable.length === 0 || !shiftDefinitions || shiftDefinitions.length === 0) {
-        shiftTableContainer.style.display = 'none';
-        shiftLabel.style.display = 'none';
-        spacerDiv.style.display = 'block'; // Show spacer when shift table is hidden
+    function renderShiftTableBody(shiftTable) {
+      console.log('renderShiftTableBody called with', shiftTable.length, 'days');
+
+      if (!shiftTableBody) {
+        console.error('shiftTableBody element not found');
         return;
       }
 
-      // Get the table header
-      const tableHeader = shiftTableContainer.querySelector('thead tr');
-
-      // Clear existing headers except the first one (Date)
-      while (tableHeader.children.length > 1) {
-        tableHeader.removeChild(tableHeader.lastChild);
-      }
-
-      // Add column headers for each shift definition
-      shiftDefinitions.forEach(shift => {
-        const th = document.createElement('th');
-        th.textContent = shift.name;
-        tableHeader.appendChild(th);
-      });
-
       // Clear existing table body
       shiftTableBody.innerHTML = '';
+
+      // PERUBAHAN DISINI: Find active shifts with case-insensitive property checking
+      const activeShifts = shiftDefinitions.filter(s =>
+        s.IsActive === true || s.isActive === true
+      );
 
       // Add rows for each date
       shiftTable.forEach((dayShift, index) => {
@@ -632,20 +615,22 @@
         dateCell.textContent = formattedDate;
         row.appendChild(dateCell);
 
-        // Add checkboxes for each shift definition
-        shiftDefinitions.forEach(shift => {
-          const isSelected = dayShift.selectedShiftIds.includes(shift.id);
+        // Add checkboxes for each active shift definition
+        activeShifts.forEach(shift => {
+          // PERUBAHAN DISINI: Make sure we get the id correctly, checking both Id and id
+          const shiftId = shift.Id || shift.id;
+          const isSelected = dayShift.selectedShiftIds.includes(shiftId);
 
           const cell = document.createElement('td');
           cell.innerHTML = `
-                  <div class="form-check d-flex justify-content-center">
-                    <input type="checkbox" class="form-check-input shift-checkbox"
-                      id="shift-${shift.id}-${dayShift.date}"
-                      data-date="${dayShift.date}"
-                      data-shift-id="${shift.id}"
-                      ${isSelected ? 'checked' : ''} />
-                  </div>
-                `;
+              <div class="form-check d-flex justify-content-center">
+                <input type="checkbox" class="form-check-input shift-checkbox"
+                  id="shift-${shiftId}-${dayShift.date}"
+                  data-date="${dayShift.date}"
+                  data-shift-id="${shiftId}"
+                  ${isSelected ? 'checked' : ''} />
+              </div>
+            `;
 
           row.appendChild(cell);
         });
@@ -653,27 +638,25 @@
         shiftTableBody.appendChild(row);
       });
 
-      // Show the table container
-      shiftTableContainer.style.display = 'block';
-      shiftLabel.style.display = 'block';
-      spacerDiv.style.display = 'none'; // Hide spacer when shift table is visible
+      console.log('Shift table body rendered successfully');
 
-      // Add event listeners to check for conflicts
-      const craneId = document.getElementById('craneId').value;
-      if (craneId) {
-        const shiftCheckboxes = document.querySelectorAll('.shift-checkbox');
-
-        shiftCheckboxes.forEach(checkbox => {
-          checkbox.addEventListener('change', function () {
-            checkShiftConflict(this);
-          });
+      // Add event listeners to checkboxes for conflict checking
+      const shiftCheckboxes = document.querySelectorAll('.shift-checkbox');
+      shiftCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+          checkShiftConflict(this);
         });
-      }
+      });
     }
 
     // Function to check for shift conflicts with the API
     async function checkShiftConflict(checkbox) {
-      const craneId = document.getElementById('craneId').value;
+      if (!checkbox || !craneIdSelect) {
+        console.error('Required elements missing for checkShiftConflict');
+        return;
+      }
+
+      const craneId = craneIdSelect.value;
       if (!craneId) return;
 
       const date = checkbox.dataset.date;
@@ -728,20 +711,14 @@
       }
     }
 
-    // Auto-generate shift table when dates change
-    startDateInput.addEventListener('change', generateShiftTable);
-    endDateInput.addEventListener('change', generateShiftTable);
-
-    // Regenerate shift table when crane changes to check for conflicts
-    craneIdSelect.addEventListener('change', function () {
-      if (startDateInput.value && endDateInput.value) {
-        generateShiftTable();
-      }
-    });
-
     // Initialize the lifted items table with one row
     function initLiftedItemsTable() {
       const tbody = document.getElementById('liftedItemsBody');
+      if (!tbody) {
+        console.error('liftedItemsBody element not found');
+        return;
+      }
+
       tbody.innerHTML = ''; // Clear existing rows
       addLiftedItemRow();
     }
@@ -749,32 +726,37 @@
     // Add a new row to the lifted items table with button column fit content
     function addLiftedItemRow() {
       const tbody = document.getElementById('liftedItemsBody');
+      if (!tbody) {
+        console.error('liftedItemsBody element not found');
+        return;
+      }
+
       const rowIndex = tbody.rows.length;
 
       const row = document.createElement('tr');
 
       row.innerHTML = `
-              <td style="min-width: 220px; padding-right: 5px;">
-                <input type="text" class="form-control item-name" required />
-              </td>
-              <td style="min-width: 140px; padding-right: 5px;">
-                <input type="number" class="form-control item-height"
-                       min="0.01" step="0.01" required />
-              </td>
-              <td style="min-width: 140px; padding-right: 5px;">
-                <input type="number" class="form-control item-weight"
-                       min="0.01" step="0.01" required />
-              </td>
-              <td style="min-width: 140px; padding-right: 5px;">
-                <input type="number" class="form-control item-quantity"
-                       min="1" step="1" value="1" required />
-              </td>
-              <td style="width: 1%; white-space: nowrap;">
-                <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
-                  <i class="bx bx-trash"></i>
-                </button>
-              </td>
-            `;
+                <td style="min-width: 220px; padding-right: 5px;">
+                  <input type="text" class="form-control item-name" required />
+                </td>
+                <td style="min-width: 140px; padding-right: 5px;">
+                  <input type="number" class="form-control item-height"
+                        min="0.01" step="0.01" required />
+                </td>
+                <td style="min-width: 140px; padding-right: 5px;">
+                  <input type="number" class="form-control item-weight"
+                        min="0.01" step="0.01" required />
+                </td>
+                <td style="min-width: 140px; padding-right: 5px;">
+                  <input type="number" class="form-control item-quantity"
+                        min="1" step="1" value="1" required />
+                </td>
+                <td style="width: 1%; white-space: nowrap;">
+                  <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
+                    <i class="bx bx-trash"></i>
+                  </button>
+                </td>
+              `;
 
       // Add event listener to remove button
       const removeBtn = row.querySelector('.remove-item-btn');
@@ -790,50 +772,100 @@
       tbody.appendChild(row);
     }
 
+    // Fetch hazards from API
+    async function loadHazards() {
+      try {
+        const response = await fetch('/api/Hazards');
+        if (!response.ok) {
+          throw new Error('Failed to load hazards');
+        }
+
+        const hazards = await response.json();
+        console.log('Hazards loaded:', hazards.length);
+        populateHazardsCheckboxes(hazards);
+      } catch (error) {
+        console.error('Error loading hazards:', error);
+        alert('Failed to load hazard data. Please refresh the page or contact support.');
+      }
+    }
+
+    // Populate hazards checkboxes
+    function populateHazardsCheckboxes(hazards) {
+      if (!hazardsContainer) {
+        console.error('hazardsContainer element not found');
+        return;
+      }
+
+      hazardsContainer.innerHTML = '';
+
+      hazards.forEach(hazard => {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 mb-2';
+
+        col.innerHTML = `
+                  <div class="form-check">
+                    <input class="form-check-input hazard-checkbox" type="checkbox"
+                          name="hazard-${hazard.id}"
+                          id="hazard-${hazard.id}"
+                          value="${hazard.id}" />
+                    <label class="form-check-label" for="hazard-${hazard.id}">
+                      ${hazard.name}
+                    </label>
+                  </div>
+                `;
+
+        hazardsContainer.appendChild(col);
+      });
+    }
+
     // Function to collect form data
     function collectFormData() {
       // Basic form data
       const formData = {
-        name: document.getElementById('name').value,
-        department: document.getElementById('department').value,
-        craneId: parseInt(document.getElementById('craneId').value),
-        startDate: new Date(document.getElementById('startDate').value).toISOString(),
-        endDate: new Date(document.getElementById('endDate').value).toISOString(),
-        location: document.getElementById('location').value,
-        projectSupervisor: document.getElementById('projectSupervisor').value,
-        costCode: document.getElementById('costCode').value,
-        phoneNumber: document.getElementById('phoneNumber').value,
-        description: document.getElementById('description').value,
-        customHazard: document.getElementById('customHazard').value || null
+        name: document.getElementById('name')?.value || '',
+        department: document.getElementById('department')?.value || '',
+        craneId: parseInt(document.getElementById('craneId')?.value || '0'),
+        startDate: document.getElementById('startDate')?.value ?
+          new Date(document.getElementById('startDate').value).toISOString() : '',
+        endDate: document.getElementById('endDate')?.value ?
+          new Date(document.getElementById('endDate').value).toISOString() : '',
+        location: document.getElementById('location')?.value || '',
+        projectSupervisor: document.getElementById('projectSupervisor')?.value || '',
+        costCode: document.getElementById('costCode')?.value || '',
+        phoneNumber: document.getElementById('phoneNumber')?.value || '',
+        description: document.getElementById('description')?.value || '',
+        customHazard: document.getElementById('customHazard')?.value || null
       };
 
       // Collect shift selections
       formData.shiftSelections = [];
-      const shiftRows = shiftTableBody.querySelectorAll('tr');
+      if (shiftTableBody) {
+        const shiftRows = shiftTableBody.querySelectorAll('tr');
 
-      shiftRows.forEach(row => {
-        const dateStr = row.dataset.date;
-        const checkboxes = row.querySelectorAll('.shift-checkbox:checked');
+        shiftRows.forEach(row => {
+          const dateStr = row.dataset.date;
+          const checkboxes = row.querySelectorAll('.shift-checkbox:checked');
 
-        if (checkboxes.length > 0) {
-          const selectedShiftIds = Array.from(checkboxes).map(checkbox => parseInt(checkbox.dataset.shiftId));
+          if (checkboxes.length > 0) {
+            const selectedShiftIds = Array.from(checkboxes).map(checkbox => parseInt(checkbox.dataset.shiftId));
 
-          formData.shiftSelections.push({
-            date: new Date(dateStr).toISOString(),
-            selectedShiftIds: selectedShiftIds
-          });
-        }
-      });
+            formData.shiftSelections.push({
+              date: new Date(dateStr).toISOString(),
+              selectedShiftIds: selectedShiftIds
+            });
+          }
+        });
+      }
 
       // Collect items
       formData.items = [];
       const itemRows = document.querySelectorAll('#liftedItemsBody tr');
 
       itemRows.forEach(row => {
-        const itemName = row.querySelector('.item-name').value;
-        const height = parseFloat(row.querySelector('.item-height').value);
-        const weight = parseFloat(row.querySelector('.item-weight').value);
-        const quantity = parseInt(row.querySelector('.item-quantity').value);
+        const itemName = row.querySelector('.item-name')?.value || '';
+        const height = parseFloat(row.querySelector('.item-height')?.value || '0');
+        const weight = parseFloat(row.querySelector('.item-weight')?.value || '0');
+        const quantity = parseInt(row.querySelector('.item-quantity')?.value || '0');
 
         if (itemName && !isNaN(height) && !isNaN(weight) && !isNaN(quantity)) {
           formData.items.push({
@@ -864,9 +896,9 @@
       const liftedItemsError = document.getElementById('liftedItemsError');
 
       // Clear previous errors
-      shiftTableError.textContent = '';
-      hazardsError.textContent = '';
-      liftedItemsError.textContent = '';
+      if (shiftTableError) shiftTableError.textContent = '';
+      if (hazardsError) hazardsError.textContent = '';
+      if (liftedItemsError) liftedItemsError.textContent = '';
 
       // Validate dates
       if (!validateDates()) {
@@ -874,19 +906,19 @@
       }
 
       // Validate crane selection
-      if (!document.getElementById('craneId').value) {
+      if (!document.getElementById('craneId')?.value) {
         isValid = false;
       }
 
       // Validate shift table has at least one selection
-      if (shiftTableContainer.style.display === 'none') {
-        shiftTableError.textContent = 'Please select start and end dates to generate shifts';
+      if (shiftTableContainer && shiftTableContainer.style.display === 'none') {
+        if (shiftTableError) shiftTableError.textContent = 'Please select start and end dates to generate shifts';
         isValid = false;
       } else {
         // Check if at least one shift is selected
         const selectedShifts = document.querySelectorAll('.shift-checkbox:checked');
         if (selectedShifts.length === 0) {
-          shiftTableError.textContent = 'Please select at least one shift';
+          if (shiftTableError) shiftTableError.textContent = 'Please select at least one shift';
           isValid = false;
         }
       }
@@ -902,21 +934,21 @@
         const weightInput = item.querySelector('.item-weight');
         const quantityInput = item.querySelector('.item-quantity');
 
-        if (nameInput.value && heightInput.value && weightInput.value && quantityInput.value) {
+        if (nameInput?.value && heightInput?.value && weightInput?.value && quantityInput?.value) {
           hasValidItem = true;
           break;
         }
       }
 
       if (!hasValidItem) {
-        liftedItemsError.textContent = 'Please provide at least one item to be lifted';
+        if (liftedItemsError) liftedItemsError.textContent = 'Please provide at least one item to be lifted';
         isValid = false;
       }
 
       // Validate hazards
       const selectedHazards = document.querySelectorAll('.hazard-checkbox:checked');
       if (selectedHazards.length === 0) {
-        hazardsError.textContent = 'Please select at least one potential hazard';
+        if (hazardsError) hazardsError.textContent = 'Please select at least one potential hazard';
         isValid = false;
       }
 
@@ -925,22 +957,16 @@
       const termsAgreement2 = document.getElementById('termsAgreement2');
       const termsAgreement3 = document.getElementById('termsAgreement3');
 
-      if (!termsAgreement1.checked || !termsAgreement2.checked || !termsAgreement3.checked) {
+      if (!termsAgreement1?.checked || !termsAgreement2?.checked || !termsAgreement3?.checked) {
         isValid = false;
       }
 
       return isValid;
     }
 
-    // Log form data for debugging
-    function logFormData(formData) {
-      console.log('Submitting booking with data:', JSON.stringify(formData, null, 2));
-    }
-
     // Submit booking
     async function submitBooking(formData) {
-      // Log form data for debugging
-      logFormData(formData);
+      console.log('Submitting booking with data:', formData);
 
       try {
         const response = await fetch('/api/Bookings', {
@@ -962,38 +988,76 @@
         successModal.show();
 
         // Reset form after successful submission
-        document.getElementById('craneBookingForm').reset();
-        shiftTableContainer.style.display = 'none';
+        const bookingForm = document.getElementById('craneBookingForm');
+        if (bookingForm) bookingForm.reset();
+
+        if (shiftTableContainer) shiftTableContainer.style.display = 'none';
         initLiftedItemsTable();
       } catch (error) {
         console.error('Error submitting booking:', error);
 
         // Show error modal
         const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-        document.getElementById('errorModalBody').textContent =
-          error.message || 'An error occurred while submitting your booking.';
+        const errorModalBody = document.getElementById('errorModalBody');
+        if (errorModalBody) {
+          errorModalBody.textContent = error.message || 'An error occurred while submitting your booking.';
+        }
         errorModal.show();
       }
     }
 
-    // Submit button click handler
-    submitButton.addEventListener('click', function () {
-      if (validateForm()) {
-        const formData = collectFormData();
-        submitBooking(formData);
-      } else {
-        // Scroll to the first error message
-        const firstError = document.querySelector('.text-danger:not(:empty)');
-        if (firstError) {
-          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }
-    });
+    // Main initialization
+    document.addEventListener('DOMContentLoaded', async function () {
+      console.log('DOM fully loaded');
 
-    document.getElementById('phoneNumber').addEventListener('keypress', function (e) {
-      // Allow only number keys (0-9)
-      if (e.key < '0' || e.key > '9') {
-        e.preventDefault();
+      // Set user data from ViewData
+      setUserData();
+      console.log('User data set');
+
+      // Load shift definitions
+      loadShiftDefinitions();
+
+      // Load hazards for hazards checkboxes
+      await loadHazards();
+
+      // Initialize items table
+      initLiftedItemsTable();
+
+      // Set default dates
+      if (startDateInput) {
+        startDateInput.value = formattedToday;
+      }
+
+      if (endDateInput) {
+        const tomorrow = new Date();
+        tomorrow.setDate(today.getDate() + 1);
+        endDateInput.value = tomorrow.toISOString().split('T')[0];
+      }
+
+      // Generate shift table with a slight delay to ensure all data is ready
+      setTimeout(() => {
+        generateShiftTable();
+      }, 100);
+
+      // Add event listener for the submit button
+      if (submitButton) {
+        submitButton.addEventListener('click', function () {
+          if (validateForm()) {
+            const formData = collectFormData();
+            submitBooking(formData);
+          } else {
+            // Scroll to the first error message
+            const firstError = document.querySelector('.text-danger:not(:empty)');
+            if (firstError) {
+              firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        });
+      }
+
+      // Add event listener for the add item button
+      if (addItemBtn) {
+        addItemBtn.addEventListener('click', addLiftedItemRow);
       }
     });
   </script>

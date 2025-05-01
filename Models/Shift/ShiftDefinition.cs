@@ -17,9 +17,6 @@ namespace AspnetCoreMvcFull.Models
     [Required]
     public TimeSpan EndTime { get; set; }
 
-    [StringLength(50)]
-    public string? Category { get; set; }
-
     [Required]
     public bool IsActive { get; set; } = true;
 

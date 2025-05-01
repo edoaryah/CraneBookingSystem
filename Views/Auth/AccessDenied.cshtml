@@ -5,6 +5,17 @@
 
 @section PageStyles {
   <link rel="stylesheet" href="~/vendor/css/pages/page-auth.css">
+  <style>
+    .mb-4 {
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+    }
+
+    .avatar-xl {
+      margin: 0 auto !important;
+    }
+  </style>
 }
 
 @* ************** Content ************** *@
@@ -21,7 +32,7 @@
               </div>
             </div>
           </div>
-          <h2 class="mb-2 text-danger fw-bold">Akses Ditolak</h2>
+          @* <h2 class="mb-2 text-danger fw-bold">Akses Ditolak</h2> *@
           <p class="mb-4">
             Anda tidak memiliki izin untuk mengakses halaman ini.<br>
             Hubungi administrator sistem jika Anda memerlukan akses.
