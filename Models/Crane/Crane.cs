@@ -3,6 +3,18 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AspnetCoreMvcFull.Models
 {
+  public enum CraneStatus
+  {
+    Available,
+    Maintenance
+  }
+
+  public enum CraneOwnership
+  {
+    KPC,
+    Kontraktor
+  }
+
   public class Crane
   {
     [Key]

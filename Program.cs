@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
 using AspnetCoreMvcFull.Events;
+using AspnetCoreMvcFull.Events.Handlers;
 using AspnetCoreMvcFull.Filters;
 using AspnetCoreMvcFull.Middleware;
 using AspnetCoreMvcFull.Services.Auth;
@@ -34,7 +35,10 @@ builder.Services.AddScoped<RateLimitFilter>();
 // Tambahkan setelah registrasi service yang ada
 // Registrasi event infrastructure
 builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
-// builder.Services.AddScoped<IEventHandler<CraneMaintenanceEvent>, BookingRelocationHandler>();
+builder.Services.AddScoped<IEventHandler<CraneMaintenanceEvent>, BookingRelocationHandler>();
+
+builder.Services.AddScoped<IHazardService, HazardService>();
+builder.Services.AddScoped<IShiftDefinitionService, ShiftDefinitionService>();
 
 // Menambahkan HttpClient untuk digunakan di AuthService
 builder.Services.AddHttpClient("AuthClient", client =>
@@ -50,10 +54,26 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICacheService, MemoryCacheService>();
 builder.Services.AddScoped<ISecurityService, SecurityService>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+
+builder.Services.AddScoped<IScheduleConflictService, ScheduleConflictService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<ICraneService, CraneService>();
+builder.Services.AddScoped<IMaintenanceScheduleService, MaintenanceScheduleService>();
 
 // Register Role service
 builder.Services.AddScoped<IRoleService, RoleService>();
+
+// Daftarkan EmailTemplate sebagai singleton karena hanya berisi template
+builder.Services.AddSingleton<EmailTemplate>();
+
+// Daftarkan layanan email
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+// Daftarkan layanan karyawan
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+
+// Program.cs - tambahkan baris berikut di bagian pendaftaran layanan
+builder.Services.AddScoped<IBookingApprovalService, BookingApprovalService>();
 
 // Konfigurasi Autentikasi
 builder.Services.AddAuthentication(options =>
@@ -70,8 +90,8 @@ builder.Services.AddAuthentication(options =>
   options.LoginPath = "/Auth/Login";
   options.LogoutPath = "/Auth/Logout";
   options.AccessDeniedPath = "/Auth/AccessDenied";
-  options.Cookie.SameSite = SameSiteMode.Strict;
-  options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+  options.Cookie.SameSite = SameSiteMode.Lax;  // Ubah ke Lax
+  options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;  // Ubah untuk pengembangan
 
   // Event untuk validasi cookie dan automatic refresh token
   options.Events = new CookieAuthenticationEvents
@@ -99,16 +119,16 @@ builder.Services.AddAuthentication(options =>
           context.HttpContext.Response.Cookies.Append("jwt_token", response.Token, new CookieOptions
           {
             HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
+            Secure = false,  // Ubah ke false untuk pengembangan
+            SameSite = SameSiteMode.Lax,  // Ubah ke Lax
             Expires = response.TokenExpires
           });
 
           context.HttpContext.Response.Cookies.Append("refresh_token", response.RefreshToken, new CookieOptions
           {
             HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
+            Secure = false,  // Ubah ke false untuk pengembangan
+            SameSite = SameSiteMode.Lax,  // Ubah ke Lax
             Expires = DateTime.UtcNow.AddDays(7)
           });
 

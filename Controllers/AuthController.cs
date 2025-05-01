@@ -87,8 +87,8 @@ namespace AspnetCoreMvcFull.Controllers
         Response.Cookies.Append("jwt_token", response.Token, new CookieOptions
         {
           HttpOnly = true,
-          Secure = true,
-          SameSite = SameSiteMode.Strict,
+          Secure = false,  // Di pengembangan gunakan false, di produksi gunakan true
+          SameSite = SameSiteMode.Lax,
           Expires = response.TokenExpires
         });
 
@@ -96,8 +96,8 @@ namespace AspnetCoreMvcFull.Controllers
         Response.Cookies.Append("refresh_token", response.RefreshToken, new CookieOptions
         {
           HttpOnly = true,
-          Secure = true,
-          SameSite = SameSiteMode.Strict,
+          Secure = false,  // Di pengembangan gunakan false, di produksi gunakan true
+          SameSite = SameSiteMode.Lax,
           Expires = DateTime.Now.AddDays(7)
         });
 
@@ -190,8 +190,8 @@ namespace AspnetCoreMvcFull.Controllers
         Response.Cookies.Append("jwt_token", response.Token, new CookieOptions
         {
           HttpOnly = true,
-          Secure = true,
-          SameSite = SameSiteMode.Strict,
+          Secure = false,  // Ubah ke false untuk pengembangan
+          SameSite = SameSiteMode.Lax,  // Ubah ke Lax
           Expires = response.TokenExpires
         });
 
@@ -199,8 +199,8 @@ namespace AspnetCoreMvcFull.Controllers
         Response.Cookies.Append("refresh_token", response.RefreshToken, new CookieOptions
         {
           HttpOnly = true,
-          Secure = true,
-          SameSite = SameSiteMode.Strict,
+          Secure = false,  // Ubah ke false untuk pengembangan
+          SameSite = SameSiteMode.Lax,  // Ubah ke Lax
           Expires = DateTime.Now.AddDays(7)
         });
 

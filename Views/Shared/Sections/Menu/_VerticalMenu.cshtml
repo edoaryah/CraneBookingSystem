@@ -37,6 +37,12 @@
         <div class="text-truncate" data-i18n="Dashboards">Dashboards</div>
       </a>
     </li>
+    <li class='menu-item@(currentPage == "/Booking" ? " active" : "")'>
+      <a asp-controller="Booking" asp-action="Index" class="menu-link">
+        <i class="menu-icon tf-icons bx bx-detail"></i>
+        <div class="text-truncate" data-i18n="Cards">Booking Form</div>
+      </a>
+    </li>
     <li class='menu-item@(currentPage == "/RoleManagement" ? " active" : "")'>
       <a asp-controller="RoleManagement" asp-action="Index" class="menu-link">
         <i class="menu-icon tf-icons bx bx-shield"></i>
