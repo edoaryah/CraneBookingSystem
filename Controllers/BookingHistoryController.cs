@@ -1,6 +1,5 @@
-// Controllers/BookingHistoryController.cs
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization; // Tambahkan ini
+using Microsoft.AspNetCore.Authorization;
 using AspnetCoreMvcFull.Filters;
 using AspnetCoreMvcFull.Services.Role;
 using AspnetCoreMvcFull.Services;
@@ -8,11 +7,11 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using System;
 using AspnetCoreMvcFull.ViewModels.BookingManagement;
-using AspnetCoreMvcFull.Helpers; // Tambahkan ini
+using AspnetCoreMvcFull.Helpers;
 
 namespace AspnetCoreMvcFull.Controllers
 {
-  [Authorize] // Tambahkan atribut Authorize
+  [Authorize]
   [ServiceFilter(typeof(AuthorizationFilter))]
   public class BookingHistoryController : Controller
   {
@@ -56,7 +55,6 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading data for BookingHistory/Index");
-        // Masih kembalikan ViewModel kosong, view akan menangani error dengan baik
         return View(new BookingHistoryViewModel());
       }
     }

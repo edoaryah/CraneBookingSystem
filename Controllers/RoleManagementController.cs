@@ -9,8 +9,8 @@ namespace AspnetCoreMvcFull.Controllers
 {
   [Authorize]
   [ServiceFilter(typeof(AuthorizationFilter))]
-  [RequireRole("admin")]
-  [RequireRole("pic")]
+  // [RequireRole("admin")]
+  // [RequireRole("pic")]
   public class RoleManagementController : Controller
   {
     private readonly IRoleService _roleService;
@@ -29,16 +29,6 @@ namespace AspnetCoreMvcFull.Controllers
     {
       try
       {
-        // // Get user data from claims
-        // var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "";
-        // var userDepartment = User.FindFirst("department")?.Value ?? "";
-        // var ldapUser = User.FindFirst("ldapuser")?.Value ?? "";
-
-        // // Pass user data to view
-        // ViewData["UserName"] = userName;
-        // ViewData["UserDepartment"] = userDepartment;
-        // ViewData["LdapUser"] = ldapUser;
-
         var roles = await _roleService.GetAllRolesAsync();
         var viewModel = new RoleIndexViewModel
         {
