@@ -259,12 +259,16 @@
                       </select>
                     </div>
                     <div class="col-md-3">
-                      <label for="duration" class="form-label">Duration (HH:MM)</label>
-                      <input type="text" class="form-control duration-input" id="duration" placeholder="00:00"
-                        pattern="^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$" required>
-                      <div class="invalid-feedback">
-                        Please enter a valid time format (HH:MM)
-                      </div>
+                      <label for="startTime" class="form-label">Start Time (HH:MM)</label>
+                      <input type="time" class="form-control" id="startTime" required>
+                    </div>
+                    <div class="col-md-3 mt-3">
+                      <label for="endTime" class="form-label">End Time (HH:MM)</label>
+                      <input type="time" class="form-control" id="endTime" required>
+                    </div>
+                    <div class="col-md-3 mt-3">
+                      <label for="calculatedDuration" class="form-label">Duration (Calculated)</label>
+                      <input type="text" class="form-control" id="calculatedDuration" readonly placeholder="00:00">
                     </div>
                   </div>
                   <div class="row">
@@ -286,6 +290,8 @@
                       <th>Date</th>
                       <th>Category</th>
                       <th>Subcategory</th>
+                      <th>Start Time</th>
+                      <th>End Time</th>
                       <th>Duration</th>
                       <th class="text-end">Actions</th>
                     </tr>
@@ -347,12 +353,16 @@
             </select>
           </div>
           <div class="mb-3">
-            <label for="editDuration" class="form-label">Duration (HH:MM)</label>
-            <input type="text" class="form-control" id="editDuration" placeholder="00:00"
-              pattern="^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$" required>
-            <div class="invalid-feedback">
-              Please enter a valid time format (HH:MM)
-            </div>
+            <label for="editStartTime" class="form-label">Start Time (HH:MM)</label>
+            <input type="time" class="form-control" id="editStartTime" required>
+          </div>
+          <div class="mb-3">
+            <label for="editEndTime" class="form-label">End Time (HH:MM)</label>
+            <input type="time" class="form-control" id="editEndTime" required>
+          </div>
+          <div class="mb-3">
+            <label for="editCalculatedDuration" class="form-label">Duration (Calculated)</label>
+            <input type="text" class="form-control" id="editCalculatedDuration" readonly>
           </div>
         </form>
       </div>
@@ -438,6 +448,13 @@
 
       // Update record button
       document.getElementById('updateRecordBtn').addEventListener('click', updateRecord);
+
+      // updated
+      document.getElementById('startTime').addEventListener('change', calculateDuration);
+      document.getElementById('endTime').addEventListener('change', calculateDuration);
+
+      document.getElementById('editStartTime').addEventListener('change', calculateEditDuration);
+      document.getElementById('editEndTime').addEventListener('change', calculateEditDuration);
     }
 
     // Initialize the page with data
@@ -608,26 +625,26 @@
         const categoryBadge = `<span class="badge ${categoryLower}">${categoryName}</span>`;
 
         row.innerHTML = `
-          <td>${recordDate}</td>
-          <td>${categoryBadge}</td>
-          <td>${record.subcategoryName}</td>
-          <td>${record.durationFormatted}</td>
-          <td class="text-end">
-            <div class="dropdown">
-              <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
-                <i class="bx bx-dots-vertical-rounded"></i>
-              </button>
-              <div class="dropdown-menu">
-                <a class="dropdown-item edit-record" href="javascript:void(0);" data-record-id="${record.id}">
-                  <i class="bx bx-edit-alt me-1"></i> Edit
-                </a>
-                <a class="dropdown-item delete-record" href="javascript:void(0);" data-record-id="${record.id}">
-                  <i class="bx bx-trash me-1"></i> Delete
-                </a>
-              </div>
-            </div>
-          </td>
-        `;
+                              <td>${recordDate}</td>
+                              <td>${categoryBadge}</td>
+                              <td>${record.subcategoryName}</td>
+                              <td>${record.durationFormatted}</td>
+                              <td class="text-end">
+                                <div class="dropdown">
+                                  <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                                    <i class="bx bx-dots-vertical-rounded"></i>
+                                  </button>
+                                  <div class="dropdown-menu">
+                                    <a class="dropdown-item edit-record" href="javascript:void(0);" data-record-id="${record.id}">
+                                      <i class="bx bx-edit-alt me-1"></i> Edit
+                                    </a>
+                                    <a class="dropdown-item delete-record" href="javascript:void(0);" data-record-id="${record.id}">
+                                      <i class="bx bx-trash me-1"></i> Delete
+                                    </a>
+                                  </div>
+                                </div>
+                              </td>
+                            `;
 
         tableBody.appendChild(row);
 
@@ -841,6 +858,7 @@
     }
 
     // Save new usage record
+    // Save new record with start and end time
     async function saveNewRecord() {
       const form = document.getElementById('usageRecordForm');
 
@@ -854,7 +872,8 @@
       const date = document.getElementById('recordDate').value;
       const category = parseInt(document.getElementById('category').value);
       const subcategoryId = parseInt(document.getElementById('subcategory').value);
-      const duration = document.getElementById('duration').value;
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
 
       // Create record object
       const recordData = {
@@ -862,7 +881,8 @@
         date: date,
         category: category,
         subcategoryId: subcategoryId,
-        duration: duration
+        startTime: startTime,
+        endTime: endTime
       };
 
       try {
@@ -898,6 +918,87 @@
       }
     }
 
+    // Update record with start and end time
+    async function updateRecord() {
+      const recordId = document.getElementById('editRecordId').value;
+      const category = parseInt(document.getElementById('editCategory').value);
+      const subcategoryId = parseInt(document.getElementById('editSubcategory').value);
+      const startTime = document.getElementById('editStartTime').value;
+      const endTime = document.getElementById('editEndTime').value;
+
+      // Validate inputs
+      if (!recordId || !category || !subcategoryId || !startTime || !endTime) {
+        showToast('Please fill all fields', 'error');
+        return;
+      }
+
+      // Create update data
+      const updateData = {
+        category: category,
+        subcategoryId: subcategoryId,
+        startTime: startTime,
+        endTime: endTime
+      };
+
+      try {
+        // Submit to API
+        const response = await fetch(`/api/CraneUsageRecords/${recordId}`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updateData)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        // Hide modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editRecordModal'));
+        modal.hide();
+
+        // Reload page data
+        initCraneUsagePage(bookingId);
+
+        // Show success message
+        showToast('Record updated successfully');
+      } catch (error) {
+        console.error('Error updating record:', error);
+        showToast('Error updating record: ' + error.message, 'error');
+      }
+    }
+
+    // Open edit modal with start and end time fields
+    function openEditModal(record) {
+      // Set record ID for update
+      document.getElementById('editRecordId').value = record.id;
+
+      // Set current values
+      document.getElementById('editCategory').value = record.category;
+
+      // Load subcategories for this category
+      loadSubcategories(record.category, 'editSubcategory').then(() => {
+        // Set subcategory after subcategories are loaded
+        document.getElementById('editSubcategory').value = record.subcategoryId;
+      });
+
+      // Format times to match the input[type=time] format (HH:MM)
+      const startTime = record.startTimeFormatted;
+      const endTime = record.endTimeFormatted;
+
+      // Set times in the form
+      document.getElementById('editStartTime').value = startTime;
+      document.getElementById('editEndTime').value = endTime;
+      document.getElementById('editCalculatedDuration').value = record.durationFormatted;
+
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('editRecordModal'));
+      modal.show();
+    }
+
     // Open edit modal for a record
     function openEditModal(record) {
       // Set record ID for update
@@ -925,10 +1026,11 @@
       const recordId = document.getElementById('editRecordId').value;
       const category = parseInt(document.getElementById('editCategory').value);
       const subcategoryId = parseInt(document.getElementById('editSubcategory').value);
-      const duration = document.getElementById('editDuration').value;
+      const startTime = document.getElementById('editStartTime').value;
+      const endTime = document.getElementById('editEndTime').value;
 
       // Validate inputs
-      if (!recordId || !category || !subcategoryId || !duration) {
+      if (!recordId || !category || !subcategoryId || !startTime || !endTime) {
         showToast('Please fill all fields', 'error');
         return;
       }
@@ -937,7 +1039,8 @@
       const updateData = {
         category: category,
         subcategoryId: subcategoryId,
-        duration: duration
+        startTime: startTime,
+        endTime: endTime
       };
 
       try {
@@ -1038,13 +1141,13 @@
       toast.setAttribute('aria-atomic', 'true');
 
       toast.innerHTML = `
-        <div class="d-flex">
-          <div class="toast-body">
-            ${message}
-          </div>
-          <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      `;
+                            <div class="d-flex">
+                              <div class="toast-body">
+                                ${message}
+                              </div>
+                              <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                          `;
 
       document.body.appendChild(toast);
 
@@ -1061,6 +1164,67 @@
     // Get authentication token from localStorage
     function getToken() {
       return localStorage.getItem('token');
+    }
+
+    // UPDATED
+    function calculateDuration() {
+      const startTimeInput = document.getElementById('startTime');
+      const endTimeInput = document.getElementById('endTime');
+      const calculatedDurationInput = document.getElementById('calculatedDuration');
+
+      if (startTimeInput.value && endTimeInput.value) {
+        // Parse time inputs into minutes
+        const startTimeParts = startTimeInput.value.split(':');
+        const endTimeParts = endTimeInput.value.split(':');
+
+        const startMinutes = parseInt(startTimeParts[0]) * 60 + parseInt(startTimeParts[1]);
+        let endMinutes = parseInt(endTimeParts[0]) * 60 + parseInt(endTimeParts[1]);
+
+        // If end time is less than start time, assume it's the next day
+        if (endMinutes < startMinutes) {
+          endMinutes += 24 * 60; // Add 24 hours
+        }
+
+        // Calculate duration in minutes
+        const durationMinutes = endMinutes - startMinutes;
+
+        // Format as HH:MM
+        const hours = Math.floor(durationMinutes / 60);
+        const minutes = durationMinutes % 60;
+        calculatedDurationInput.value = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      } else {
+        calculatedDurationInput.value = '';
+      }
+    }
+
+    function calculateEditDuration() {
+      const startTimeInput = document.getElementById('editStartTime');
+      const endTimeInput = document.getElementById('editEndTime');
+      const calculatedDurationInput = document.getElementById('editCalculatedDuration');
+
+      if (startTimeInput.value && endTimeInput.value) {
+        // Parse time inputs into minutes
+        const startTimeParts = startTimeInput.value.split(':');
+        const endTimeParts = endTimeInput.value.split(':');
+
+        const startMinutes = parseInt(startTimeParts[0]) * 60 + parseInt(startTimeParts[1]);
+        let endMinutes = parseInt(endTimeParts[0]) * 60 + parseInt(endTimeParts[1]);
+
+        // If end time is less than start time, assume it's the next day
+        if (endMinutes < startMinutes) {
+          endMinutes += 24 * 60; // Add 24 hours
+        }
+
+        // Calculate duration in minutes
+        const durationMinutes = endMinutes - startMinutes;
+
+        // Format as HH:MM
+        const hours = Math.floor(durationMinutes / 60);
+        const minutes = durationMinutes % 60;
+        calculatedDurationInput.value = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      } else {
+        calculatedDurationInput.value = '';
+      }
     }
   </script>
 }

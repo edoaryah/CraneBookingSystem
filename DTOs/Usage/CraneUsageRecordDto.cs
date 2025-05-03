@@ -12,8 +12,17 @@ namespace AspnetCoreMvcFull.DTOs.Usage
     public string CategoryName { get; set; } = string.Empty;
     public int SubcategoryId { get; set; }
     public string SubcategoryName { get; set; } = string.Empty;
+
+    // New time fields
+    public TimeSpan StartTime { get; set; }
+    public string StartTimeFormatted { get; set; } = string.Empty;
+    public TimeSpan EndTime { get; set; }
+    public string EndTimeFormatted { get; set; } = string.Empty;
+
+    // Duration is calculated
     public TimeSpan Duration { get; set; }
     public string DurationFormatted { get; set; } = string.Empty;
+
     public DateTime CreatedAt { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime? UpdatedAt { get; set; }
@@ -26,14 +35,20 @@ namespace AspnetCoreMvcFull.DTOs.Usage
     public DateTime Date { get; set; }
     public UsageCategory Category { get; set; }
     public int SubcategoryId { get; set; }
-    public string Duration { get; set; } = string.Empty; // Format: "HH:MM"
+
+    // Replace Duration with StartTime and EndTime
+    public string StartTime { get; set; } = string.Empty; // Format: "HH:MM"
+    public string EndTime { get; set; } = string.Empty; // Format: "HH:MM"
   }
 
   public class CraneUsageRecordUpdateDto
   {
     public UsageCategory Category { get; set; }
     public int SubcategoryId { get; set; }
-    public string Duration { get; set; } = string.Empty; // Format: "HH:MM"
+
+    // Replace Duration with StartTime and EndTime
+    public string StartTime { get; set; } = string.Empty; // Format: "HH:MM"
+    public string EndTime { get; set; } = string.Empty; // Format: "HH:MM"
   }
 
   public class UsageSubcategoryDto

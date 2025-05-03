@@ -93,11 +93,20 @@ namespace AspnetCoreMvcFull.Services.Usage
           throw new KeyNotFoundException($"Subcategory with ID {recordDto.SubcategoryId} not found");
         }
 
-        // Parse duration
-        if (!TryParseTimeSpan(recordDto.Duration, out TimeSpan duration))
+        // Parse start time
+        if (!TryParseTimeSpan(recordDto.StartTime, out TimeSpan startTime))
         {
-          throw new ArgumentException("Invalid duration format. Expected format is HH:MM");
+          throw new ArgumentException("Invalid start time format. Expected format is HH:MM");
         }
+
+        // Parse end time
+        if (!TryParseTimeSpan(recordDto.EndTime, out TimeSpan endTime))
+        {
+          throw new ArgumentException("Invalid end time format. Expected format is HH:MM");
+        }
+
+        // Validate that start time is before end time (unless it spans midnight)
+        // This is handled in the model's CalculateDuration method
 
         // Create new record
         var record = new CraneUsageRecord
@@ -106,7 +115,8 @@ namespace AspnetCoreMvcFull.Services.Usage
           Date = recordDto.Date.Date, // Use only the date part
           Category = recordDto.Category,
           SubcategoryId = recordDto.SubcategoryId,
-          Duration = duration,
+          StartTime = startTime,
+          EndTime = endTime,
           CreatedAt = DateTime.Now,
           CreatedBy = createdBy
         };
@@ -140,16 +150,23 @@ namespace AspnetCoreMvcFull.Services.Usage
           throw new KeyNotFoundException($"Subcategory with ID {recordDto.SubcategoryId} not found");
         }
 
-        // Parse duration
-        if (!TryParseTimeSpan(recordDto.Duration, out TimeSpan duration))
+        // Parse start time
+        if (!TryParseTimeSpan(recordDto.StartTime, out TimeSpan startTime))
         {
-          throw new ArgumentException("Invalid duration format. Expected format is HH:MM");
+          throw new ArgumentException("Invalid start time format. Expected format is HH:MM");
+        }
+
+        // Parse end time
+        if (!TryParseTimeSpan(recordDto.EndTime, out TimeSpan endTime))
+        {
+          throw new ArgumentException("Invalid end time format. Expected format is HH:MM");
         }
 
         // Update record
         record.Category = recordDto.Category;
         record.SubcategoryId = recordDto.SubcategoryId;
-        record.Duration = duration;
+        record.StartTime = startTime;
+        record.EndTime = endTime;
         record.UpdatedAt = DateTime.Now;
         record.UpdatedBy = updatedBy;
 
@@ -313,6 +330,9 @@ namespace AspnetCoreMvcFull.Services.Usage
         subcategoryName = subcategory.Name;
       }
 
+      // Calculate duration (it's automatically calculated in the model)
+      TimeSpan duration = record.Duration;
+
       return new CraneUsageRecordDto
       {
         Id = record.Id,
@@ -323,8 +343,12 @@ namespace AspnetCoreMvcFull.Services.Usage
         CategoryName = record.Category.ToString(),
         SubcategoryId = record.SubcategoryId,
         SubcategoryName = subcategoryName,
-        Duration = record.Duration,
-        DurationFormatted = FormatTimeSpan(record.Duration),
+        StartTime = record.StartTime,
+        StartTimeFormatted = FormatTimeSpan(record.StartTime),
+        EndTime = record.EndTime,
+        EndTimeFormatted = FormatTimeSpan(record.EndTime),
+        Duration = duration,
+        DurationFormatted = FormatTimeSpan(duration),
         CreatedAt = record.CreatedAt,
         CreatedBy = record.CreatedBy,
         UpdatedAt = record.UpdatedAt,

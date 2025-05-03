@@ -1,4 +1,3 @@
-// reset
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -21,8 +20,16 @@ namespace AspnetCoreMvcFull.Models
     [Required]
     public int SubcategoryId { get; set; }
 
+    // New fields for time tracking
     [Required]
-    public TimeSpan Duration { get; set; }
+    public TimeSpan StartTime { get; set; }
+
+    [Required]
+    public TimeSpan EndTime { get; set; }
+
+    // Duration will be calculated from StartTime and EndTime
+    [NotMapped]
+    public TimeSpan Duration => CalculateDuration();
 
     [Required]
     public DateTime CreatedAt { get; set; } = DateTime.Now;
@@ -37,5 +44,20 @@ namespace AspnetCoreMvcFull.Models
 
     // Navigation properties
     public virtual Booking? Booking { get; set; }
+
+    // Calculate duration based on start time and end time
+    private TimeSpan CalculateDuration()
+    {
+      // If end time is less than start time, it means the activity spans across midnight
+      if (EndTime < StartTime)
+      {
+        // Add 24 hours to end time and calculate duration
+        return (EndTime.Add(new TimeSpan(24, 0, 0))) - StartTime;
+      }
+      else
+      {
+        return EndTime - StartTime;
+      }
+    }
   }
 }
