@@ -35,6 +35,10 @@ namespace AspnetCoreMvcFull.Data
     // auth
     public DbSet<UserRole> UserRoles { get; set; }
 
+    // crane usage records
+    public DbSet<CraneUsageRecord> CraneUsageRecords { get; set; }
+    public DbSet<UsageSubcategory> UsageSubcategories { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
       base.OnModelCreating(modelBuilder);
@@ -47,6 +51,15 @@ namespace AspnetCoreMvcFull.Data
       // Configure Enum conversions for CraneOwnership
       modelBuilder.Entity<Crane>()
           .Property(c => c.Ownership)
+          .HasConversion<string>();
+
+      // Configure Enum conversions for UsageCategory
+      modelBuilder.Entity<CraneUsageRecord>()
+          .Property(r => r.Category)
+          .HasConversion<string>();
+
+      modelBuilder.Entity<UsageSubcategory>()
+          .Property(s => s.Category)
           .HasConversion<string>();
 
       // Relasi Crane dan Breakdown
@@ -118,6 +131,13 @@ namespace AspnetCoreMvcFull.Data
           .HasForeignKey(mss => mss.ShiftDefinitionId)
           .OnDelete(DeleteBehavior.Restrict);
 
+      // Relasi CraneUsageRecord dan Booking
+      modelBuilder.Entity<CraneUsageRecord>()
+          .HasOne(r => r.Booking)
+          .WithMany()
+          .HasForeignKey(r => r.BookingId)
+          .OnDelete(DeleteBehavior.Cascade);
+
       // Configure UserRole entity
       modelBuilder.Entity<UserRole>(entity =>
       {
@@ -136,6 +156,7 @@ namespace AspnetCoreMvcFull.Data
       RoleSeeder.Seed(modelBuilder);
       HazardSeeder.Seed(modelBuilder);
       ShiftDefinitionSeeder.Seed(modelBuilder);
+      UsageSubcategorySeeder.Seed(modelBuilder);
     }
   }
 }

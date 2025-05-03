@@ -10,6 +10,7 @@ using AspnetCoreMvcFull.Services.Common;
 using AspnetCoreMvcFull.Services.Role;
 using AspnetCoreMvcFull.Services.Security;
 using AspnetCoreMvcFull.Services;
+using AspnetCoreMvcFull.Services.Usage;
 using System.Text;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -62,6 +63,9 @@ builder.Services.AddScoped<IMaintenanceScheduleService, MaintenanceScheduleServi
 
 // Register Role service
 builder.Services.AddScoped<IRoleService, RoleService>();
+
+// Register Crane Usage Record service
+builder.Services.AddScoped<ICraneUsageRecordService, CraneUsageRecordService>();
 
 // Daftarkan EmailTemplate sebagai singleton karena hanya berisi template
 builder.Services.AddSingleton<EmailTemplate>();
