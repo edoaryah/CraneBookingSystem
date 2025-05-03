@@ -91,7 +91,7 @@ namespace AspnetCoreMvcFull.Controllers
         // Cek otorisasi: Apakah pengguna adalah PIC, atau pembuat booking, atau punya akses admin
         bool isPic = await _roleService.UserHasRoleAsync(ldapUser, "pic");
         bool isAdmin = await _roleService.UserHasRoleAsync(ldapUser, "admin");
-        bool isBookingCreator = (booking.Name == userName);
+        bool isBookingCreator = booking.Name == userName;
 
         // Jika bukan PIC, admin, atau pembuat booking, tolak akses
         if (!isPic && !isAdmin && !isBookingCreator)

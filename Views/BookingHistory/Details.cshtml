@@ -11,7 +11,7 @@
   bool isBookingCreator = ViewData["IsBookingCreator"] is bool creator && creator;
 
   // Token anti-pemalsuan untuk form POST
-  string antiForgeryToken = Html.AntiForgeryToken().ToString();
+  string? antiForgeryToken = Html.AntiForgeryToken()?.ToString();
 }
 
 @section PageStyles

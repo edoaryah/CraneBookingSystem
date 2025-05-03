@@ -5,12 +5,25 @@ using AspnetCoreMvcFull.Models;
 
 namespace AspnetCoreMvcFull.Services
 {
+  // Class untuk menyimpan konfigurasi SMTP
+  public class SmtpSettings
+  {
+    public string Server { get; set; } = string.Empty;
+    public int Port { get; set; }
+    public bool UseSsl { get; set; }
+    public string SenderEmail { get; set; } = string.Empty;
+    public string SenderName { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+  }
+
   public class EmailService : IEmailService
   {
     private readonly IConfiguration _configuration;
     private readonly ILogger<EmailService> _logger;
     private readonly EmailTemplate _emailTemplate;
     private readonly string _env;
+    private readonly SmtpSettings _smtpSettings;
 
     public EmailService(
         IConfiguration configuration,
@@ -21,13 +34,22 @@ namespace AspnetCoreMvcFull.Services
       _logger = logger;
       _emailTemplate = emailTemplate;
 
+      // Binding konfigurasi ke class
+      _smtpSettings = new SmtpSettings();
+      _configuration.GetSection("SmtpSettings").Bind(_smtpSettings);
+
+      // Validasi konfigurasi penting
+      if (string.IsNullOrEmpty(_smtpSettings.Server))
+        throw new InvalidOperationException("SMTP Server tidak dikonfigurasi");
+      if (string.IsNullOrEmpty(_smtpSettings.SenderEmail))
+        throw new InvalidOperationException("Sender Email tidak dikonfigurasi");
+
       // Default environment adalah "development"
       _env = "development";
     }
 
     public async Task SendEmailAsync(string toEmail, string subject, string body)
     {
-      var smtpSettings = _configuration.GetSection("SmtpSettings");
       string emailSent = toEmail;
 
       if (_env == "test")
@@ -36,16 +58,16 @@ namespace AspnetCoreMvcFull.Services
       }
 
       var message = new MailMessage();
-      message.From = new MailAddress(smtpSettings["SenderEmail"], smtpSettings["SenderName"]);
+      message.From = new MailAddress(_smtpSettings.SenderEmail, _smtpSettings.SenderName);
       message.To.Add(new MailAddress(emailSent));
       message.Subject = subject;
       message.Body = body;
       message.IsBodyHtml = true;
 
-      using (var smtpClient = new SmtpClient(smtpSettings["Server"], int.Parse(smtpSettings["Port"])))
+      using (var smtpClient = new SmtpClient(_smtpSettings.Server, _smtpSettings.Port))
       {
-        smtpClient.Credentials = new NetworkCredential(smtpSettings["Username"], smtpSettings["Password"]);
-        smtpClient.EnableSsl = bool.Parse(smtpSettings["UseSsl"]);
+        smtpClient.Credentials = new NetworkCredential(_smtpSettings.Username, _smtpSettings.Password);
+        smtpClient.EnableSsl = _smtpSettings.UseSsl;
 
         await smtpClient.SendMailAsync(message);
         _logger.LogInformation($"Email berhasil dikirim ke {emailSent}");

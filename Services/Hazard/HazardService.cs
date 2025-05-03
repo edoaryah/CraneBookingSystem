@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
-using AspnetCoreMvcFull.DTOs;
 using AspnetCoreMvcFull.Models;
+using AspnetCoreMvcFull.ViewModels.HazardManagement;
 
 namespace AspnetCoreMvcFull.Services
 {
@@ -16,20 +16,20 @@ namespace AspnetCoreMvcFull.Services
       _logger = logger;
     }
 
-    public async Task<IEnumerable<HazardDto>> GetAllHazardsAsync()
+    public async Task<IEnumerable<HazardViewModel>> GetAllHazardsAsync()
     {
       var hazards = await _context.Hazards
           .OrderBy(h => h.Name)
           .ToListAsync();
 
-      return hazards.Select(h => new HazardDto
+      return hazards.Select(h => new HazardViewModel
       {
         Id = h.Id,
         Name = h.Name
       }).ToList();
     }
 
-    public async Task<HazardDto> GetHazardByIdAsync(int id)
+    public async Task<HazardViewModel> GetHazardByIdAsync(int id)
     {
       var hazard = await _context.Hazards
           .FirstOrDefaultAsync(h => h.Id == id);
@@ -39,37 +39,37 @@ namespace AspnetCoreMvcFull.Services
         throw new KeyNotFoundException($"Hazard with ID {id} not found");
       }
 
-      return new HazardDto
+      return new HazardViewModel
       {
         Id = hazard.Id,
         Name = hazard.Name
       };
     }
 
-    public async Task<HazardDto> CreateHazardAsync(HazardCreateDto hazardDto)
+    public async Task<HazardViewModel> CreateHazardAsync(HazardCreateViewModel hazardViewModel)
     {
       // Check if a hazard with the same name already exists
-      if (await _context.Hazards.AnyAsync(h => h.Name == hazardDto.Name))
+      if (await _context.Hazards.AnyAsync(h => h.Name == hazardViewModel.Name))
       {
-        throw new InvalidOperationException($"Hazard with name '{hazardDto.Name}' already exists");
+        throw new InvalidOperationException($"Hazard with name '{hazardViewModel.Name}' already exists");
       }
 
       var hazard = new Hazard
       {
-        Name = hazardDto.Name
+        Name = hazardViewModel.Name
       };
 
       _context.Hazards.Add(hazard);
       await _context.SaveChangesAsync();
 
-      return new HazardDto
+      return new HazardViewModel
       {
         Id = hazard.Id,
         Name = hazard.Name
       };
     }
 
-    public async Task<HazardDto> UpdateHazardAsync(int id, HazardUpdateDto hazardDto)
+    public async Task<HazardViewModel> UpdateHazardAsync(int id, HazardUpdateViewModel hazardViewModel)
     {
       var hazard = await _context.Hazards.FindAsync(id);
 
@@ -79,17 +79,17 @@ namespace AspnetCoreMvcFull.Services
       }
 
       // Check if another hazard with the same name already exists
-      if (await _context.Hazards.AnyAsync(h => h.Name == hazardDto.Name && h.Id != id))
+      if (await _context.Hazards.AnyAsync(h => h.Name == hazardViewModel.Name && h.Id != id))
       {
-        throw new InvalidOperationException($"Another hazard with name '{hazardDto.Name}' already exists");
+        throw new InvalidOperationException($"Another hazard with name '{hazardViewModel.Name}' already exists");
       }
 
       // Update hazard properties
-      hazard.Name = hazardDto.Name;
+      hazard.Name = hazardViewModel.Name;
 
       await _context.SaveChangesAsync();
 
-      return new HazardDto
+      return new HazardViewModel
       {
         Id = hazard.Id,
         Name = hazard.Name
@@ -105,14 +105,11 @@ namespace AspnetCoreMvcFull.Services
         throw new KeyNotFoundException($"Hazard with ID {id} not found");
       }
 
-      // Here you might want to check if the hazard is in use by other entities
-      // Similar to the ShiftDefinition check for BookingShifts
-
-      // For example:
-      // if (await _context.SomeRelatedEntities.AnyAsync(e => e.HazardId == id))
-      // {
-      //     throw new InvalidOperationException($"Cannot delete hazard '{hazard.Name}' because it is in use");
-      // }
+      // Check if the hazard is in use by any bookings
+      if (await _context.BookingHazards.AnyAsync(bh => bh.HazardId == id))
+      {
+        throw new InvalidOperationException($"Cannot delete hazard '{hazard.Name}' because it is in use by existing bookings");
+      }
 
       _context.Hazards.Remove(hazard);
       await _context.SaveChangesAsync();

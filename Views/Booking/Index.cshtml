@@ -1,7 +1,11 @@
 @model AspnetCoreMvcFull.ViewModels.BookingManagement.BookingFormViewModel
+@using System.Security.Claims
 @{
   ViewData["Title"] = "Crane Booking Form";
   Layout = "_ContentNavbarLayout";
+
+  var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "User";
+  var userDepartment = User.FindFirst("department")?.Value ?? "";
 }
 
 @section PageStyles {
@@ -110,10 +114,6 @@
       <div class="card-body">
         <form id="craneBookingForm">
 
-          <!-- Hidden fields for user data -->
-          <input type="hidden" id="userName" value="@ViewData["UserName"]" />
-          <input type="hidden" id="userDepartment" value="@ViewData["UserDepartment"]" />
-          <!-- Hidden field to store shift definitions -->
           <input type="hidden" id="shiftDefinitionsData"
             value="@System.Text.Json.JsonSerializer.Serialize(Model.ShiftDefinitions)" />
 
@@ -123,12 +123,13 @@
             <div class="row mb-3">
               <div class="col-md-6 mb-3 mb-md-0">
                 <label class="form-label required-label">Requestor Name</label>
-                <input id="name" name="name" class="form-control" required readonly />
+                <input id="name" name="name" class="form-control" value="@userName" required readonly />
                 <small class="text-muted">Automatically filled based on your login information</small>
               </div>
               <div class="col-md-6">
                 <label class="form-label required-label">Department Name</label>
-                <input id="department" name="department" class="form-control" required readonly />
+                <input id="department" name="department" class="form-control" value="@userDepartment" required
+                  readonly />
                 <small class="text-muted">Automatically filled based on your login information</small>
               </div>
             </div>
@@ -281,6 +282,18 @@
                   <div class="table-responsive">
                     <div id="hazardsContainer" class="row">
                       <!-- Hazards will be loaded dynamically -->
+                      @foreach (var hazard in Model.AvailableHazards)
+                      {
+                        <div class="col-md-4 mb-2">
+                          <div class="form-check">
+                            <input class="form-check-input hazard-checkbox" type="checkbox" name="hazard-@hazard.Id"
+                              id="hazard-@hazard.Id" value="@hazard.Id" />
+                            <label class="form-check-label" for="hazard-@hazard.Id">
+                              @hazard.Name
+                            </label>
+                          </div>
+                        </div>
+                      }
                     </div>
 
                     <div class="custom-hazard">
@@ -414,22 +427,6 @@
     if (endDateInput) {
       endDateInput.min = formattedToday;
       endDateInput.addEventListener('change', generateShiftTable);
-    }
-
-    // Set user data from ViewData
-    function setUserData() {
-      // Get values from hidden inputs
-      const userName = document.getElementById('userName')?.value || '';
-      const userDepartment = document.getElementById('userDepartment')?.value || '';
-
-      // Set values to form fields
-      const nameInput = document.getElementById('name');
-      const departmentInput = document.getElementById('department');
-
-      if (nameInput) nameInput.value = userName;
-      if (departmentInput) departmentInput.value = userDepartment;
-
-      console.log('User data set:', { userName, userDepartment });
     }
 
     // Load shift definitions from the hidden input or from table headers
@@ -623,14 +620,14 @@
 
           const cell = document.createElement('td');
           cell.innerHTML = `
-              <div class="form-check d-flex justify-content-center">
-                <input type="checkbox" class="form-check-input shift-checkbox"
-                  id="shift-${shiftId}-${dayShift.date}"
-                  data-date="${dayShift.date}"
-                  data-shift-id="${shiftId}"
-                  ${isSelected ? 'checked' : ''} />
-              </div>
-            `;
+                        <div class="form-check d-flex justify-content-center">
+                          <input type="checkbox" class="form-check-input shift-checkbox"
+                            id="shift-${shiftId}-${dayShift.date}"
+                            data-date="${dayShift.date}"
+                            data-shift-id="${shiftId}"
+                            ${isSelected ? 'checked' : ''} />
+                        </div>
+                      `;
 
           row.appendChild(cell);
         });
@@ -736,27 +733,27 @@
       const row = document.createElement('tr');
 
       row.innerHTML = `
-                <td style="min-width: 220px; padding-right: 5px;">
-                  <input type="text" class="form-control item-name" required />
-                </td>
-                <td style="min-width: 140px; padding-right: 5px;">
-                  <input type="number" class="form-control item-height"
-                        min="0.01" step="0.01" required />
-                </td>
-                <td style="min-width: 140px; padding-right: 5px;">
-                  <input type="number" class="form-control item-weight"
-                        min="0.01" step="0.01" required />
-                </td>
-                <td style="min-width: 140px; padding-right: 5px;">
-                  <input type="number" class="form-control item-quantity"
-                        min="1" step="1" value="1" required />
-                </td>
-                <td style="width: 1%; white-space: nowrap;">
-                  <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
-                    <i class="bx bx-trash"></i>
-                  </button>
-                </td>
-              `;
+                          <td style="min-width: 220px; padding-right: 5px;">
+                            <input type="text" class="form-control item-name" required />
+                          </td>
+                          <td style="min-width: 140px; padding-right: 5px;">
+                            <input type="number" class="form-control item-height"
+                                  min="0.01" step="0.01" required />
+                          </td>
+                          <td style="min-width: 140px; padding-right: 5px;">
+                            <input type="number" class="form-control item-weight"
+                                  min="0.01" step="0.01" required />
+                          </td>
+                          <td style="min-width: 140px; padding-right: 5px;">
+                            <input type="number" class="form-control item-quantity"
+                                  min="1" step="1" value="1" required />
+                          </td>
+                          <td style="width: 1%; white-space: nowrap;">
+                            <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
+                              <i class="bx bx-trash"></i>
+                            </button>
+                          </td>
+                        `;
 
       // Add event listener to remove button
       const removeBtn = row.querySelector('.remove-item-btn');
@@ -770,52 +767,6 @@
       });
 
       tbody.appendChild(row);
-    }
-
-    // Fetch hazards from API
-    async function loadHazards() {
-      try {
-        const response = await fetch('/api/Hazards');
-        if (!response.ok) {
-          throw new Error('Failed to load hazards');
-        }
-
-        const hazards = await response.json();
-        console.log('Hazards loaded:', hazards.length);
-        populateHazardsCheckboxes(hazards);
-      } catch (error) {
-        console.error('Error loading hazards:', error);
-        alert('Failed to load hazard data. Please refresh the page or contact support.');
-      }
-    }
-
-    // Populate hazards checkboxes
-    function populateHazardsCheckboxes(hazards) {
-      if (!hazardsContainer) {
-        console.error('hazardsContainer element not found');
-        return;
-      }
-
-      hazardsContainer.innerHTML = '';
-
-      hazards.forEach(hazard => {
-        const col = document.createElement('div');
-        col.className = 'col-md-4 mb-2';
-
-        col.innerHTML = `
-                  <div class="form-check">
-                    <input class="form-check-input hazard-checkbox" type="checkbox"
-                          name="hazard-${hazard.id}"
-                          id="hazard-${hazard.id}"
-                          value="${hazard.id}" />
-                    <label class="form-check-label" for="hazard-${hazard.id}">
-                      ${hazard.name}
-                    </label>
-                  </div>
-                `;
-
-        hazardsContainer.appendChild(col);
-      });
     }
 
     // Function to collect form data
@@ -1010,15 +961,8 @@
     document.addEventListener('DOMContentLoaded', async function () {
       console.log('DOM fully loaded');
 
-      // Set user data from ViewData
-      setUserData();
-      console.log('User data set');
-
       // Load shift definitions
       loadShiftDefinitions();
-
-      // Load hazards for hazards checkboxes
-      await loadHazards();
 
       // Initialize items table
       initLiftedItemsTable();

@@ -1,0 +1,69 @@
+@model AspnetCoreMvcFull.ViewModels.HazardManagement.HazardListViewModel
+@{
+  ViewData["Title"] = "Hazard Management";
+  Layout = "_ContentNavbarLayout";
+}
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Hazard Management</h5>
+    <a href="@Url.Action("Create", "HazardManagement")" class="btn btn-primary">
+      <i class="bx bx-plus me-1"></i> Add New Hazard
+    </a>
+  </div>
+
+  @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+  {
+    <div class="alert alert-success alert-dismissible m-3" role="alert">
+      @Model.SuccessMessage
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  }
+
+  @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+  {
+    <div class="alert alert-danger alert-dismissible m-3" role="alert">
+      @Model.ErrorMessage
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  }
+
+  <div class="table-responsive text-nowrap">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody class="table-border-bottom-0">
+        @foreach (var hazard in Model.Hazards)
+        {
+          <tr>
+            <td><strong>@hazard.Id</strong></td>
+            <td>@hazard.Name</td>
+            <td>
+              <div class="dropdown">
+                <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                  <i class="bx bx-dots-vertical-rounded"></i>
+                </button>
+                <div class="dropdown-menu">
+                  <a class="dropdown-item" href="@Url.Action("Edit", "HazardManagement", new { id = hazard.Id })">
+                    <i class="bx bx-edit-alt me-1"></i> Edit
+                  </a>
+                  <a class="dropdown-item" href="@Url.Action("Details", "HazardManagement", new { id = hazard.Id })">
+                    <i class="bx bx-detail me-1"></i> Details
+                  </a>
+                  <a class="dropdown-item" href="@Url.Action("Delete", "HazardManagement", new { id = hazard.Id })">
+                    <i class="bx bx-trash me-1"></i> Delete
+                  </a>
+                </div>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

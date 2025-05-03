@@ -1,13 +1,13 @@
-using AspnetCoreMvcFull.DTOs;
+using AspnetCoreMvcFull.ViewModels.HazardManagement;
 
 namespace AspnetCoreMvcFull.Services
 {
   public interface IHazardService
   {
-    Task<IEnumerable<HazardDto>> GetAllHazardsAsync();
-    Task<HazardDto> GetHazardByIdAsync(int id);
-    Task<HazardDto> CreateHazardAsync(HazardCreateDto hazardDto);
-    Task<HazardDto> UpdateHazardAsync(int id, HazardUpdateDto hazardDto);
+    Task<IEnumerable<HazardViewModel>> GetAllHazardsAsync();
+    Task<HazardViewModel> GetHazardByIdAsync(int id);
+    Task<HazardViewModel> CreateHazardAsync(HazardCreateViewModel hazardViewModel);
+    Task<HazardViewModel> UpdateHazardAsync(int id, HazardUpdateViewModel hazardViewModel);
     Task DeleteHazardAsync(int id);
     Task<bool> HazardExistsAsync(int id);
   }

@@ -1,6 +1,6 @@
 using AspnetCoreMvcFull.ViewModels.CraneManagement;
 using AspnetCoreMvcFull.ViewModels.ShiftManagement;
-
+using AspnetCoreMvcFull.ViewModels.HazardManagement;
 
 namespace AspnetCoreMvcFull.ViewModels.BookingManagement
 {
@@ -16,6 +16,6 @@ namespace AspnetCoreMvcFull.ViewModels.BookingManagement
     public IEnumerable<ShiftViewModel> ShiftDefinitions { get; set; } = new List<ShiftViewModel>();
 
     // Properti lain bisa ditambahkan sesuai kebutuhan untuk tahap berikutnya
-    // public IEnumerable<HazardViewModel> AvailableHazards { get; set; } = new List<HazardViewModel>();
+    public IEnumerable<HazardViewModel> AvailableHazards { get; set; } = new List<HazardViewModel>();
   }
 }
