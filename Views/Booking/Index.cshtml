@@ -121,7 +121,7 @@
           <div class="form-section">
             <h6 class="form-section-title">Requestor Information</h6>
             <div class="row mb-3">
-              <div class="col-md-6 mb-3 mb-md-0">
+              <div class="col-md-6">
                 <label class="form-label required-label">Requestor Name</label>
                 <input id="name" name="name" class="form-control" value="@userName" required readonly />
                 <small class="text-muted">Automatically filled based on your login information</small>
@@ -135,7 +135,7 @@
             </div>
 
             <div class="row mb-3">
-              <div class="col-md-6 mb-3 mb-md-0">
+              <div class="col-md-6">
                 <label class="form-label required-label">Supervisor Name</label>
                 <input id="projectSupervisor" name="projectSupervisor" class="form-control" required />
               </div>
@@ -159,7 +159,7 @@
           <div class="form-section">
             <h6 class="form-section-title">Booking Details</h6>
             <div class="row mb-3">
-              <div class="col-md-6 mb-3 mb-md-0">
+              <div class="col-md-6">
                 <label for="startDate" class="form-label required-label">Start Date</label>
                 <input type="date" id="startDate" name="startDate" class="form-control" required />
                 <span class="text-danger" id="startDateError"></span>
@@ -172,7 +172,7 @@
             </div>
 
             <div class="row mb-3">
-              <div class="col-md-6 mb-3 mb-md-0">
+              <div class="col-md-6">
                 <label class="form-label required-label">Crane</label>
                 <select id="craneId" name="craneId" class="form-select" required>
                   <option value="">Select a Crane</option>
@@ -620,14 +620,14 @@
 
           const cell = document.createElement('td');
           cell.innerHTML = `
-                        <div class="form-check d-flex justify-content-center">
-                          <input type="checkbox" class="form-check-input shift-checkbox"
-                            id="shift-${shiftId}-${dayShift.date}"
-                            data-date="${dayShift.date}"
-                            data-shift-id="${shiftId}"
-                            ${isSelected ? 'checked' : ''} />
-                        </div>
-                      `;
+                          <div class="form-check d-flex justify-content-center">
+                            <input type="checkbox" class="form-check-input shift-checkbox"
+                              id="shift-${shiftId}-${dayShift.date}"
+                              data-date="${dayShift.date}"
+                              data-shift-id="${shiftId}"
+                              ${isSelected ? 'checked' : ''} />
+                          </div>
+                        `;
 
           row.appendChild(cell);
         });
@@ -733,27 +733,27 @@
       const row = document.createElement('tr');
 
       row.innerHTML = `
-                          <td style="min-width: 220px; padding-right: 5px;">
-                            <input type="text" class="form-control item-name" required />
-                          </td>
-                          <td style="min-width: 140px; padding-right: 5px;">
-                            <input type="number" class="form-control item-height"
-                                  min="0.01" step="0.01" required />
-                          </td>
-                          <td style="min-width: 140px; padding-right: 5px;">
-                            <input type="number" class="form-control item-weight"
-                                  min="0.01" step="0.01" required />
-                          </td>
-                          <td style="min-width: 140px; padding-right: 5px;">
-                            <input type="number" class="form-control item-quantity"
-                                  min="1" step="1" value="1" required />
-                          </td>
-                          <td style="width: 1%; white-space: nowrap;">
-                            <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
-                              <i class="bx bx-trash"></i>
-                            </button>
-                          </td>
-                        `;
+                            <td style="min-width: 220px; padding-right: 5px;">
+                              <input type="text" class="form-control item-name" required />
+                            </td>
+                            <td style="min-width: 140px; padding-right: 5px;">
+                              <input type="number" class="form-control item-height"
+                                    min="0.01" step="0.01" required />
+                            </td>
+                            <td style="min-width: 140px; padding-right: 5px;">
+                              <input type="number" class="form-control item-weight"
+                                    min="0.01" step="0.01" required />
+                            </td>
+                            <td style="min-width: 140px; padding-right: 5px;">
+                              <input type="number" class="form-control item-quantity"
+                                    min="1" step="1" value="1" required />
+                            </td>
+                            <td style="width: 1%; white-space: nowrap;">
+                              <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
+                                <i class="bx bx-trash"></i>
+                              </button>
+                            </td>
+                          `;
 
       // Add event listener to remove button
       const removeBtn = row.querySelector('.remove-item-btn');
