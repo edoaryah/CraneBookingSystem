@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
-using AspnetCoreMvcFull.DTOs;
 using AspnetCoreMvcFull.Models;
 using AspnetCoreMvcFull.Events;
+using AspnetCoreMvcFull.ViewModels.MaintenanceManagement;
 
 namespace AspnetCoreMvcFull.Services
 {
@@ -31,16 +31,17 @@ namespace AspnetCoreMvcFull.Services
       _logger = logger;
     }
 
-    public async Task<IEnumerable<MaintenanceScheduleDto>> GetAllMaintenanceSchedulesAsync()
+    public async Task<IEnumerable<MaintenanceScheduleViewModel>> GetAllMaintenanceSchedulesAsync()
     {
       var schedules = await _context.MaintenanceSchedules
           .Include(m => m.Crane)
           .OrderByDescending(m => m.CreatedAt)
           .ToListAsync();
 
-      return schedules.Select(m => new MaintenanceScheduleDto
+      return schedules.Select(m => new MaintenanceScheduleViewModel
       {
         Id = m.Id,
+        DocumentNumber = m.DocumentNumber,
         CraneId = m.CraneId,
         CraneCode = m.Crane?.Code,
         Title = m.Title,
@@ -52,7 +53,7 @@ namespace AspnetCoreMvcFull.Services
       }).ToList();
     }
 
-    public async Task<MaintenanceScheduleDetailDto> GetMaintenanceScheduleByIdAsync(int id)
+    public async Task<MaintenanceScheduleDetailViewModel> GetMaintenanceScheduleByIdAsync(int id)
     {
       var schedule = await _context.MaintenanceSchedules
           .Include(m => m.Crane)
@@ -65,9 +66,10 @@ namespace AspnetCoreMvcFull.Services
         throw new KeyNotFoundException($"Maintenance schedule with ID {id} not found");
       }
 
-      return new MaintenanceScheduleDetailDto
+      return new MaintenanceScheduleDetailViewModel
       {
         Id = schedule.Id,
+        DocumentNumber = schedule.DocumentNumber,
         CraneId = schedule.CraneId,
         CraneCode = schedule.Crane?.Code,
         Title = schedule.Title,
@@ -76,7 +78,7 @@ namespace AspnetCoreMvcFull.Services
         Description = schedule.Description,
         CreatedAt = schedule.CreatedAt,
         CreatedBy = schedule.CreatedBy,
-        Shifts = schedule.MaintenanceScheduleShifts.Select(s => new MaintenanceScheduleShiftDto
+        Shifts = schedule.MaintenanceScheduleShifts.Select(s => new MaintenanceScheduleShiftViewModel
         {
           Id = s.Id,
           Date = s.Date,
@@ -88,7 +90,44 @@ namespace AspnetCoreMvcFull.Services
       };
     }
 
-    public async Task<IEnumerable<MaintenanceScheduleDto>> GetMaintenanceSchedulesByCraneIdAsync(int craneId)
+    public async Task<MaintenanceScheduleDetailViewModel> GetMaintenanceScheduleByDocumentNumberAsync(string documentNumber)
+    {
+      var schedule = await _context.MaintenanceSchedules
+          .Include(m => m.Crane)
+          .Include(m => m.MaintenanceScheduleShifts)
+            .ThenInclude(ms => ms.ShiftDefinition)
+          .FirstOrDefaultAsync(m => m.DocumentNumber == documentNumber);
+
+      if (schedule == null)
+      {
+        throw new KeyNotFoundException($"Maintenance schedule with document number {documentNumber} not found");
+      }
+
+      return new MaintenanceScheduleDetailViewModel
+      {
+        Id = schedule.Id,
+        DocumentNumber = schedule.DocumentNumber,
+        CraneId = schedule.CraneId,
+        CraneCode = schedule.Crane?.Code,
+        Title = schedule.Title,
+        StartDate = schedule.StartDate,
+        EndDate = schedule.EndDate,
+        Description = schedule.Description,
+        CreatedAt = schedule.CreatedAt,
+        CreatedBy = schedule.CreatedBy,
+        Shifts = schedule.MaintenanceScheduleShifts.Select(s => new MaintenanceScheduleShiftViewModel
+        {
+          Id = s.Id,
+          Date = s.Date,
+          ShiftDefinitionId = s.ShiftDefinitionId,
+          ShiftName = s.ShiftName ?? s.ShiftDefinition?.Name,
+          StartTime = s.ShiftStartTime != default ? s.ShiftStartTime : s.ShiftDefinition?.StartTime,
+          EndTime = s.ShiftEndTime != default ? s.ShiftEndTime : s.ShiftDefinition?.EndTime
+        }).ToList()
+      };
+    }
+
+    public async Task<IEnumerable<MaintenanceScheduleViewModel>> GetMaintenanceSchedulesByCraneIdAsync(int craneId)
     {
       if (!await _craneService.CraneExistsAsync(craneId))
       {
@@ -101,9 +140,10 @@ namespace AspnetCoreMvcFull.Services
           .OrderByDescending(m => m.CreatedAt)
           .ToListAsync();
 
-      return schedules.Select(m => new MaintenanceScheduleDto
+      return schedules.Select(m => new MaintenanceScheduleViewModel
       {
         Id = m.Id,
+        DocumentNumber = m.DocumentNumber,
         CraneId = m.CraneId,
         CraneCode = m.Crane?.Code,
         Title = m.Title,
@@ -115,21 +155,21 @@ namespace AspnetCoreMvcFull.Services
       }).ToList();
     }
 
-    public async Task<MaintenanceScheduleDetailDto> CreateMaintenanceScheduleAsync(MaintenanceScheduleCreateDto maintenanceDto)
+    public async Task<MaintenanceScheduleDetailViewModel> CreateMaintenanceScheduleAsync(MaintenanceScheduleCreateViewModel maintenanceViewModel)
     {
       try
       {
-        _logger.LogInformation("Creating maintenance schedule for crane {CraneId}", maintenanceDto.CraneId);
+        _logger.LogInformation("Creating maintenance schedule for crane {CraneId}", maintenanceViewModel.CraneId);
 
         // Validate crane exists
-        if (!await _craneService.CraneExistsAsync(maintenanceDto.CraneId))
+        if (!await _craneService.CraneExistsAsync(maintenanceViewModel.CraneId))
         {
-          throw new KeyNotFoundException($"Crane with ID {maintenanceDto.CraneId} not found");
+          throw new KeyNotFoundException($"Crane with ID {maintenanceViewModel.CraneId} not found");
         }
 
         // Gunakan tanggal lokal tanpa konversi UTC
-        var startDate = maintenanceDto.StartDate.Date;
-        var endDate = maintenanceDto.EndDate.Date;
+        var startDate = maintenanceViewModel.StartDate.Date;
+        var endDate = maintenanceViewModel.EndDate.Date;
 
         // Validate date range
         if (startDate > endDate)
@@ -138,7 +178,7 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate shift selections
-        if (maintenanceDto.ShiftSelections == null || !maintenanceDto.ShiftSelections.Any())
+        if (maintenanceViewModel.ShiftSelections == null || !maintenanceViewModel.ShiftSelections.Any())
         {
           throw new ArgumentException("At least one shift selection is required");
         }
@@ -148,7 +188,7 @@ namespace AspnetCoreMvcFull.Services
             .Select(d => startDate.AddDays(d))
             .ToList();
 
-        var selectedDates = maintenanceDto.ShiftSelections
+        var selectedDates = maintenanceViewModel.ShiftSelections
             .Select(s => s.Date.Date)
             .ToList();
 
@@ -158,7 +198,7 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate each shift selection has at least one shift selected
-        foreach (var selection in maintenanceDto.ShiftSelections)
+        foreach (var selection in maintenanceViewModel.ShiftSelections)
         {
           if (selection.SelectedShiftIds == null || !selection.SelectedShiftIds.Any())
           {
@@ -166,23 +206,24 @@ namespace AspnetCoreMvcFull.Services
           }
         }
 
-        // Create maintenance schedule
+        // Create maintenance schedule with a new unique document number
         var schedule = new MaintenanceSchedule
         {
-          CraneId = maintenanceDto.CraneId,
-          Title = maintenanceDto.Title,
+          DocumentNumber = Guid.NewGuid().ToString(),
+          CraneId = maintenanceViewModel.CraneId,
+          Title = maintenanceViewModel.Title,
           StartDate = startDate,
           EndDate = endDate,
-          Description = maintenanceDto.Description,
+          Description = maintenanceViewModel.Description,
           CreatedAt = DateTime.Now,
-          CreatedBy = maintenanceDto.CreatedBy
+          CreatedBy = maintenanceViewModel.CreatedBy ?? "system"
         };
 
         _context.MaintenanceSchedules.Add(schedule);
         await _context.SaveChangesAsync();
 
         // Create shift selections with historical data
-        foreach (var selection in maintenanceDto.ShiftSelections)
+        foreach (var selection in maintenanceViewModel.ShiftSelections)
         {
           var dateLocal = selection.Date.Date;
 
@@ -231,7 +272,7 @@ namespace AspnetCoreMvcFull.Services
       }
     }
 
-    public async Task<MaintenanceScheduleDetailDto> UpdateMaintenanceScheduleAsync(int id, MaintenanceScheduleUpdateDto maintenanceDto)
+    public async Task<MaintenanceScheduleDetailViewModel> UpdateMaintenanceScheduleAsync(int id, MaintenanceScheduleUpdateViewModel maintenanceViewModel)
     {
       try
       {
@@ -247,15 +288,15 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate crane exists if changing crane
-        if (schedule.CraneId != maintenanceDto.CraneId &&
-            !await _craneService.CraneExistsAsync(maintenanceDto.CraneId))
+        if (schedule.CraneId != maintenanceViewModel.CraneId &&
+            !await _craneService.CraneExistsAsync(maintenanceViewModel.CraneId))
         {
-          throw new KeyNotFoundException($"Crane with ID {maintenanceDto.CraneId} not found");
+          throw new KeyNotFoundException($"Crane with ID {maintenanceViewModel.CraneId} not found");
         }
 
         // Gunakan tanggal lokal tanpa konversi UTC
-        var startDate = maintenanceDto.StartDate.Date;
-        var endDate = maintenanceDto.EndDate.Date;
+        var startDate = maintenanceViewModel.StartDate.Date;
+        var endDate = maintenanceViewModel.EndDate.Date;
 
         // Validate date range
         if (startDate > endDate)
@@ -264,7 +305,7 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate shift selections
-        if (maintenanceDto.ShiftSelections == null || !maintenanceDto.ShiftSelections.Any())
+        if (maintenanceViewModel.ShiftSelections == null || !maintenanceViewModel.ShiftSelections.Any())
         {
           throw new ArgumentException("At least one shift selection is required");
         }
@@ -274,7 +315,7 @@ namespace AspnetCoreMvcFull.Services
             .Select(d => startDate.AddDays(d))
             .ToList();
 
-        var selectedDates = maintenanceDto.ShiftSelections
+        var selectedDates = maintenanceViewModel.ShiftSelections
             .Select(s => s.Date.Date)
             .ToList();
 
@@ -284,7 +325,7 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate each shift selection has at least one shift selected
-        foreach (var selection in maintenanceDto.ShiftSelections)
+        foreach (var selection in maintenanceViewModel.ShiftSelections)
         {
           if (selection.SelectedShiftIds == null || !selection.SelectedShiftIds.Any())
           {
@@ -305,7 +346,7 @@ namespace AspnetCoreMvcFull.Services
 
             // Cek apakah ada konflik dengan booking yang ada
             bool hasBookingConflict = await _scheduleConflictService.IsBookingConflictAsync(
-                maintenanceDto.CraneId,
+                maintenanceViewModel.CraneId,
                 dateLocal,
                 shiftId);
 
@@ -318,7 +359,7 @@ namespace AspnetCoreMvcFull.Services
 
             // Cek apakah ada konflik dengan maintenance schedule lain
             bool hasMaintenanceConflict = await _scheduleConflictService.IsMaintenanceConflictAsync(
-                maintenanceDto.CraneId,
+                maintenanceViewModel.CraneId,
                 dateLocal,
                 shiftId,
                 id);
@@ -338,18 +379,18 @@ namespace AspnetCoreMvcFull.Services
         var previousEndDate = schedule.EndDate;
 
         // Update maintenance schedule
-        schedule.CraneId = maintenanceDto.CraneId;
-        schedule.Title = maintenanceDto.Title;
+        schedule.CraneId = maintenanceViewModel.CraneId;
+        schedule.Title = maintenanceViewModel.Title;
         schedule.StartDate = startDate;
         schedule.EndDate = endDate;
-        schedule.Description = maintenanceDto.Description;
-        // CreatedAt dan CreatedBy tidak diubah
+        schedule.Description = maintenanceViewModel.Description;
+        // DocumentNumber and CreatedAt/CreatedBy are not changed
 
         // Remove existing shift selections
         _context.MaintenanceScheduleShifts.RemoveRange(schedule.MaintenanceScheduleShifts);
 
         // Create new shift selections with historical data
-        foreach (var selection in maintenanceDto.ShiftSelections)
+        foreach (var selection in maintenanceViewModel.ShiftSelections)
         {
           var dateLocal = selection.Date.Date;
 
@@ -449,6 +490,11 @@ namespace AspnetCoreMvcFull.Services
     public async Task<bool> MaintenanceScheduleExistsAsync(int id)
     {
       return await _context.MaintenanceSchedules.AnyAsync(m => m.Id == id);
+    }
+
+    public async Task<bool> MaintenanceScheduleExistsByDocumentNumberAsync(string documentNumber)
+    {
+      return await _context.MaintenanceSchedules.AnyAsync(m => m.DocumentNumber == documentNumber);
     }
   }
 }

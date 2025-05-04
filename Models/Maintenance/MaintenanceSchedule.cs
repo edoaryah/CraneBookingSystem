@@ -8,6 +8,10 @@ namespace AspnetCoreMvcFull.Models
     public int Id { get; set; }
 
     [Required]
+    [StringLength(36)]
+    public string DocumentNumber { get; set; } = Guid.NewGuid().ToString();
+
+    [Required]
     public int CraneId { get; set; }
 
     [Required]
