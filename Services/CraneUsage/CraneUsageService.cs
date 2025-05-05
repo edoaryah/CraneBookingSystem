@@ -1,22 +1,24 @@
+// Tambahkan file Services/CraneUsage/CraneUsageService.cs
+
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
-using AspnetCoreMvcFull.DTOs.Usage;
 using AspnetCoreMvcFull.Models;
+using AspnetCoreMvcFull.ViewModels.CraneUsage;
 
-namespace AspnetCoreMvcFull.Services.Usage
+namespace AspnetCoreMvcFull.Services.CraneUsage
 {
-  public class CraneUsageRecordService : ICraneUsageRecordService
+  public class CraneUsageService : ICraneUsageService
   {
     private readonly AppDbContext _context;
-    private readonly ILogger<CraneUsageRecordService> _logger;
+    private readonly ILogger<CraneUsageService> _logger;
 
-    public CraneUsageRecordService(AppDbContext context, ILogger<CraneUsageRecordService> logger)
+    public CraneUsageService(AppDbContext context, ILogger<CraneUsageService> logger)
     {
       _context = context;
       _logger = logger;
     }
 
-    public async Task<IEnumerable<CraneUsageRecordDto>> GetAllUsageRecordsAsync()
+    public async Task<IEnumerable<CraneUsageRecordViewModel>> GetAllUsageRecordsAsync()
     {
       try
       {
@@ -25,7 +27,7 @@ namespace AspnetCoreMvcFull.Services.Usage
             .OrderByDescending(r => r.Date)
             .ToListAsync();
 
-        return records.Select(r => MapRecordToDto(r)).ToList();
+        return records.Select(r => MapRecordToViewModel(r)).ToList();
       }
       catch (Exception ex)
       {
@@ -34,7 +36,7 @@ namespace AspnetCoreMvcFull.Services.Usage
       }
     }
 
-    public async Task<IEnumerable<CraneUsageRecordDto>> GetUsageRecordsByBookingIdAsync(int bookingId)
+    public async Task<IEnumerable<CraneUsageRecordViewModel>> GetUsageRecordsByBookingIdAsync(int bookingId)
     {
       try
       {
@@ -44,7 +46,7 @@ namespace AspnetCoreMvcFull.Services.Usage
             .OrderByDescending(r => r.Date)
             .ToListAsync();
 
-        return records.Select(r => MapRecordToDto(r)).ToList();
+        return records.Select(r => MapRecordToViewModel(r)).ToList();
       }
       catch (Exception ex)
       {
@@ -53,7 +55,7 @@ namespace AspnetCoreMvcFull.Services.Usage
       }
     }
 
-    public async Task<CraneUsageRecordDto> GetUsageRecordByIdAsync(int id)
+    public async Task<CraneUsageRecordViewModel> GetUsageRecordByIdAsync(int id)
     {
       try
       {
@@ -66,7 +68,7 @@ namespace AspnetCoreMvcFull.Services.Usage
           throw new KeyNotFoundException($"Usage record with ID {id} not found");
         }
 
-        return MapRecordToDto(record);
+        return MapRecordToViewModel(record);
       }
       catch (Exception ex) when (!(ex is KeyNotFoundException))
       {
@@ -75,46 +77,43 @@ namespace AspnetCoreMvcFull.Services.Usage
       }
     }
 
-    public async Task<CraneUsageRecordDto> CreateUsageRecordAsync(CraneUsageRecordCreateDto recordDto, string createdBy)
+    public async Task<CraneUsageRecordViewModel> CreateUsageRecordAsync(CraneUsageRecordCreateViewModel viewModel, string createdBy)
     {
       try
       {
         // Validate booking exists
-        var booking = await _context.Bookings.FindAsync(recordDto.BookingId);
+        var booking = await _context.Bookings.FindAsync(viewModel.BookingId);
         if (booking == null)
         {
-          throw new KeyNotFoundException($"Booking with ID {recordDto.BookingId} not found");
+          throw new KeyNotFoundException($"Booking with ID {viewModel.BookingId} not found");
         }
 
         // Validate subcategory exists
-        var subcategory = await _context.UsageSubcategories.FindAsync(recordDto.SubcategoryId);
+        var subcategory = await _context.UsageSubcategories.FindAsync(viewModel.SubcategoryId);
         if (subcategory == null)
         {
-          throw new KeyNotFoundException($"Subcategory with ID {recordDto.SubcategoryId} not found");
+          throw new KeyNotFoundException($"Subcategory with ID {viewModel.SubcategoryId} not found");
         }
 
         // Parse start time
-        if (!TryParseTimeSpan(recordDto.StartTime, out TimeSpan startTime))
+        if (!TryParseTimeSpan(viewModel.StartTime, out TimeSpan startTime))
         {
           throw new ArgumentException("Invalid start time format. Expected format is HH:MM");
         }
 
         // Parse end time
-        if (!TryParseTimeSpan(recordDto.EndTime, out TimeSpan endTime))
+        if (!TryParseTimeSpan(viewModel.EndTime, out TimeSpan endTime))
         {
           throw new ArgumentException("Invalid end time format. Expected format is HH:MM");
         }
 
-        // Validate that start time is before end time (unless it spans midnight)
-        // This is handled in the model's CalculateDuration method
-
         // Create new record
         var record = new CraneUsageRecord
         {
-          BookingId = recordDto.BookingId,
-          Date = recordDto.Date.Date, // Use only the date part
-          Category = recordDto.Category,
-          SubcategoryId = recordDto.SubcategoryId,
+          BookingId = viewModel.BookingId,
+          Date = viewModel.Date.Date, // Use only the date part
+          Category = viewModel.Category,
+          SubcategoryId = viewModel.SubcategoryId,
           StartTime = startTime,
           EndTime = endTime,
           CreatedAt = DateTime.Now,
@@ -128,12 +127,12 @@ namespace AspnetCoreMvcFull.Services.Usage
       }
       catch (Exception ex) when (!(ex is KeyNotFoundException || ex is ArgumentException))
       {
-        _logger.LogError(ex, "Error creating usage record for booking {BookingId}", recordDto.BookingId);
+        _logger.LogError(ex, "Error creating usage record for booking {BookingId}", viewModel.BookingId);
         throw;
       }
     }
 
-    public async Task<CraneUsageRecordDto> UpdateUsageRecordAsync(int id, CraneUsageRecordUpdateDto recordDto, string updatedBy)
+    public async Task<CraneUsageRecordViewModel> UpdateUsageRecordAsync(int id, CraneUsageRecordUpdateViewModel viewModel, string updatedBy)
     {
       try
       {
@@ -144,27 +143,27 @@ namespace AspnetCoreMvcFull.Services.Usage
         }
 
         // Validate subcategory exists
-        var subcategory = await _context.UsageSubcategories.FindAsync(recordDto.SubcategoryId);
+        var subcategory = await _context.UsageSubcategories.FindAsync(viewModel.SubcategoryId);
         if (subcategory == null)
         {
-          throw new KeyNotFoundException($"Subcategory with ID {recordDto.SubcategoryId} not found");
+          throw new KeyNotFoundException($"Subcategory with ID {viewModel.SubcategoryId} not found");
         }
 
         // Parse start time
-        if (!TryParseTimeSpan(recordDto.StartTime, out TimeSpan startTime))
+        if (!TryParseTimeSpan(viewModel.StartTime, out TimeSpan startTime))
         {
           throw new ArgumentException("Invalid start time format. Expected format is HH:MM");
         }
 
         // Parse end time
-        if (!TryParseTimeSpan(recordDto.EndTime, out TimeSpan endTime))
+        if (!TryParseTimeSpan(viewModel.EndTime, out TimeSpan endTime))
         {
           throw new ArgumentException("Invalid end time format. Expected format is HH:MM");
         }
 
         // Update record
-        record.Category = recordDto.Category;
-        record.SubcategoryId = recordDto.SubcategoryId;
+        record.Category = viewModel.Category;
+        record.SubcategoryId = viewModel.SubcategoryId;
         record.StartTime = startTime;
         record.EndTime = endTime;
         record.UpdatedAt = DateTime.Now;
@@ -201,7 +200,7 @@ namespace AspnetCoreMvcFull.Services.Usage
       }
     }
 
-    public async Task<UsageSummaryDto> GetUsageSummaryByBookingIdAsync(int bookingId)
+    public async Task<UsageSummaryViewModel> GetUsageSummaryByBookingIdAsync(int bookingId)
     {
       try
       {
@@ -217,7 +216,7 @@ namespace AspnetCoreMvcFull.Services.Usage
         var recordsList = records.ToList();
 
         // Initialize summary
-        var summary = new UsageSummaryDto
+        var summary = new UsageSummaryViewModel
         {
           BookingId = bookingId,
           BookingNumber = booking.BookingNumber,
@@ -294,7 +293,7 @@ namespace AspnetCoreMvcFull.Services.Usage
       }
     }
 
-    public async Task<IEnumerable<UsageSubcategoryDto>> GetSubcategoriesByCategoryAsync(UsageCategory category)
+    public async Task<IEnumerable<UsageSubcategoryViewModel>> GetSubcategoriesByCategoryAsync(UsageCategory category)
     {
       try
       {
@@ -303,7 +302,7 @@ namespace AspnetCoreMvcFull.Services.Usage
             .OrderBy(s => s.Name)
             .ToListAsync();
 
-        return subcategories.Select(s => new UsageSubcategoryDto
+        return subcategories.Select(s => new UsageSubcategoryViewModel
         {
           Id = s.Id,
           Category = s.Category,
@@ -319,8 +318,8 @@ namespace AspnetCoreMvcFull.Services.Usage
       }
     }
 
-    // Helper method to map entity to DTO
-    private CraneUsageRecordDto MapRecordToDto(CraneUsageRecord record)
+    // Helper method to map entity to ViewModel
+    private CraneUsageRecordViewModel MapRecordToViewModel(CraneUsageRecord record)
     {
       // Get subcategory name
       string subcategoryName = "Unknown";
@@ -333,7 +332,7 @@ namespace AspnetCoreMvcFull.Services.Usage
       // Calculate duration (it's automatically calculated in the model)
       TimeSpan duration = record.Duration;
 
-      return new CraneUsageRecordDto
+      return new CraneUsageRecordViewModel
       {
         Id = record.Id,
         BookingId = record.BookingId,

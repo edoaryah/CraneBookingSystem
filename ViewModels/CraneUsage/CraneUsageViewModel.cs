@@ -1,8 +1,12 @@
-using AspnetCoreMvcFull.Models;
+// Tambahkan file ViewModels/CraneUsage/CraneUsageViewModel.cs
 
-namespace AspnetCoreMvcFull.DTOs.Usage
+using AspnetCoreMvcFull.Models;
+using System.ComponentModel.DataAnnotations;
+
+namespace AspnetCoreMvcFull.ViewModels.CraneUsage
 {
-  public class CraneUsageRecordDto
+  // ViewModel untuk menampilkan record penggunaan crane
+  public class CraneUsageRecordViewModel
   {
     public int Id { get; set; }
     public int BookingId { get; set; }
@@ -13,13 +17,13 @@ namespace AspnetCoreMvcFull.DTOs.Usage
     public int SubcategoryId { get; set; }
     public string SubcategoryName { get; set; } = string.Empty;
 
-    // New time fields
+    // Fields waktu
     public TimeSpan StartTime { get; set; }
     public string StartTimeFormatted { get; set; } = string.Empty;
     public TimeSpan EndTime { get; set; }
     public string EndTimeFormatted { get; set; } = string.Empty;
 
-    // Duration is calculated
+    // Durasi (dikalkulasi)
     public TimeSpan Duration { get; set; }
     public string DurationFormatted { get; set; } = string.Empty;
 
@@ -29,29 +33,51 @@ namespace AspnetCoreMvcFull.DTOs.Usage
     public string? UpdatedBy { get; set; }
   }
 
-  public class CraneUsageRecordCreateDto
+  // ViewModel untuk membuat record penggunaan crane baru
+  public class CraneUsageRecordCreateViewModel
   {
+    [Required]
     public int BookingId { get; set; }
+
+    [Required]
+    [DataType(DataType.Date)]
     public DateTime Date { get; set; }
+
+    [Required]
     public UsageCategory Category { get; set; }
+
+    [Required]
     public int SubcategoryId { get; set; }
 
-    // Replace Duration with StartTime and EndTime
+    [Required]
+    [DataType(DataType.Time)]
     public string StartTime { get; set; } = string.Empty; // Format: "HH:MM"
+
+    [Required]
+    [DataType(DataType.Time)]
     public string EndTime { get; set; } = string.Empty; // Format: "HH:MM"
   }
 
-  public class CraneUsageRecordUpdateDto
+  // ViewModel untuk memperbarui record penggunaan crane
+  public class CraneUsageRecordUpdateViewModel
   {
+    [Required]
     public UsageCategory Category { get; set; }
+
+    [Required]
     public int SubcategoryId { get; set; }
 
-    // Replace Duration with StartTime and EndTime
+    [Required]
+    [DataType(DataType.Time)]
     public string StartTime { get; set; } = string.Empty; // Format: "HH:MM"
+
+    [Required]
+    [DataType(DataType.Time)]
     public string EndTime { get; set; } = string.Empty; // Format: "HH:MM"
   }
 
-  public class UsageSubcategoryDto
+  // ViewModel untuk subcategory penggunaan
+  public class UsageSubcategoryViewModel
   {
     public int Id { get; set; }
     public UsageCategory Category { get; set; }
@@ -60,21 +86,22 @@ namespace AspnetCoreMvcFull.DTOs.Usage
     public bool IsActive { get; set; }
   }
 
-  public class UsageSummaryDto
+  // ViewModel untuk ringkasan penggunaan
+  public class UsageSummaryViewModel
   {
     public int BookingId { get; set; }
     public string BookingNumber { get; set; } = string.Empty;
     public DateTime Date { get; set; }
-    public List<CraneUsageRecordDto> UsageRecords { get; set; } = new List<CraneUsageRecordDto>();
+    public List<CraneUsageRecordViewModel> UsageRecords { get; set; } = new List<CraneUsageRecordViewModel>();
 
-    // Total hours by category
+    // Total jam berdasarkan kategori
     public string TotalOperatingTime { get; set; } = "00:00:00";
     public string TotalDelayTime { get; set; } = "00:00:00";
     public string TotalStandbyTime { get; set; } = "00:00:00";
     public string TotalServiceTime { get; set; } = "00:00:00";
     public string TotalBreakdownTime { get; set; } = "00:00:00";
 
-    // KPI metrics
+    // Metrik KPI
     public string TotalAvailableTime { get; set; } = "00:00:00";
     public string TotalUnavailableTime { get; set; } = "00:00:00";
     public string TotalUsageTime { get; set; } = "00:00:00";

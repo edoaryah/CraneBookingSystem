@@ -1065,7 +1065,7 @@ namespace AspnetCoreMvcFull.Services
               bs.Date.Date <= endDate.Date)
           .Select(bs => new BookedShiftViewModel
           {
-            CraneId = bs.Booking.CraneId,
+            CraneId = bs.Booking!.CraneId,
             Date = bs.Date,
             ShiftDefinitionId = bs.ShiftDefinitionId
           })
