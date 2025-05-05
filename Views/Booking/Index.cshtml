@@ -98,6 +98,23 @@
     #hazardsContainer .col-md-4 {
       margin-bottom: 10px;
     }
+
+    /* Status indikator untuk shift availability */
+    .shift-status {
+      display: block;
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+
+    .shift-status.available {
+      color: #198754;
+      /* Bootstrap success color */
+    }
+
+    .shift-status.booked {
+      color: #dc3545;
+      /* Bootstrap danger color */
+    }
   </style>
 }
 
@@ -112,10 +129,13 @@
         </div>
       </div>
       <div class="card-body">
-        <form id="craneBookingForm">
+        <form id="craneBookingForm" asp-controller="Booking" asp-action="Create" method="post">
+          @Html.AntiForgeryToken()
 
           <input type="hidden" id="shiftDefinitionsData"
             value="@System.Text.Json.JsonSerializer.Serialize(Model.ShiftDefinitions)" />
+          <input type="hidden" id="bookedShiftsData"
+            value="@System.Text.Json.JsonSerializer.Serialize(Model.BookedShifts)" />
 
           <!-- Requestor Information Section -->
           <div class="form-section">
@@ -286,7 +306,7 @@
                       {
                         <div class="col-md-4 mb-2">
                           <div class="form-check">
-                            <input class="form-check-input hazard-checkbox" type="checkbox" name="hazard-@hazard.Id"
+                            <input class="form-check-input hazard-checkbox" type="checkbox" name="hazardIds[]"
                               id="hazard-@hazard.Id" value="@hazard.Id" />
                             <label class="form-check-label" for="hazard-@hazard.Id">
                               @hazard.Name
@@ -341,8 +361,8 @@
 
               <div class="row">
                 <div class="col-12 d-flex justify-content-between">
-                  <a href="/Calendar" class="btn btn-secondary">Cancel</a>
-                  <button type="button" id="submitButton" class="btn btn-primary">Submit Booking</button>
+                  <a href="/Booking/Calendar" class="btn btn-secondary">Cancel</a>
+                  <button type="submit" id="submitButton" class="btn btn-primary">Submit Booking</button>
                 </div>
               </div>
             </div>
@@ -364,7 +384,7 @@
         Your crane booking has been submitted successfully!
       </div>
       <div class="modal-footer">
-        <a href="/Calendar/Index" class="btn btn-primary">Go to Calendar</a>
+        <a href="/Booking/Calendar" class="btn btn-primary">Go to Calendar</a>
       </div>
     </div>
   </div>
@@ -379,7 +399,14 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="errorModalBody">
-        An error occurred while submitting your booking.
+        @if (ViewData["ErrorMessage"] != null)
+        {
+          @ViewData["ErrorMessage"]
+        }
+        else
+        {
+          <text>An error occurred while submitting your booking.</text>
+        }
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -392,6 +419,7 @@
   <script>
     // Global variables for data
     let shiftDefinitions = [];
+    let bookedShifts = []; // Menyimpan data shift yang sudah di-booking
 
     // DOM Elements - with validation checks
     const startDateInput = document.getElementById('startDate');
@@ -404,6 +432,7 @@
     const addItemBtn = document.getElementById('addItemBtn');
     const shiftLabel = document.getElementById('shiftLabel');
     const spacerDiv = document.getElementById('spacerDiv');
+    const bookingForm = document.getElementById('craneBookingForm');
 
     // Log any missing critical elements
     if (!shiftTableContainer || !shiftTableBody || !shiftLabel || !spacerDiv) {
@@ -427,6 +456,10 @@
     if (endDateInput) {
       endDateInput.min = formattedToday;
       endDateInput.addEventListener('change', generateShiftTable);
+    }
+
+    if (craneIdSelect) {
+      craneIdSelect.addEventListener('change', generateShiftTable);
     }
 
     // Load shift definitions from the hidden input or from table headers
@@ -469,6 +502,38 @@
       }
     }
 
+    // Load booked shifts from hidden input
+    function loadBookedShifts() {
+      try {
+        const bookedShiftsInput = document.getElementById('bookedShiftsData');
+        if (bookedShiftsInput && bookedShiftsInput.value) {
+          console.log('Loading booked shifts from hidden input');
+          bookedShifts = JSON.parse(bookedShiftsInput.value);
+          console.log('Loaded booked shifts:', bookedShifts);
+          return true;
+        }
+        console.log('No booked shifts data found');
+        return false;
+      } catch (error) {
+        console.error('Error loading booked shifts:', error);
+        return false;
+      }
+    }
+
+    // Check if a specific shift is booked
+    function isShiftBooked(craneId, date, shiftId) {
+      if (!bookedShifts || !bookedShifts.length || !craneId) return false;
+
+      const dateStr = new Date(date).toISOString().split('T')[0];
+
+      // Find if this specific shift is booked
+      return bookedShifts.some(booking =>
+        booking.craneId === parseInt(craneId) &&
+        booking.date.split('T')[0] === dateStr &&
+        booking.shiftDefinitionId === shiftId
+      );
+    }
+
     // Validation functions
     function validateDates() {
       if (!startDateInput || !endDateInput) {
@@ -503,28 +568,30 @@
     }
 
     // Function to generate shift table
-    function generateShiftTable() {
+    // Ubah fungsi generateShiftTable menjadi seperti ini
+    async function generateShiftTable() {
       console.log('generateShiftTable called');
 
       // Verify elements exist
-      if (!shiftTableContainer || !shiftLabel || !spacerDiv || !startDateInput || !endDateInput) {
+      if (!shiftTableContainer || !shiftLabel || !spacerDiv || !startDateInput || !endDateInput || !craneIdSelect) {
         console.error('Critical DOM elements missing for generateShiftTable');
         return;
       }
 
-      // Check if both dates are selected
+      // Check if both dates are selected and crane is selected
       const startDate = startDateInput.value;
       const endDate = endDateInput.value;
+      const craneId = craneIdSelect.value;
 
-      if (!startDate || !endDate) {
-        console.log('Dates not selected, hiding table');
+      if (!startDate || !endDate || !craneId) {
+        console.log('Dates or crane not selected, hiding table');
         shiftTableContainer.style.display = 'none';
         shiftLabel.style.display = 'none';
         spacerDiv.style.display = 'block';
         return;
       }
 
-      console.log('Dates selected:', { startDate, endDate });
+      console.log('Dates and crane selected:', { startDate, endDate, craneId });
 
       if (!validateDates()) {
         console.log('Dates validation failed');
@@ -541,6 +608,21 @@
           console.error('Failed to load shift definitions');
           return;
         }
+      }
+
+      // Fetch booked shifts for the selected date range and crane
+      try {
+        const response = await fetch(`/Booking/GetBookedShifts?craneId=${craneId}&startDate=${startDate}&endDate=${endDate}`);
+        if (response.ok) {
+          bookedShifts = await response.json();
+          console.log('Loaded booked shifts for selected date range:', bookedShifts);
+        } else {
+          console.error('Failed to fetch booked shifts');
+          bookedShifts = [];
+        }
+      } catch (error) {
+        console.error('Error fetching booked shifts:', error);
+        bookedShifts = [];
       }
 
       // Check active shifts
@@ -575,10 +657,10 @@
 
       // We'll use the shift table that's already in the DOM
       // But we need to populate the body with the dates
-      renderShiftTableBody(dateArray);
+      renderShiftTableBody(dateArray, craneId);
     }
 
-    function renderShiftTableBody(shiftTable) {
+    function renderShiftTableBody(shiftTable, craneId) {
       console.log('renderShiftTableBody called with', shiftTable.length, 'days');
 
       if (!shiftTableBody) {
@@ -589,7 +671,7 @@
       // Clear existing table body
       shiftTableBody.innerHTML = '';
 
-      // PERUBAHAN DISINI: Find active shifts with case-insensitive property checking
+      // Find active shifts with case-insensitive property checking
       const activeShifts = shiftDefinitions.filter(s =>
         s.IsActive === true || s.isActive === true
       );
@@ -614,20 +696,30 @@
 
         // Add checkboxes for each active shift definition
         activeShifts.forEach(shift => {
-          // PERUBAHAN DISINI: Make sure we get the id correctly, checking both Id and id
+          // Make sure we get the id correctly, checking both Id and id
           const shiftId = shift.Id || shift.id;
           const isSelected = dayShift.selectedShiftIds.includes(shiftId);
 
+          // Check if this shift is booked
+          const isBooked = isShiftBooked(craneId, dayShift.date, shiftId);
+
           const cell = document.createElement('td');
           cell.innerHTML = `
-                          <div class="form-check d-flex justify-content-center">
-                            <input type="checkbox" class="form-check-input shift-checkbox"
-                              id="shift-${shiftId}-${dayShift.date}"
-                              data-date="${dayShift.date}"
-                              data-shift-id="${shiftId}"
-                              ${isSelected ? 'checked' : ''} />
-                          </div>
-                        `;
+                <div class="form-check d-flex justify-content-center flex-column align-items-center">
+                  <input type="checkbox" class="form-check-input shift-checkbox"
+                    id="shift-${shiftId}-${dayShift.date}"
+                    name="shiftSelections[${index}].selectedShiftIds[]"
+                    value="${shiftId}"
+                    data-date="${dayShift.date}"
+                    data-shift-id="${shiftId}"
+                    ${isSelected ? 'checked' : ''}
+                    ${isBooked ? 'disabled' : ''} />
+                  <span class="shift-status ${isBooked ? 'booked' : 'available'}">
+                    ${isBooked ? 'Booked' : 'Available'}
+                  </span>
+                  <input type="hidden" name="shiftSelections[${index}].date" value="${dayShift.date}" />
+                </div>
+              `;
 
           row.appendChild(cell);
         });
@@ -636,76 +728,6 @@
       });
 
       console.log('Shift table body rendered successfully');
-
-      // Add event listeners to checkboxes for conflict checking
-      const shiftCheckboxes = document.querySelectorAll('.shift-checkbox');
-      shiftCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function () {
-          checkShiftConflict(this);
-        });
-      });
-    }
-
-    // Function to check for shift conflicts with the API
-    async function checkShiftConflict(checkbox) {
-      if (!checkbox || !craneIdSelect) {
-        console.error('Required elements missing for checkShiftConflict');
-        return;
-      }
-
-      const craneId = craneIdSelect.value;
-      if (!craneId) return;
-
-      const date = checkbox.dataset.date;
-      const shiftId = parseInt(checkbox.dataset.shiftId);
-      const isChecked = checkbox.checked;
-
-      // Only check if the checkbox is being checked (not unchecked)
-      if (isChecked) {
-        try {
-          const response = await fetch(
-            `/api/Bookings/CheckShiftConflict?craneId=${craneId}&date=${date}&shiftDefinitionId=${shiftId}`
-          );
-
-          if (!response.ok) {
-            throw new Error('Failed to check conflict');
-          }
-
-          const hasConflict = await response.json();
-
-          if (hasConflict) {
-            // Find shift name for better error message
-            const shiftName = shiftDefinitions.find(s => s.id === shiftId)?.name || `Shift ${shiftId}`;
-            alert(
-              `There is already a booking for this crane on ${new Date(date).toLocaleDateString()} during ${shiftName}. Please select a different shift or crane.`
-            );
-            checkbox.checked = false;
-            return;
-          }
-
-          // Then check conflict with other maintenance schedules
-          const maintenanceResponse = await fetch(
-            `/api/MaintenanceSchedules/CheckShiftConflict?craneId=${craneId}&date=${date}&shiftDefinitionId=${shiftId}`
-          );
-
-          if (!maintenanceResponse.ok) {
-            throw new Error('Failed to check maintenance conflict');
-          }
-
-          const hasMaintenanceConflict = await maintenanceResponse.json();
-
-          if (hasMaintenanceConflict) {
-            // Find shift name for better error message
-            const shiftName = shiftDefinitions.find(s => s.id === shiftId)?.name || `Shift ${shiftId}`;
-            alert(
-              `There is already a maintenance schedule for this crane on ${new Date(date).toLocaleDateString()} during ${shiftName}. Please select a different shift or crane.`
-            );
-            checkbox.checked = false;
-          }
-        } catch (error) {
-          console.error('Error checking conflict:', error);
-        }
-      }
     }
 
     // Initialize the lifted items table with one row
@@ -733,27 +755,31 @@
       const row = document.createElement('tr');
 
       row.innerHTML = `
-                            <td style="min-width: 220px; padding-right: 5px;">
-                              <input type="text" class="form-control item-name" required />
-                            </td>
-                            <td style="min-width: 140px; padding-right: 5px;">
-                              <input type="number" class="form-control item-height"
-                                    min="0.01" step="0.01" required />
-                            </td>
-                            <td style="min-width: 140px; padding-right: 5px;">
-                              <input type="number" class="form-control item-weight"
-                                    min="0.01" step="0.01" required />
-                            </td>
-                            <td style="min-width: 140px; padding-right: 5px;">
-                              <input type="number" class="form-control item-quantity"
-                                    min="1" step="1" value="1" required />
-                            </td>
-                            <td style="width: 1%; white-space: nowrap;">
-                              <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
-                                <i class="bx bx-trash"></i>
-                              </button>
-                            </td>
-                          `;
+            <td style="min-width: 220px; padding-right: 5px;">
+              <input type="text" class="form-control item-name"
+                    name="items[${rowIndex}].itemName" required />
+            </td>
+            <td style="min-width: 140px; padding-right: 5px;">
+              <input type="number" class="form-control item-height"
+                    name="items[${rowIndex}].height"
+                    min="0.01" step="0.01" required />
+            </td>
+            <td style="min-width: 140px; padding-right: 5px;">
+              <input type="number" class="form-control item-weight"
+                    name="items[${rowIndex}].weight"
+                    min="0.01" step="0.01" required />
+            </td>
+            <td style="min-width: 140px; padding-right: 5px;">
+              <input type="number" class="form-control item-quantity"
+                    name="items[${rowIndex}].quantity"
+                    min="1" step="1" value="1" required />
+            </td>
+            <td style="width: 1%; white-space: nowrap;">
+              <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
+                <i class="bx bx-trash"></i>
+              </button>
+            </td>
+          `;
 
       // Add event listener to remove button
       const removeBtn = row.querySelector('.remove-item-btn');
@@ -761,6 +787,8 @@
         // Don't allow removing if it's the only row
         if (tbody.rows.length > 1) {
           row.remove();
+          // Renumber the remaining rows
+          updateItemsIndexes();
         } else {
           alert('At least one item is required.');
         }
@@ -769,77 +797,24 @@
       tbody.appendChild(row);
     }
 
-    // Function to collect form data
-    function collectFormData() {
-      // Basic form data
-      const formData = {
-        name: document.getElementById('name')?.value || '',
-        department: document.getElementById('department')?.value || '',
-        craneId: parseInt(document.getElementById('craneId')?.value || '0'),
-        startDate: document.getElementById('startDate')?.value ?
-          new Date(document.getElementById('startDate').value).toISOString() : '',
-        endDate: document.getElementById('endDate')?.value ?
-          new Date(document.getElementById('endDate').value).toISOString() : '',
-        location: document.getElementById('location')?.value || '',
-        projectSupervisor: document.getElementById('projectSupervisor')?.value || '',
-        costCode: document.getElementById('costCode')?.value || '',
-        phoneNumber: document.getElementById('phoneNumber')?.value || '',
-        description: document.getElementById('description')?.value || '',
-        customHazard: document.getElementById('customHazard')?.value || null
-      };
+    // Update indexes for items after removal
+    function updateItemsIndexes() {
+      const tbody = document.getElementById('liftedItemsBody');
+      if (!tbody) return;
 
-      // Collect shift selections
-      formData.shiftSelections = [];
-      if (shiftTableBody) {
-        const shiftRows = shiftTableBody.querySelectorAll('tr');
+      const rows = tbody.querySelectorAll('tr');
 
-        shiftRows.forEach(row => {
-          const dateStr = row.dataset.date;
-          const checkboxes = row.querySelectorAll('.shift-checkbox:checked');
-
-          if (checkboxes.length > 0) {
-            const selectedShiftIds = Array.from(checkboxes).map(checkbox => parseInt(checkbox.dataset.shiftId));
-
-            formData.shiftSelections.push({
-              date: new Date(dateStr).toISOString(),
-              selectedShiftIds: selectedShiftIds
-            });
+      rows.forEach((row, index) => {
+        row.querySelectorAll('input').forEach(input => {
+          const name = input.getAttribute('name');
+          if (name) {
+            input.setAttribute('name', name.replace(/items\[\d+\]/, `items[${index}]`));
           }
         });
-      }
-
-      // Collect items
-      formData.items = [];
-      const itemRows = document.querySelectorAll('#liftedItemsBody tr');
-
-      itemRows.forEach(row => {
-        const itemName = row.querySelector('.item-name')?.value || '';
-        const height = parseFloat(row.querySelector('.item-height')?.value || '0');
-        const weight = parseFloat(row.querySelector('.item-weight')?.value || '0');
-        const quantity = parseInt(row.querySelector('.item-quantity')?.value || '0');
-
-        if (itemName && !isNaN(height) && !isNaN(weight) && !isNaN(quantity)) {
-          formData.items.push({
-            itemName,
-            height,
-            weight,
-            quantity
-          });
-        }
       });
-
-      // Collect hazard IDs
-      formData.hazardIds = [];
-      const hazardCheckboxes = document.querySelectorAll('.hazard-checkbox:checked');
-
-      hazardCheckboxes.forEach(checkbox => {
-        formData.hazardIds.push(parseInt(checkbox.value));
-      });
-
-      return formData;
     }
 
-    // Validate the form
+    // Validate the form before submission
     function validateForm() {
       let isValid = true;
       const shiftTableError = document.getElementById('shiftTableError');
@@ -915,54 +890,15 @@
       return isValid;
     }
 
-    // Submit booking
-    async function submitBooking(formData) {
-      console.log('Submitting booking with data:', formData);
-
-      try {
-        const response = await fetch('/api/Bookings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(formData)
-        });
-
-        if (!response.ok) {
-          // Handle error responses from the server
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to create booking');
-        }
-
-        // Show success modal
-        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-        successModal.show();
-
-        // Reset form after successful submission
-        const bookingForm = document.getElementById('craneBookingForm');
-        if (bookingForm) bookingForm.reset();
-
-        if (shiftTableContainer) shiftTableContainer.style.display = 'none';
-        initLiftedItemsTable();
-      } catch (error) {
-        console.error('Error submitting booking:', error);
-
-        // Show error modal
-        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-        const errorModalBody = document.getElementById('errorModalBody');
-        if (errorModalBody) {
-          errorModalBody.textContent = error.message || 'An error occurred while submitting your booking.';
-        }
-        errorModal.show();
-      }
-    }
-
     // Main initialization
     document.addEventListener('DOMContentLoaded', async function () {
       console.log('DOM fully loaded');
 
       // Load shift definitions
       loadShiftDefinitions();
+
+      // Load booked shifts data
+      loadBookedShifts();
 
       // Initialize items table
       initLiftedItemsTable();
@@ -983,13 +919,12 @@
         generateShiftTable();
       }, 100);
 
-      // Add event listener for the submit button
-      if (submitButton) {
-        submitButton.addEventListener('click', function () {
-          if (validateForm()) {
-            const formData = collectFormData();
-            submitBooking(formData);
-          } else {
+      // Form submission validation
+      if (bookingForm) {
+        bookingForm.addEventListener('submit', function (event) {
+          if (!validateForm()) {
+            event.preventDefault();
+
             // Scroll to the first error message
             const firstError = document.querySelector('.text-danger:not(:empty)');
             if (firstError) {
@@ -1003,6 +938,24 @@
       if (addItemBtn) {
         addItemBtn.addEventListener('click', addLiftedItemRow);
       }
-    });
+
+      // Display success modal if there's a success message
+      @if (TempData["SuccessMessage"] != null)
+        {
+          <text>
+            const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+            successModal.show();
+          </text>
+      }
+
+        // Display error modal if there's an error message
+        @if (TempData["ErrorMessage"] != null || ViewData["ErrorMessage"] != null)
+        {
+          <text>
+            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+            errorModal.show();
+          </text>
+      }
+        });
   </script>
 }

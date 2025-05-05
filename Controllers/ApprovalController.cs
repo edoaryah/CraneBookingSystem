@@ -1,5 +1,3 @@
-// [Controllers/ApprovalController.cs]
-// Controller untuk menangani halaman approval.
 using Microsoft.AspNetCore.Mvc;
 using AspnetCoreMvcFull.Services;
 using AspnetCoreMvcFull.Models;

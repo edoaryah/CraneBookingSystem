@@ -1,6 +1,4 @@
-// [ViewModels/ApprovalViewModel.cs]
-// ViewModel untuk halaman approval.
-using AspnetCoreMvcFull.DTOs;
+using AspnetCoreMvcFull.ViewModels.BookingManagement;
 
 namespace AspnetCoreMvcFull.ViewModels
 {
@@ -9,7 +7,7 @@ namespace AspnetCoreMvcFull.ViewModels
     public int BookingId { get; set; }
     public string BadgeNumber { get; set; } = string.Empty;
     public string EmployeeName { get; set; } = string.Empty;
-    public BookingDetailDto? BookingDetails { get; set; }
+    public BookingDetailViewModel? BookingDetails { get; set; }
     public string RejectReason { get; set; } = string.Empty;
   }
 }

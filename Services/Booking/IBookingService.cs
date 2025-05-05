@@ -1,25 +1,50 @@
-using AspnetCoreMvcFull.DTOs;
-using AspnetCoreMvcFull.Models; // Tambahkan ini untuk mengakses BookingStatus
+using AspnetCoreMvcFull.Models;
+using AspnetCoreMvcFull.ViewModels.BookingManagement;
 
 namespace AspnetCoreMvcFull.Services
 {
   public interface IBookingService
   {
-    Task<IEnumerable<BookingDto>> GetAllBookingsAsync();
-    Task<BookingDetailDto> GetBookingByIdAsync(int id);
-    Task<IEnumerable<BookingDto>> GetBookingsByCraneIdAsync(int craneId);
-    Task<CalendarResponseDto> GetCalendarViewAsync(DateTime startDate, DateTime endDate);
-    Task<BookingDetailDto> CreateBookingAsync(BookingCreateDto bookingDto);
-    Task<BookingDetailDto> UpdateBookingAsync(int id, BookingUpdateDto bookingDto);
+    // Dapatkan semua booking
+    Task<IEnumerable<BookingViewModel>> GetAllBookingsAsync();
+
+    // Dapatkan booking berdasarkan ID
+    Task<BookingDetailViewModel> GetBookingByIdAsync(int id);
+
+    // Dapatkan booking berdasarkan nomor dokumen
+    Task<BookingDetailViewModel> GetBookingByDocumentNumberAsync(string documentNumber);
+
+    // Dapatkan booking berdasarkan crane ID
+    Task<IEnumerable<BookingViewModel>> GetBookingsByCraneIdAsync(int craneId);
+
+    // Dapatkan data untuk tampilan kalender
+    Task<CalendarResponseViewModel> GetCalendarViewAsync(DateTime startDate, DateTime endDate);
+
+    // Buat booking baru
+    Task<BookingDetailViewModel> CreateBookingAsync(BookingCreateViewModel bookingViewModel);
+
+    // Perbarui booking yang ada
+    Task<BookingDetailViewModel> UpdateBookingAsync(int id, BookingUpdateViewModel bookingViewModel);
+
+    // Hapus booking
     Task DeleteBookingAsync(int id);
+
+    // Cek apakah booking ada berdasarkan ID
     Task<bool> BookingExistsAsync(int id);
 
-    // Method for shift conflict checking
+    // Cek apakah booking ada berdasarkan nomor dokumen
+    Task<bool> BookingExistsByDocumentNumberAsync(string documentNumber);
+
+    // Method untuk cek konflik shift
     Task<bool> IsShiftBookingConflictAsync(int craneId, DateTime date, int shiftDefinitionId, int? excludeBookingId = null);
 
+    // Method untuk merelokasi booking yang terdampak maintenance
     Task<int> RelocateAffectedBookingsAsync(int craneId, DateTime maintenanceStartTime, DateTime maintenanceEndTime);
 
-    // Metode baru untuk mendapatkan booking berdasarkan status
-    Task<IEnumerable<BookingDetailDto>> GetBookingsByStatusAsync(BookingStatus status);
+    // Method untuk mendapatkan booking berdasarkan status
+    Task<IEnumerable<BookingDetailViewModel>> GetBookingsByStatusAsync(BookingStatus status);
+
+    // Method baru untuk mendapatkan shift yang sudah dibooking berdasarkan crane dan rentang tanggal
+    Task<IEnumerable<BookedShiftViewModel>> GetBookedShiftsByCraneAndDateRangeAsync(int craneId, DateTime startDate, DateTime endDate);
   }
 }

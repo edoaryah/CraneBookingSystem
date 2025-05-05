@@ -1,9 +1,9 @@
-// [Services/Booking/BookingService.cs]
-// Modifikasi CreateBookingAsync untuk mengirim notifikasi, Implementasi GetBookingsByStatusAsync, Update mapper di GetBookingByIdAsync.
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
-using AspnetCoreMvcFull.DTOs;
 using AspnetCoreMvcFull.Models;
+using AspnetCoreMvcFull.ViewModels.BookingManagement;
+using AspnetCoreMvcFull.ViewModels.HazardManagement;
+using AspnetCoreMvcFull.Events;
 
 namespace AspnetCoreMvcFull.Services
 {
@@ -38,17 +38,18 @@ namespace AspnetCoreMvcFull.Services
       _logger = logger;
     }
 
-    public async Task<IEnumerable<BookingDto>> GetAllBookingsAsync()
+    public async Task<IEnumerable<BookingViewModel>> GetAllBookingsAsync()
     {
       var bookings = await _context.Bookings
           .Include(r => r.Crane)
           .OrderByDescending(r => r.SubmitTime)
           .ToListAsync();
 
-      return bookings.Select(r => new BookingDto
+      return bookings.Select(r => new BookingViewModel
       {
         Id = r.Id,
         BookingNumber = r.BookingNumber,
+        DocumentNumber = r.DocumentNumber,
         Name = r.Name,
         Department = r.Department,
         CraneId = r.CraneId,
@@ -64,8 +65,7 @@ namespace AspnetCoreMvcFull.Services
       }).ToList();
     }
 
-    // Update the mapping in the GetBookingByIdAsync method in Services/Booking/BookingService.cs
-    public async Task<BookingDetailDto> GetBookingByIdAsync(int id)
+    public async Task<BookingDetailViewModel> GetBookingByIdAsync(int id)
     {
       var booking = await _context.Bookings
           .Include(r => r.Crane)
@@ -81,10 +81,35 @@ namespace AspnetCoreMvcFull.Services
         throw new KeyNotFoundException($"Booking with ID {id} not found");
       }
 
-      return new BookingDetailDto
+      return MapToBookingDetailViewModel(booking);
+    }
+
+    public async Task<BookingDetailViewModel> GetBookingByDocumentNumberAsync(string documentNumber)
+    {
+      var booking = await _context.Bookings
+          .Include(r => r.Crane)
+          .Include(r => r.BookingShifts)
+            .ThenInclude(bs => bs.ShiftDefinition)
+          .Include(r => r.BookingItems)
+          .Include(r => r.BookingHazards)
+            .ThenInclude(bh => bh.Hazard)
+          .FirstOrDefaultAsync(r => r.DocumentNumber == documentNumber);
+
+      if (booking == null)
+      {
+        throw new KeyNotFoundException($"Booking with document number {documentNumber} not found");
+      }
+
+      return MapToBookingDetailViewModel(booking);
+    }
+
+    private BookingDetailViewModel MapToBookingDetailViewModel(Booking booking)
+    {
+      return new BookingDetailViewModel
       {
         Id = booking.Id,
         BookingNumber = booking.BookingNumber,
+        DocumentNumber = booking.DocumentNumber,
         Name = booking.Name,
         Department = booking.Department,
         CraneId = booking.CraneId,
@@ -127,7 +152,7 @@ namespace AspnetCoreMvcFull.Services
         LastModifiedAt = booking.LastModifiedAt,
         LastModifiedBy = booking.LastModifiedBy,
 
-        Shifts = booking.BookingShifts.Select(s => new BookingShiftDto
+        Shifts = booking.BookingShifts.Select(s => new BookingShiftViewModel
         {
           Id = s.Id,
           Date = s.Date,
@@ -136,7 +161,7 @@ namespace AspnetCoreMvcFull.Services
           StartTime = s.ShiftStartTime != default ? s.ShiftStartTime : s.ShiftDefinition?.StartTime,
           EndTime = s.ShiftEndTime != default ? s.ShiftEndTime : s.ShiftDefinition?.EndTime
         }).ToList(),
-        Items = booking.BookingItems.Select(i => new BookingItemDto
+        Items = booking.BookingItems.Select(i => new BookingItemViewModel
         {
           Id = i.Id,
           ItemName = i.ItemName,
@@ -146,7 +171,7 @@ namespace AspnetCoreMvcFull.Services
         }).ToList(),
         SelectedHazards = booking.BookingHazards
           .Where(bh => bh.Hazard != null)
-          .Select(bh => new HazardDto
+          .Select(bh => new HazardViewModel
           {
             Id = bh.Hazard!.Id,
             Name = bh.Hazard.Name
@@ -154,7 +179,7 @@ namespace AspnetCoreMvcFull.Services
       };
     }
 
-    public async Task<IEnumerable<BookingDto>> GetBookingsByCraneIdAsync(int craneId)
+    public async Task<IEnumerable<BookingViewModel>> GetBookingsByCraneIdAsync(int craneId)
     {
       if (!await _craneService.CraneExistsAsync(craneId))
       {
@@ -167,10 +192,11 @@ namespace AspnetCoreMvcFull.Services
           .OrderByDescending(r => r.SubmitTime)
           .ToListAsync();
 
-      return bookings.Select(r => new BookingDto
+      return bookings.Select(r => new BookingViewModel
       {
         Id = r.Id,
         BookingNumber = r.BookingNumber,
+        DocumentNumber = r.DocumentNumber,
         Name = r.Name,
         Department = r.Department,
         CraneId = r.CraneId,
@@ -186,7 +212,8 @@ namespace AspnetCoreMvcFull.Services
       }).ToList();
     }
 
-    public async Task<CalendarResponseDto> GetCalendarViewAsync(DateTime startDate, DateTime endDate)
+    // Perubahan pada BookingService.cs
+    public async Task<CalendarResponseViewModel> GetCalendarViewAsync(DateTime startDate, DateTime endDate)
     {
       // Gunakan langsung date tanpa konversi ke UTC
       var startDateLocal = startDate.Date;
@@ -198,33 +225,36 @@ namespace AspnetCoreMvcFull.Services
           .ToListAsync();
 
       // Siapkan response
-      var response = new CalendarResponseDto
+      var response = new CalendarResponseViewModel
       {
-        WeekRange = new WeekRangeDto
+        WeekRange = new WeekRangeViewModel
         {
           StartDate = startDateLocal.ToString("yyyy-MM-dd"),
           EndDate = endDateLocal.ToString("yyyy-MM-dd")
         },
-        Cranes = new List<CraneBookingsDto>()
+        Cranes = new List<CraneBookingsViewModel>()
       };
 
-      // Dapatkan semua booking dalam rentang tanggal
+      // Dapatkan semua booking dalam rentang tanggal dengan status PICApproved atau Done
       var bookingShifts = await _context.BookingShifts
           .Include(bs => bs.Booking)
           .ThenInclude(b => b!.Crane)
           .Include(bs => bs.ShiftDefinition)
           .Where(bs => bs.Date >= startDateLocal && bs.Date <= endDateLocal)
+          // Filter hanya booking dengan status PICApproved atau Done
+          .Where(bs => bs.Booking != null &&
+                      (bs.Booking.Status == BookingStatus.PICApproved || bs.Booking.Status == BookingStatus.Done))
           .ToListAsync();
 
       // Kelompokkan berdasarkan crane
       foreach (var crane in cranes)
       {
-        var craneDto = new CraneBookingsDto
+        var craneDto = new CraneBookingsViewModel
         {
           CraneId = crane.Code,
           Capacity = crane.Capacity,
-          Bookings = new List<BookingCalendarDto>(),
-          MaintenanceSchedules = new List<MaintenanceCalendarDto>()
+          Bookings = new List<BookingCalendarViewModel>(),
+          MaintenanceSchedules = new List<MaintenanceCalendarViewModel>()
         };
 
         // Group shifts by date and booking
@@ -238,13 +268,16 @@ namespace AspnetCoreMvcFull.Services
           // Get first shift to access booking info
           var firstShift = group.First();
 
-          var calendarBooking = new BookingCalendarDto
+          var calendarBooking = new BookingCalendarViewModel
           {
             Id = firstShift.BookingId,
             BookingNumber = firstShift.Booking!.BookingNumber,
+            DocumentNumber = firstShift.Booking!.DocumentNumber,
             Department = firstShift.Booking.Department,
             Date = group.Key.Date,
-            Shifts = group.Select(s => new ShiftBookingDto
+            // Tambahkan status booking untuk styling yang berbeda
+            Status = firstShift.Booking.Status,
+            Shifts = group.Select(s => new ShiftBookingViewModel
             {
               ShiftDefinitionId = s.ShiftDefinitionId,
               ShiftName = s.ShiftName ?? s.ShiftDefinition?.Name,
@@ -284,12 +317,12 @@ namespace AspnetCoreMvcFull.Services
           // Get first shift to access maintenance info
           var firstShift = group.First();
 
-          var calendarMaintenance = new MaintenanceCalendarDto
+          var calendarMaintenance = new MaintenanceCalendarViewModel
           {
             Id = firstShift.MaintenanceScheduleId,
             Title = firstShift.MaintenanceSchedule!.Title,
             Date = group.Key.Date,
-            Shifts = group.Select(s => new ShiftBookingDto
+            Shifts = group.Select(s => new ShiftBookingViewModel
             {
               ShiftDefinitionId = s.ShiftDefinitionId,
               ShiftName = s.ShiftName ?? s.ShiftDefinition?.Name,
@@ -305,28 +338,28 @@ namespace AspnetCoreMvcFull.Services
       return response;
     }
 
-    public async Task<BookingDetailDto> CreateBookingAsync(BookingCreateDto bookingDto)
+    public async Task<BookingDetailViewModel> CreateBookingAsync(BookingCreateViewModel bookingViewModel)
     {
       try
       {
-        _logger.LogInformation("Creating booking for crane {CraneId}", bookingDto.CraneId);
+        _logger.LogInformation("Creating booking for crane {CraneId}", bookingViewModel.CraneId);
 
         // Validate crane exists
-        if (!await _craneService.CraneExistsAsync(bookingDto.CraneId))
+        if (!await _craneService.CraneExistsAsync(bookingViewModel.CraneId))
         {
-          throw new KeyNotFoundException($"Crane with ID {bookingDto.CraneId} not found");
+          throw new KeyNotFoundException($"Crane with ID {bookingViewModel.CraneId} not found");
         }
 
         // Validate crane is available (not in maintenance)
-        var crane = await _context.Cranes.FindAsync(bookingDto.CraneId);
+        var crane = await _context.Cranes.FindAsync(bookingViewModel.CraneId);
         if (crane?.Status == CraneStatus.Maintenance)
         {
-          throw new InvalidOperationException($"Cannot reserve crane with ID {bookingDto.CraneId} because it is currently under maintenance");
+          throw new InvalidOperationException($"Cannot reserve crane with ID {bookingViewModel.CraneId} because it is currently under maintenance");
         }
 
         // Gunakan tanggal lokal tanpa konversi UTC
-        var startDate = bookingDto.StartDate.Date;
-        var endDate = bookingDto.EndDate.Date;
+        var startDate = bookingViewModel.StartDate.Date;
+        var endDate = bookingViewModel.EndDate.Date;
 
         // Validate date range
         if (startDate > endDate)
@@ -335,7 +368,7 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate shift selections
-        if (bookingDto.ShiftSelections == null || !bookingDto.ShiftSelections.Any())
+        if (bookingViewModel.ShiftSelections == null || !bookingViewModel.ShiftSelections.Any())
         {
           throw new ArgumentException("At least one shift selection is required");
         }
@@ -345,7 +378,7 @@ namespace AspnetCoreMvcFull.Services
             .Select(d => startDate.AddDays(d))
             .ToList();
 
-        var selectedDates = bookingDto.ShiftSelections
+        var selectedDates = bookingViewModel.ShiftSelections
             .Select(s => s.Date.Date)
             .ToList();
 
@@ -355,7 +388,7 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate each shift selection has at least one shift selected
-        foreach (var selection in bookingDto.ShiftSelections)
+        foreach (var selection in bookingViewModel.ShiftSelections)
         {
           if (selection.SelectedShiftIds == null || !selection.SelectedShiftIds.Any())
           {
@@ -375,7 +408,7 @@ namespace AspnetCoreMvcFull.Services
             }
 
             bool hasConflict = await _scheduleConflictService.IsBookingConflictAsync(
-                bookingDto.CraneId,
+                bookingViewModel.CraneId,
                 dateLocal,
                 shiftId);
 
@@ -388,7 +421,7 @@ namespace AspnetCoreMvcFull.Services
 
             // Periksa konflik dengan jadwal maintenance
             bool hasMaintenanceConflict = await _scheduleConflictService.IsMaintenanceConflictAsync(
-                bookingDto.CraneId,
+                bookingViewModel.CraneId,
                 dateLocal,
                 shiftId);
 
@@ -405,18 +438,19 @@ namespace AspnetCoreMvcFull.Services
         var booking = new Booking
         {
           BookingNumber = "TEMP", // Temporary value
-          Name = bookingDto.Name,
-          Department = bookingDto.Department,
-          CraneId = bookingDto.CraneId,
+          DocumentNumber = Guid.NewGuid().ToString(),
+          Name = bookingViewModel.Name,
+          Department = bookingViewModel.Department,
+          CraneId = bookingViewModel.CraneId,
           StartDate = startDate,
           EndDate = endDate,
           SubmitTime = DateTime.Now,
-          Location = bookingDto.Location,
-          ProjectSupervisor = bookingDto.ProjectSupervisor,
-          CostCode = bookingDto.CostCode,
-          PhoneNumber = bookingDto.PhoneNumber,
-          Description = bookingDto.Description,
-          CustomHazard = bookingDto.CustomHazard,
+          Location = bookingViewModel.Location,
+          ProjectSupervisor = bookingViewModel.ProjectSupervisor,
+          CostCode = bookingViewModel.CostCode,
+          PhoneNumber = bookingViewModel.PhoneNumber,
+          Description = bookingViewModel.Description,
+          CustomHazard = bookingViewModel.CustomHazard,
           Status = BookingStatus.PendingApproval
         };
 
@@ -428,7 +462,7 @@ namespace AspnetCoreMvcFull.Services
         await _context.SaveChangesAsync();
 
         // Create shift selections with historical data
-        foreach (var selection in bookingDto.ShiftSelections)
+        foreach (var selection in bookingViewModel.ShiftSelections)
         {
           var dateLocal = selection.Date.Date;
 
@@ -457,17 +491,17 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Add booking items
-        if (bookingDto.Items != null && bookingDto.Items.Any())
+        if (bookingViewModel.Items != null && bookingViewModel.Items.Any())
         {
-          foreach (var itemDto in bookingDto.Items)
+          foreach (var itemViewModel in bookingViewModel.Items)
           {
             var item = new BookingItem
             {
               BookingId = booking.Id,
-              ItemName = itemDto.ItemName,
-              Weight = itemDto.Weight,
-              Height = itemDto.Height,
-              Quantity = itemDto.Quantity
+              ItemName = itemViewModel.ItemName,
+              Weight = itemViewModel.Weight,
+              Height = itemViewModel.Height,
+              Quantity = itemViewModel.Quantity
             };
 
             _context.BookingItems.Add(item);
@@ -475,9 +509,9 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Handle predefined hazards
-        if (bookingDto.HazardIds != null && bookingDto.HazardIds.Any())
+        if (bookingViewModel.HazardIds != null && bookingViewModel.HazardIds.Any())
         {
-          foreach (var hazardId in bookingDto.HazardIds)
+          foreach (var hazardId in bookingViewModel.HazardIds)
           {
             // Validasi hazard exists
             if (await _hazardService.HazardExistsAsync(hazardId))
@@ -530,7 +564,7 @@ namespace AspnetCoreMvcFull.Services
       }
     }
 
-    public async Task<BookingDetailDto> UpdateBookingAsync(int id, BookingUpdateDto bookingDto)
+    public async Task<BookingDetailViewModel> UpdateBookingAsync(int id, BookingUpdateViewModel bookingViewModel)
     {
       try
       {
@@ -548,25 +582,25 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate crane exists if changing crane
-        if (booking.CraneId != bookingDto.CraneId &&
-            !await _craneService.CraneExistsAsync(bookingDto.CraneId))
+        if (booking.CraneId != bookingViewModel.CraneId &&
+            !await _craneService.CraneExistsAsync(bookingViewModel.CraneId))
         {
-          throw new KeyNotFoundException($"Crane with ID {bookingDto.CraneId} not found");
+          throw new KeyNotFoundException($"Crane with ID {bookingViewModel.CraneId} not found");
         }
 
         // Validate crane is available if changing crane
-        if (booking.CraneId != bookingDto.CraneId)
+        if (booking.CraneId != bookingViewModel.CraneId)
         {
-          var crane = await _context.Cranes.FindAsync(bookingDto.CraneId);
+          var crane = await _context.Cranes.FindAsync(bookingViewModel.CraneId);
           if (crane?.Status == CraneStatus.Maintenance)
           {
-            throw new InvalidOperationException($"Cannot reserve crane with ID {bookingDto.CraneId} because it is currently under maintenance");
+            throw new InvalidOperationException($"Cannot reserve crane with ID {bookingViewModel.CraneId} because it is currently under maintenance");
           }
         }
 
         // Gunakan tanggal lokal tanpa konversi UTC
-        var startDate = bookingDto.StartDate.Date;
-        var endDate = bookingDto.EndDate.Date;
+        var startDate = bookingViewModel.StartDate.Date;
+        var endDate = bookingViewModel.EndDate.Date;
 
         // Validate date range
         if (startDate > endDate)
@@ -575,7 +609,7 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate shift selections
-        if (bookingDto.ShiftSelections == null || !bookingDto.ShiftSelections.Any())
+        if (bookingViewModel.ShiftSelections == null || !bookingViewModel.ShiftSelections.Any())
         {
           throw new ArgumentException("At least one shift selection is required");
         }
@@ -585,7 +619,7 @@ namespace AspnetCoreMvcFull.Services
             .Select(d => startDate.AddDays(d))
             .ToList();
 
-        var selectedDates = bookingDto.ShiftSelections
+        var selectedDates = bookingViewModel.ShiftSelections
             .Select(s => s.Date.Date)
             .ToList();
 
@@ -595,7 +629,7 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Validate each shift selection has at least one shift selected
-        foreach (var selection in bookingDto.ShiftSelections)
+        foreach (var selection in bookingViewModel.ShiftSelections)
         {
           if (selection.SelectedShiftIds == null || !selection.SelectedShiftIds.Any())
           {
@@ -615,7 +649,7 @@ namespace AspnetCoreMvcFull.Services
             }
 
             bool hasConflict = await _scheduleConflictService.IsBookingConflictAsync(
-                bookingDto.CraneId,
+                bookingViewModel.CraneId,
                 dateLocal,
                 shiftId,
                 id);
@@ -629,7 +663,7 @@ namespace AspnetCoreMvcFull.Services
 
             // Periksa konflik dengan jadwal maintenance
             bool hasMaintenanceConflict = await _scheduleConflictService.IsMaintenanceConflictAsync(
-                bookingDto.CraneId,
+                bookingViewModel.CraneId,
                 dateLocal,
                 shiftId);
 
@@ -643,17 +677,17 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Update booking
-        booking.Name = bookingDto.Name;
-        booking.Department = bookingDto.Department;
-        booking.CraneId = bookingDto.CraneId;
+        booking.Name = bookingViewModel.Name;
+        booking.Department = bookingViewModel.Department;
+        booking.CraneId = bookingViewModel.CraneId;
         booking.StartDate = startDate;
         booking.EndDate = endDate;
-        booking.CustomHazard = bookingDto.CustomHazard;
-        booking.Location = bookingDto.Location;
-        booking.ProjectSupervisor = bookingDto.ProjectSupervisor;
-        booking.CostCode = bookingDto.CostCode;
-        booking.PhoneNumber = bookingDto.PhoneNumber;
-        booking.Description = bookingDto.Description;
+        booking.CustomHazard = bookingViewModel.CustomHazard;
+        booking.Location = bookingViewModel.Location;
+        booking.ProjectSupervisor = bookingViewModel.ProjectSupervisor;
+        booking.CostCode = bookingViewModel.CostCode;
+        booking.PhoneNumber = bookingViewModel.PhoneNumber;
+        booking.Description = bookingViewModel.Description;
         // SubmitTime is not updated
 
         // Remove existing shift selections
@@ -663,7 +697,7 @@ namespace AspnetCoreMvcFull.Services
         _context.BookingHazards.RemoveRange(booking.BookingHazards);
 
         // Create new shift selections with historical data
-        foreach (var selection in bookingDto.ShiftSelections)
+        foreach (var selection in bookingViewModel.ShiftSelections)
         {
           var dateLocal = selection.Date.Date;
 
@@ -695,17 +729,17 @@ namespace AspnetCoreMvcFull.Services
         _context.BookingItems.RemoveRange(booking.BookingItems);
 
         // Add new items
-        if (bookingDto.Items != null && bookingDto.Items.Any())
+        if (bookingViewModel.Items != null && bookingViewModel.Items.Any())
         {
-          foreach (var itemDto in bookingDto.Items)
+          foreach (var itemViewModel in bookingViewModel.Items)
           {
             var item = new BookingItem
             {
               BookingId = booking.Id,
-              ItemName = itemDto.ItemName,
-              Weight = itemDto.Weight,
-              Height = itemDto.Height,
-              Quantity = itemDto.Quantity
+              ItemName = itemViewModel.ItemName,
+              Weight = itemViewModel.Weight,
+              Height = itemViewModel.Height,
+              Quantity = itemViewModel.Quantity
             };
 
             _context.BookingItems.Add(item);
@@ -713,9 +747,9 @@ namespace AspnetCoreMvcFull.Services
         }
 
         // Handle predefined hazards
-        if (bookingDto.HazardIds != null && bookingDto.HazardIds.Any())
+        if (bookingViewModel.HazardIds != null && bookingViewModel.HazardIds.Any())
         {
-          foreach (var hazardId in bookingDto.HazardIds)
+          foreach (var hazardId in bookingViewModel.HazardIds)
           {
             // Validasi hazard exists
             if (await _hazardService.HazardExistsAsync(hazardId))
@@ -780,8 +814,7 @@ namespace AspnetCoreMvcFull.Services
       }
     }
 
-    // Services/Booking/BookingService.cs - implementasi metode baru
-    public async Task<IEnumerable<BookingDetailDto>> GetBookingsByStatusAsync(BookingStatus status)
+    public async Task<IEnumerable<BookingDetailViewModel>> GetBookingsByStatusAsync(BookingStatus status)
     {
       try
       {
@@ -791,14 +824,15 @@ namespace AspnetCoreMvcFull.Services
             .OrderByDescending(b => b.Status == BookingStatus.PICApproved ? b.ApprovedAtByPIC : b.SubmitTime)
             .ToListAsync();
 
-        var result = new List<BookingDetailDto>();
+        var result = new List<BookingDetailViewModel>();
 
         foreach (var booking in bookings)
         {
-          result.Add(new BookingDetailDto
+          result.Add(new BookingDetailViewModel
           {
             Id = booking.Id,
             BookingNumber = booking.BookingNumber,
+            DocumentNumber = booking.DocumentNumber,
             Name = booking.Name,
             Department = booking.Department,
             CraneId = booking.CraneId,
@@ -811,7 +845,7 @@ namespace AspnetCoreMvcFull.Services
             ManagerApprovalTime = booking.ManagerApprovalTime,
             ApprovedByPIC = booking.ApprovedByPIC,
             ApprovedAtByPIC = booking.ApprovedAtByPIC
-            // Properti lain sesuai kebutuhan
+            // Other properties as needed
           });
         }
 
@@ -1018,6 +1052,28 @@ namespace AspnetCoreMvcFull.Services
       return relocatedCount;
     }
 
+    public async Task<IEnumerable<BookedShiftViewModel>> GetBookedShiftsByCraneAndDateRangeAsync(
+    int craneId, DateTime startDate, DateTime endDate)
+    {
+      var bookingShifts = await _context.BookingShifts
+          .Include(bs => bs.Booking)
+          .Where(bs =>
+              bs.Booking != null &&
+              bs.Booking.Status != BookingStatus.Cancelled &&
+              bs.Booking.CraneId == craneId &&
+              bs.Date.Date >= startDate.Date &&
+              bs.Date.Date <= endDate.Date)
+          .Select(bs => new BookedShiftViewModel
+          {
+            CraneId = bs.Booking.CraneId,
+            Date = bs.Date,
+            ShiftDefinitionId = bs.ShiftDefinitionId
+          })
+          .ToListAsync();
+
+      return bookingShifts;
+    }
+
     public async Task<bool> IsShiftBookingConflictAsync(int craneId, DateTime date, int shiftDefinitionId, int? excludeBookingId = null)
     {
       return await _scheduleConflictService.IsBookingConflictAsync(craneId, date, shiftDefinitionId, excludeBookingId);
@@ -1026,6 +1082,11 @@ namespace AspnetCoreMvcFull.Services
     public async Task<bool> BookingExistsAsync(int id)
     {
       return await _context.Bookings.AnyAsync(r => r.Id == id);
+    }
+
+    public async Task<bool> BookingExistsByDocumentNumberAsync(string documentNumber)
+    {
+      return await _context.Bookings.AnyAsync(r => r.DocumentNumber == documentNumber);
     }
   }
 }
