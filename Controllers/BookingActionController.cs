@@ -93,26 +93,27 @@ namespace AspnetCoreMvcFull.Controllers
       }
     }
 
-    // GET: /BookingAction/Cancel/5
+    // GET: /BookingAction/Cancel
     [HttpGet]
-    public async Task<IActionResult> Cancel(int id)
+    public async Task<IActionResult> Cancel(string documentNumber)
     {
       try
       {
-        var booking = await _bookingService.GetBookingByIdAsync(id);
+        var booking = await _bookingService.GetBookingByDocumentNumberAsync(documentNumber);
 
         // Verify booking can be cancelled
         if (booking.Status == BookingStatus.Done || booking.Status == BookingStatus.Cancelled)
         {
           TempData["ErrorMessage"] = "Booking tidak dapat dibatalkan karena statusnya saat ini.";
-          return RedirectToAction("Details", "BookingHistory", new { id = id });
+          return RedirectToAction("Details", "BookingHistory", new { documentNumber = documentNumber });
         }
 
         // Prepare cancellation view model
         var viewModel = new BookingCancellationViewModel
         {
-          BookingId = id,
-          BookingNumber = booking.BookingNumber
+          BookingId = booking.Id,
+          BookingNumber = booking.BookingNumber,
+          DocumentNumber = documentNumber
         };
 
         return View(viewModel);
@@ -123,7 +124,7 @@ namespace AspnetCoreMvcFull.Controllers
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Error loading cancellation page for booking ID: {Id}", id);
+        _logger.LogError(ex, "Error loading cancellation page for booking with document number: {DocumentNumber}", documentNumber);
         TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat halaman pembatalan.";
         return RedirectToAction("Index", "BookingHistory");
       }
@@ -163,7 +164,7 @@ namespace AspnetCoreMvcFull.Controllers
         if (result)
         {
           TempData["SuccessMessage"] = "Booking berhasil dibatalkan.";
-          return RedirectToAction("Details", "BookingHistory", new { id = model.BookingId });
+          return RedirectToAction("Details", "Booking", new { id = model.BookingId });
         }
         else
         {

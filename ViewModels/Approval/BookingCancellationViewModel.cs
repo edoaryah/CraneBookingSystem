@@ -7,6 +7,8 @@ namespace AspnetCoreMvcFull.ViewModels
   {
     public int BookingId { get; set; }
 
+    public string DocumentNumber { get; set; } = string.Empty;
+
     public string BookingNumber { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Alasan pembatalan harus diisi")]

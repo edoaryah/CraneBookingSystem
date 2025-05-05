@@ -290,7 +290,7 @@
 
                     @if (Model.Status != BookingStatus.Cancelled && Model.Status != BookingStatus.Done)
                     {
-                      <a href="@Url.Action("Cancel", "Booking", new { documentNumber = Model.DocumentNumber })" class="btn btn-danger me-2">
+                      <a href="@Url.Action("Cancel", "BookingAction", new { documentNumber = Model.DocumentNumber })" class="btn btn-danger me-2">
                         <i class="bx bx-x-circle me-1"></i> Batalkan Booking
                       </a>
                     }
@@ -321,7 +321,7 @@
 
                     @if (Model.Status != BookingStatus.Cancelled && Model.Status != BookingStatus.Done)
                     {
-                      <a href="@Url.Action("Cancel", "Booking", new { documentNumber = Model.DocumentNumber })" class="btn btn-danger me-2">
+                      <a href="@Url.Action("Cancel", "BookingAction", new { documentNumber = Model.DocumentNumber })" class="btn btn-danger me-2">
                         <i class="bx bx-x-circle me-1"></i> Batalkan Booking
                       </a>
                     }
@@ -711,7 +711,7 @@
   <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
-        <form method="post" action="@Url.Action("ApproveByPic", "Booking")">
+        <form method="post" action="@Url.Action("ApproveByPic", "Approval")">
           @Html.AntiForgeryToken()
           <input type="hidden" name="bookingId" value="@(Model?.Id ?? 0)" />
           <input type="hidden" name="picName" value="@(User.Identity?.Name ?? "")" />
@@ -735,7 +735,7 @@
   <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
-        <form method="post" action="@Url.Action("RejectByPic", "Booking")">
+        <form method="post" action="@Url.Action("RejectByPic", "Approval")">
           @Html.AntiForgeryToken()
           <input type="hidden" name="bookingId" value="@(Model?.Id ?? 0)" />
           <input type="hidden" name="picName" value="@(User.Identity?.Name ?? "")" />
@@ -762,7 +762,7 @@
   <div class="modal fade" id="markDoneModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
-        <form method="post" action="@Url.Action("MarkAsDone", "Booking")">
+        <form method="post" action="@Url.Action("MarkAsDone", "Approval")">
           @Html.AntiForgeryToken()
           <input type="hidden" name="bookingId" value="@(Model?.Id ?? 0)" />
           <input type="hidden" name="picName" value="@(User.Identity?.Name ?? "")" />

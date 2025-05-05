@@ -39,7 +39,7 @@
 
           <div class="mb-3">
             <button type="submit" class="btn btn-danger me-2">Batalkan Booking</button>
-            <a asp-controller="BookingHistory" asp-action="Details" asp-route-id="@Model.BookingId"
+            <a asp-controller="Booking" asp-action="Details" asp-route-documentNumber="@Model.DocumentNumber"
               class="btn btn-outline-secondary">Kembali</a>
           </div>
         </form>
