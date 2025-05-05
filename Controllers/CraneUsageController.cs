@@ -1,4 +1,4 @@
-// Update file Controllers/CraneUsageController.cs
+// Controllers/CraneUsageController.cs
 
 using Microsoft.AspNetCore.Mvc;
 using AspnetCoreMvcFull.Filters;
@@ -29,16 +29,28 @@ namespace AspnetCoreMvcFull.Controllers
       _logger = logger;
     }
 
-    // GET: /CraneUsage/Index/{id}
-    public async Task<IActionResult> Index(int id)
+    // GET: /CraneUsage/Index?documentNumber=xyz
+    public async Task<IActionResult> Index(string documentNumber)
     {
       try
       {
-        // Validate booking exists
-        var booking = await _bookingService.GetBookingByIdAsync(id);
+        // Logging untuk debugging
+        _logger.LogInformation("Trying to access CraneUsage/Index with documentNumber: {documentNumber}", documentNumber);
+
+        if (string.IsNullOrEmpty(documentNumber))
+        {
+          _logger.LogWarning("Document number is null or empty");
+          return NotFound("Booking document number is required");
+        }
+
+        // Dapatkan booking berdasarkan document number
+        var booking = await _bookingService.GetBookingByDocumentNumberAsync(documentNumber);
+
+        // Ambil ID booking dari detail yang didapat
+        int bookingId = booking.Id;
 
         // Get usage summary
-        var summary = await _usageService.GetUsageSummaryByBookingIdAsync(id);
+        var summary = await _usageService.GetUsageSummaryByBookingIdAsync(bookingId);
 
         // Get available subcategories for all categories for dropdowns
         var subcategories = new Dictionary<UsageCategory, IEnumerable<UsageSubcategoryViewModel>>();
@@ -59,13 +71,13 @@ namespace AspnetCoreMvcFull.Controllers
       }
       catch (KeyNotFoundException ex)
       {
-        _logger.LogWarning("Booking not found: {Message}", ex.Message);
-        return NotFound();
+        _logger.LogWarning(ex, "Booking dengan document number {documentNumber} tidak ditemukan", documentNumber);
+        return NotFound($"Booking dengan document number {documentNumber} tidak ditemukan");
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Error loading crane usage page for booking {BookingId}", id);
-        ModelState.AddModelError("", $"Error loading crane usage data: {ex.Message}");
+        _logger.LogError(ex, "Terjadi kesalahan saat memuat halaman usage untuk booking dengan document number {documentNumber}", documentNumber);
+        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat data crane usage. Silakan coba lagi.";
         return View(new CraneUsageIndexViewModel());
       }
     }
@@ -159,14 +171,18 @@ namespace AspnetCoreMvcFull.Controllers
           string createdBy = GetCurrentUsername();
           var result = await _usageService.CreateUsageRecordAsync(viewModel, createdBy);
 
+          // Dapatkan document number untuk redirect
+          var booking = await _bookingService.GetBookingByIdAsync(viewModel.BookingId);
+          string documentNumber = booking.DocumentNumber;
+
           // Jika di-call dengan AJAX, return JSON
           if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
           {
-            return Json(new { success = true, record = result });
+            return Json(new { success = true, record = result, documentNumber = documentNumber });
           }
 
-          // Jika form submit biasa, redirect ke Index
-          return RedirectToAction(nameof(Index), new { id = viewModel.BookingId });
+          // Jika form submit biasa, redirect ke Index dengan document number
+          return RedirectToAction(nameof(Index), new { documentNumber });
         }
 
         // Jika invalid dan AJAX
@@ -176,7 +192,8 @@ namespace AspnetCoreMvcFull.Controllers
         }
 
         // Jika invalid dan form submit biasa, perlu load ulang data
-        var booking = await _bookingService.GetBookingByIdAsync(viewModel.BookingId);
+        // Dapatkan document number untuk reload halaman
+        var bookingDetail = await _bookingService.GetBookingByIdAsync(viewModel.BookingId);
         var summary = await _usageService.GetUsageSummaryByBookingIdAsync(viewModel.BookingId);
 
         var subcategories = new Dictionary<UsageCategory, IEnumerable<UsageSubcategoryViewModel>>();
@@ -187,7 +204,7 @@ namespace AspnetCoreMvcFull.Controllers
 
         return View("Index", new CraneUsageIndexViewModel
         {
-          Booking = booking,
+          Booking = bookingDetail,
           UsageSummary = summary,
           Subcategories = subcategories
         });
@@ -234,15 +251,16 @@ namespace AspnetCoreMvcFull.Controllers
           string updatedBy = GetCurrentUsername();
           var result = await _usageService.UpdateUsageRecordAsync(id, viewModel, updatedBy);
 
-          // Get booking ID for redirect
-          var bookingId = result.BookingId;
+          // Get booking document number for redirect
+          var booking = await _bookingService.GetBookingByIdAsync(result.BookingId);
+          string documentNumber = booking.DocumentNumber;
 
           if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
           {
-            return Json(new { success = true, record = result });
+            return Json(new { success = true, record = result, documentNumber = documentNumber });
           }
 
-          return RedirectToAction(nameof(Index), new { id = bookingId });
+          return RedirectToAction(nameof(Index), new { documentNumber });
         }
 
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -250,9 +268,10 @@ namespace AspnetCoreMvcFull.Controllers
           return BadRequest(new { success = false, errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
         }
 
-        // Untuk non-AJAX, kita perlu tahu bookingId untuk redirect atau re-render view
+        // Untuk non-AJAX, kita perlu tahu document number untuk redirect atau re-render view
         var record = await _usageService.GetUsageRecordByIdAsync(id);
-        return RedirectToAction(nameof(Index), new { id = record.BookingId });
+        var bookingForRedirect = await _bookingService.GetBookingByIdAsync(record.BookingId);
+        return RedirectToAction(nameof(Index), new { documentNumber = bookingForRedirect.DocumentNumber });
       }
       catch (Exception ex)
       {
@@ -265,9 +284,10 @@ namespace AspnetCoreMvcFull.Controllers
 
         ModelState.AddModelError("", $"Error updating record: {ex.Message}");
 
-        // Get booking ID for redirect
+        // Get booking document number for redirect
         var record = await _usageService.GetUsageRecordByIdAsync(id);
-        return RedirectToAction(nameof(Index), new { id = record.BookingId });
+        var booking = await _bookingService.GetBookingByIdAsync(record.BookingId);
+        return RedirectToAction(nameof(Index), new { documentNumber = booking.DocumentNumber });
       }
     }
 
@@ -278,18 +298,19 @@ namespace AspnetCoreMvcFull.Controllers
     {
       try
       {
-        // Get booking ID before deleting for redirect
+        // Get booking document number before deleting for redirect
         var record = await _usageService.GetUsageRecordByIdAsync(id);
-        var bookingId = record.BookingId;
+        var booking = await _bookingService.GetBookingByIdAsync(record.BookingId);
+        string documentNumber = booking.DocumentNumber;
 
         await _usageService.DeleteUsageRecordAsync(id);
 
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
-          return Json(new { success = true });
+          return Json(new { success = true, documentNumber = documentNumber });
         }
 
-        return RedirectToAction(nameof(Index), new { id = bookingId });
+        return RedirectToAction(nameof(Index), new { documentNumber });
       }
       catch (Exception ex)
       {
@@ -311,7 +332,7 @@ namespace AspnetCoreMvcFull.Controllers
     }
   }
 
-  // Add these classes in the same file or create separate files
+  // ViewModel classes
 
   // ViewModel for Index page
   public class CraneUsageIndexViewModel
