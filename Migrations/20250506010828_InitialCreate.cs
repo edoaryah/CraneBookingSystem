@@ -9,17 +9,99 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AspnetCoreMvcFull.Migrations
 {
     /// <inheritdoc />
-    public partial class RefactoredBooking1 : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "Cranes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Code = table.Column<string>(type: "text", nullable: false),
+                    Capacity = table.Column<int>(type: "integer", nullable: false),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    Ownership = table.Column<string>(type: "text", nullable: false),
+                    ImagePath = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Cranes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Hazards",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Hazards", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ShiftDefinitions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    StartTime = table.Column<TimeSpan>(type: "interval", nullable: false),
+                    EndTime = table.Column<TimeSpan>(type: "interval", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ShiftDefinitions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UsageSubcategories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Category = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UsageSubcategories", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserRoles",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    LdapUser = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    RoleName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Notes = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserRoles", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Bookings",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    DocumentNumber = table.Column<string>(type: "character varying(36)", maxLength: 36, nullable: false),
                     BookingNumber = table.Column<string>(type: "text", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     Department = table.Column<string>(type: "text", nullable: false),
@@ -62,16 +144,27 @@ namespace AspnetCoreMvcFull.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Hazards",
+                name: "Breakdowns",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
+                    CraneId = table.Column<int>(type: "integer", nullable: false),
+                    UrgentStartTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UrgentEndTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ActualUrgentEndTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    HangfireJobId = table.Column<string>(type: "text", nullable: true),
+                    Reasons = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Hazards", x => x.Id);
+                    table.PrimaryKey("PK_Breakdowns", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Breakdowns_Cranes_CraneId",
+                        column: x => x.CraneId,
+                        principalTable: "Cranes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -80,6 +173,7 @@ namespace AspnetCoreMvcFull.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    DocumentNumber = table.Column<string>(type: "character varying(36)", maxLength: 36, nullable: false),
                     CraneId = table.Column<int>(type: "integer", nullable: false),
                     Title = table.Column<string>(type: "text", nullable: false),
                     StartDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
@@ -95,46 +189,6 @@ namespace AspnetCoreMvcFull.Migrations
                         name: "FK_MaintenanceSchedules_Cranes_CraneId",
                         column: x => x.CraneId,
                         principalTable: "Cranes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ShiftDefinitions",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    StartTime = table.Column<TimeSpan>(type: "interval", nullable: false),
-                    EndTime = table.Column<TimeSpan>(type: "interval", nullable: false),
-                    Category = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ShiftDefinitions", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "BookingItems",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    BookingId = table.Column<int>(type: "integer", nullable: false),
-                    ItemName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Weight = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
-                    Height = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
-                    Quantity = table.Column<int>(type: "integer", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_BookingItems", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_BookingItems_Bookings_BookingId",
-                        column: x => x.BookingId,
-                        principalTable: "Bookings",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -163,6 +217,29 @@ namespace AspnetCoreMvcFull.Migrations
                         principalTable: "Hazards",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BookingItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    BookingId = table.Column<int>(type: "integer", nullable: false),
+                    ItemName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Weight = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    Height = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    Quantity = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BookingItems", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_BookingItems_Bookings_BookingId",
+                        column: x => x.BookingId,
+                        principalTable: "Bookings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -196,6 +273,34 @@ namespace AspnetCoreMvcFull.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "CraneUsageRecords",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    BookingId = table.Column<int>(type: "integer", nullable: false),
+                    Date = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    Category = table.Column<string>(type: "text", nullable: false),
+                    SubcategoryId = table.Column<int>(type: "integer", nullable: false),
+                    StartTime = table.Column<TimeSpan>(type: "interval", nullable: false),
+                    EndTime = table.Column<TimeSpan>(type: "interval", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CraneUsageRecords", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CraneUsageRecords_Bookings_BookingId",
+                        column: x => x.BookingId,
+                        principalTable: "Bookings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "MaintenanceScheduleShifts",
                 columns: table => new
                 {
@@ -226,6 +331,19 @@ namespace AspnetCoreMvcFull.Migrations
                 });
 
             migrationBuilder.InsertData(
+                table: "Cranes",
+                columns: new[] { "Id", "Capacity", "Code", "ImagePath", "Ownership", "Status" },
+                values: new object[,]
+                {
+                    { 1, 250, "LC008", null, "KPC", "Available" },
+                    { 2, 150, "LC009", null, "KPC", "Available" },
+                    { 3, 100, "LC010", null, "KPC", "Available" },
+                    { 4, 150, "LC011", null, "KPC", "Available" },
+                    { 5, 35, "LC012", null, "KPC", "Available" },
+                    { 6, 15, "LC013", null, "KPC", "Available" }
+                });
+
+            migrationBuilder.InsertData(
                 table: "Hazards",
                 columns: new[] { "Id", "Name" },
                 values: new object[,]
@@ -239,13 +357,47 @@ namespace AspnetCoreMvcFull.Migrations
 
             migrationBuilder.InsertData(
                 table: "ShiftDefinitions",
-                columns: new[] { "Id", "Category", "EndTime", "IsActive", "Name", "StartTime" },
+                columns: new[] { "Id", "EndTime", "IsActive", "Name", "StartTime" },
                 values: new object[,]
                 {
-                    { 1, "Day Shift", new TimeSpan(0, 12, 0, 0, 0), true, "Pagi (06:00-12:00)", new TimeSpan(0, 6, 0, 0, 0) },
-                    { 2, "Day Shift", new TimeSpan(0, 18, 0, 0, 0), true, "Siang (12:00-18:00)", new TimeSpan(0, 12, 0, 0, 0) },
-                    { 3, "Night Shift", new TimeSpan(0, 0, 0, 0, 0), true, "Sore (18:00-00:00)", new TimeSpan(0, 18, 0, 0, 0) },
-                    { 4, "Night Shift", new TimeSpan(0, 6, 0, 0, 0), true, "Malam (00:00-06:00)", new TimeSpan(0, 0, 0, 0, 0) }
+                    { 1, new TimeSpan(0, 15, 0, 0, 0), true, "Shift 1", new TimeSpan(0, 7, 0, 0, 0) },
+                    { 2, new TimeSpan(0, 23, 0, 0, 0), true, "Shift 2", new TimeSpan(0, 15, 0, 0, 0) },
+                    { 3, new TimeSpan(0, 7, 0, 0, 0), true, "Shift 3", new TimeSpan(0, 23, 0, 0, 0) }
+                });
+
+            migrationBuilder.InsertData(
+                table: "UsageSubcategories",
+                columns: new[] { "Id", "Category", "Description", "IsActive", "Name" },
+                values: new object[,]
+                {
+                    { 1, "Operating", "Crane used for production lifting operations", true, "Production Lifting" },
+                    { 2, "Operating", "Crane used for equipment installation", true, "Equipment Installation" },
+                    { 3, "Operating", "Crane used for general material handling", true, "Material Handling" },
+                    { 4, "Delay", "Delay due to bad weather conditions", true, "Weather" },
+                    { 5, "Delay", "Delay due to planning or coordination issues", true, "Planning" },
+                    { 6, "Delay", "Scheduled operator break time", true, "Operator Break" },
+                    { 7, "Delay", "Delay for refueling operations", true, "Refueling" },
+                    { 8, "Standby", "Crane on standby at work site", true, "On-site Standby" },
+                    { 9, "Standby", "Crane available but not assigned any tasks", true, "No Work Assignment" },
+                    { 10, "Standby", "Planned standby period", true, "Scheduled Standby" },
+                    { 11, "Service", "Regular scheduled maintenance", true, "Scheduled Maintenance" },
+                    { 12, "Service", "Safety or regulatory inspection", true, "Inspection" },
+                    { 13, "Service", "Planned replacement of components", true, "Component Replacement" },
+                    { 14, "Service", "Regular lubrication service", true, "Lubrication" },
+                    { 15, "Breakdown", "Breakdown due to mechanical problems", true, "Mechanical Failure" },
+                    { 16, "Breakdown", "Breakdown due to electrical problems", true, "Electrical Failure" },
+                    { 17, "Breakdown", "Breakdown due to hydraulic system problems", true, "Hydraulic Failure" },
+                    { 18, "Breakdown", "Breakdown due to control system issues", true, "Control System Failure" },
+                    { 19, "Breakdown", "Breakdown due to accident or incident", true, "Accident" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "UserRoles",
+                columns: new[] { "Id", "CreatedAt", "CreatedBy", "LdapUser", "Notes", "RoleName", "UpdatedAt", "UpdatedBy" },
+                values: new object[,]
+                {
+                    { 1, new DateTime(2023, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "system", "PIC1", "Default admin user created by seeder", "admin", null, null },
+                    { 2, new DateTime(2023, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "system", "PIC1", "Default admin user created by seeder", "pic", null, null }
                 });
 
             migrationBuilder.CreateIndex(
@@ -279,6 +431,16 @@ namespace AspnetCoreMvcFull.Migrations
                 column: "ShiftDefinitionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Breakdowns_CraneId",
+                table: "Breakdowns",
+                column: "CraneId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CraneUsageRecords_BookingId",
+                table: "CraneUsageRecords",
+                column: "BookingId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_MaintenanceSchedules_CraneId",
                 table: "MaintenanceSchedules",
                 column: "CraneId");
@@ -292,6 +454,12 @@ namespace AspnetCoreMvcFull.Migrations
                 name: "IX_MaintenanceScheduleShifts_ShiftDefinitionId",
                 table: "MaintenanceScheduleShifts",
                 column: "ShiftDefinitionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserRoles_LdapUser_RoleName",
+                table: "UserRoles",
+                columns: new[] { "LdapUser", "RoleName" },
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -307,7 +475,19 @@ namespace AspnetCoreMvcFull.Migrations
                 name: "BookingShifts");
 
             migrationBuilder.DropTable(
+                name: "Breakdowns");
+
+            migrationBuilder.DropTable(
+                name: "CraneUsageRecords");
+
+            migrationBuilder.DropTable(
                 name: "MaintenanceScheduleShifts");
+
+            migrationBuilder.DropTable(
+                name: "UsageSubcategories");
+
+            migrationBuilder.DropTable(
+                name: "UserRoles");
 
             migrationBuilder.DropTable(
                 name: "Hazards");
@@ -320,6 +500,9 @@ namespace AspnetCoreMvcFull.Migrations
 
             migrationBuilder.DropTable(
                 name: "ShiftDefinitions");
+
+            migrationBuilder.DropTable(
+                name: "Cranes");
         }
     }
 }

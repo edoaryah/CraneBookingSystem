@@ -153,6 +153,7 @@ namespace AspnetCoreMvcFull.Data
         entity.HasIndex(e => new { e.LdapUser, e.RoleName }).IsUnique();
       });
 
+      CraneSeeder.Seed(modelBuilder);
       RoleSeeder.Seed(modelBuilder);
       HazardSeeder.Seed(modelBuilder);
       ShiftDefinitionSeeder.Seed(modelBuilder);

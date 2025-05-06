@@ -295,6 +295,56 @@ namespace AspnetCoreMvcFull.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Cranes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Capacity = 250,
+                            Code = "LC008",
+                            Ownership = "KPC",
+                            Status = "Available"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Capacity = 150,
+                            Code = "LC009",
+                            Ownership = "KPC",
+                            Status = "Available"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Capacity = 100,
+                            Code = "LC010",
+                            Ownership = "KPC",
+                            Status = "Available"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Capacity = 150,
+                            Code = "LC011",
+                            Ownership = "KPC",
+                            Status = "Available"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Capacity = 35,
+                            Code = "LC012",
+                            Ownership = "KPC",
+                            Status = "Available"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Capacity = 15,
+                            Code = "LC013",
+                            Ownership = "KPC",
+                            Status = "Available"
+                        });
                 });
 
             modelBuilder.Entity("AspnetCoreMvcFull.Models.CraneUsageRecord", b =>
@@ -568,7 +618,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Id = 1,
                             EndTime = new TimeSpan(0, 15, 0, 0, 0),
                             IsActive = true,
-                            Name = "Morning Shift",
+                            Name = "Shift 1",
                             StartTime = new TimeSpan(0, 7, 0, 0, 0)
                         },
                         new
@@ -576,7 +626,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Id = 2,
                             EndTime = new TimeSpan(0, 23, 0, 0, 0),
                             IsActive = true,
-                            Name = "Evening Shift",
+                            Name = "Shift 2",
                             StartTime = new TimeSpan(0, 15, 0, 0, 0)
                         },
                         new
@@ -584,24 +634,8 @@ namespace AspnetCoreMvcFull.Migrations
                             Id = 3,
                             EndTime = new TimeSpan(0, 7, 0, 0, 0),
                             IsActive = true,
-                            Name = "Night Shift",
+                            Name = "Shift 3",
                             StartTime = new TimeSpan(0, 23, 0, 0, 0)
-                        },
-                        new
-                        {
-                            Id = 4,
-                            EndTime = new TimeSpan(0, 11, 0, 0, 0),
-                            IsActive = true,
-                            Name = "First Half Day",
-                            StartTime = new TimeSpan(0, 7, 0, 0, 0)
-                        },
-                        new
-                        {
-                            Id = 5,
-                            EndTime = new TimeSpan(0, 17, 0, 0, 0),
-                            IsActive = true,
-                            Name = "Second Half Day",
-                            StartTime = new TimeSpan(0, 13, 0, 0, 0)
                         });
                 });
 
