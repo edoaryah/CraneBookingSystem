@@ -23,14 +23,14 @@ namespace AspnetCoreMvcFull.Data.Seeders
             Id = 2,
             Name = "Shift 2",
             StartTime = new TimeSpan(15, 0, 0), // 03:00 PM
-            EndTime = new TimeSpan(23, 0, 0),   // 11:00 PM
+            EndTime = new TimeSpan(0, 0, 0),   // 11:00 PM
             IsActive = true
           },
           new ShiftDefinition
           {
             Id = 3,
             Name = "Shift 3",
-            StartTime = new TimeSpan(23, 0, 0), // 11:00 PM
+            StartTime = new TimeSpan(0, 0, 0), // 11:00 PM
             EndTime = new TimeSpan(7, 0, 0),    // 07:00 AM
             IsActive = true
           }
