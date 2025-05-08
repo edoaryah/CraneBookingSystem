@@ -1,14 +1,13 @@
 <!-- Views/CraneUsage/Index.cshtml -->
 @model AspnetCoreMvcFull.ViewModels.CraneUsage.CraneUsageListViewModel
-
 @{
-  ViewData["Title"] = "Catatan Penggunaan Crane";
+  ViewData["Title"] = "Daftar Penggunaan Crane";
   Layout = "_ContentNavbarLayout";
 }
 
 <div class="container-fluid">
-  <h1 class="mt-4">Catatan Penggunaan Crane</h1>
-  <p class="lead">Daftar catatan penggunaan crane</p>
+  <h1 class="mt-4">Daftar Penggunaan Crane</h1>
+  <p class="lead">Daftar semua penggunaan crane yang telah dicatat</p>
 
   @if (TempData["SuccessMessage"] != null)
   {
@@ -76,8 +75,8 @@
         Daftar Penggunaan Crane
       </div>
       <div>
-        <a asp-action="Create" class="btn btn-success">
-          <i class="fas fa-plus me-1"></i> Tambah Baru
+        <a asp-action="Form" class="btn btn-success">
+          <i class="fas fa-plus me-1"></i> Input Penggunaan
         </a>
         <a asp-action="Visualization" class="btn btn-info text-white ms-2">
           <i class="fas fa-chart-bar me-1"></i> Visualisasi
@@ -90,13 +89,13 @@
           <thead class="table-light">
             <tr>
               <th>Crane</th>
-              <th>Waktu Mulai</th>
-              <th>Waktu Selesai</th>
+              <th>Tanggal</th>
+              <th>Jam</th>
               <th>Kategori</th>
               <th>Subkategori</th>
               <th>Operator</th>
               <th>Booking/Maintenance</th>
-              <th>Actions</th>
+              <th>Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -106,8 +105,8 @@
               {
                 <tr>
                   <td>@item.CraneName</td>
-                  <td>@item.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
-                  <td>@item.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                  <td>@(item.Date.HasValue ? item.Date.Value.ToString("dd/MM/yyyy") : "")</td>
+                  <td>@item.StartTime.ToString(@"hh\:mm") - @item.EndTime.ToString(@"hh\:mm")</td>
                   <td>
                     <span class="badge" style="background-color: @GetCategoryColor(item.Category)">
                       @item.CategoryName
@@ -127,14 +126,13 @@
                   </td>
                   <td>
                     <div class="btn-group">
-                      <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-primary">
-                        <i class="fas fa-info-circle"></i>
+                      <a asp-action="Visualization" asp-route-craneId="@item.CraneId"
+                        asp-route-date="@(item.Date?.ToString("yyyy-MM-dd"))" class="btn btn-sm btn-primary">
+                        <i class="fas fa-chart-bar"></i>
                       </a>
-                      <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning text-white">
+                      <a asp-action="Form" asp-route-craneId="@item.CraneId"
+                        asp-route-date="@(item.Date?.ToString("yyyy-MM-dd"))" class="btn btn-sm btn-warning text-white">
                         <i class="fas fa-edit"></i>
-                      </a>
-                      <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">
-                        <i class="fas fa-trash"></i>
                       </a>
                     </div>
                   </td>
@@ -173,12 +171,12 @@
   <script>
     $(document).ready(function () {
       $('#usageTable').DataTable({
-              @* language: {
+        language: {
           url: '/lib/datatables/Indonesian.json'
-        }, *@
-        order: [[1, 'desc']], // Sort by start time descending
+        },
+        order: [[1, 'desc'], [2, 'asc']], // Sort by date desc, then time asc
         responsive: true
-            });
-          });
+      });
+    });
   </script>
 }

@@ -1,9 +1,9 @@
+// Data/AppDbContext.cs
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Models.Auth;
 using AspnetCoreMvcFull.Models.Role;
 using AspnetCoreMvcFull.Data.Seeders;
 using AspnetCoreMvcFull.Models;
-
 
 namespace AspnetCoreMvcFull.Data
 {
@@ -37,8 +37,8 @@ namespace AspnetCoreMvcFull.Data
 
     // crane usage records
     public DbSet<UsageSubcategory> UsageSubcategories { get; set; }
-    // Tambahkan di class AppDbContext
     public DbSet<CraneUsageRecord> CraneUsageRecords { get; set; }
+    public DbSet<CraneUsageEntry> CraneUsageEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,12 +55,12 @@ namespace AspnetCoreMvcFull.Data
           .HasConversion<string>();
 
       // Configure Enum conversions for UsageCategory
-      modelBuilder.Entity<CraneUsageRecord>()
-          .Property(r => r.Category)
-          .HasConversion<string>();
-
       modelBuilder.Entity<UsageSubcategory>()
           .Property(s => s.Category)
+          .HasConversion<string>();
+
+      modelBuilder.Entity<CraneUsageEntry>()
+          .Property(e => e.Category)
           .HasConversion<string>();
 
       // Relasi Crane dan Breakdown
@@ -132,35 +132,6 @@ namespace AspnetCoreMvcFull.Data
           .HasForeignKey(mss => mss.ShiftDefinitionId)
           .OnDelete(DeleteBehavior.Restrict);
 
-      // Tambahkan di OnModelCreating di AppDbContext
-      // Relasi CraneUsageRecord dan Crane
-      modelBuilder.Entity<CraneUsageRecord>()
-          .HasOne(u => u.Crane)
-          .WithMany()
-          .HasForeignKey(u => u.CraneId)
-          .OnDelete(DeleteBehavior.Cascade);
-
-      // Relasi CraneUsageRecord dan Booking
-      modelBuilder.Entity<CraneUsageRecord>()
-          .HasOne(u => u.Booking)
-          .WithMany()
-          .HasForeignKey(u => u.BookingId)
-          .OnDelete(DeleteBehavior.SetNull);
-
-      // Relasi CraneUsageRecord dan MaintenanceSchedule
-      modelBuilder.Entity<CraneUsageRecord>()
-          .HasOne(u => u.MaintenanceSchedule)
-          .WithMany()
-          .HasForeignKey(u => u.MaintenanceScheduleId)
-          .OnDelete(DeleteBehavior.SetNull);
-
-      // Relasi CraneUsageRecord dan UsageSubcategory
-      modelBuilder.Entity<CraneUsageRecord>()
-          .HasOne(u => u.UsageSubcategory)
-          .WithMany()
-          .HasForeignKey(u => u.UsageSubcategoryId)
-          .OnDelete(DeleteBehavior.Restrict);
-
       // Configure UserRole entity
       modelBuilder.Entity<UserRole>(entity =>
       {
@@ -175,6 +146,41 @@ namespace AspnetCoreMvcFull.Data
         // Create a unique index on LdapUser + RoleName
         entity.HasIndex(e => new { e.LdapUser, e.RoleName }).IsUnique();
       });
+
+      // Relasi CraneUsageRecord dan Crane
+      modelBuilder.Entity<CraneUsageRecord>()
+          .HasOne(r => r.Crane)
+          .WithMany()
+          .HasForeignKey(r => r.CraneId)
+          .OnDelete(DeleteBehavior.Cascade);
+
+      // Relasi CraneUsageEntry dan CraneUsageRecord
+      modelBuilder.Entity<CraneUsageEntry>()
+          .HasOne(e => e.CraneUsageRecord)
+          .WithMany(r => r.Entries)
+          .HasForeignKey(e => e.CraneUsageRecordId)
+          .OnDelete(DeleteBehavior.Cascade);
+
+      // Relasi CraneUsageEntry dan UsageSubcategory
+      modelBuilder.Entity<CraneUsageEntry>()
+          .HasOne(e => e.UsageSubcategory)
+          .WithMany()
+          .HasForeignKey(e => e.UsageSubcategoryId)
+          .OnDelete(DeleteBehavior.Restrict);
+
+      // Relasi CraneUsageEntry dan Booking
+      modelBuilder.Entity<CraneUsageEntry>()
+          .HasOne(e => e.Booking)
+          .WithMany()
+          .HasForeignKey(e => e.BookingId)
+          .OnDelete(DeleteBehavior.SetNull);
+
+      // Relasi CraneUsageEntry dan MaintenanceSchedule
+      modelBuilder.Entity<CraneUsageEntry>()
+          .HasOne(e => e.MaintenanceSchedule)
+          .WithMany()
+          .HasForeignKey(e => e.MaintenanceScheduleId)
+          .OnDelete(DeleteBehavior.SetNull);
 
       CraneSeeder.Seed(modelBuilder);
       RoleSeeder.Seed(modelBuilder);
