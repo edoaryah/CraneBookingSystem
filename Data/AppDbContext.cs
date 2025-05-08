@@ -39,7 +39,6 @@ namespace AspnetCoreMvcFull.Data
     public DbSet<UsageSubcategory> UsageSubcategories { get; set; }
     // Tambahkan di class AppDbContext
     public DbSet<CraneUsageRecord> CraneUsageRecords { get; set; }
-    // public DbSet<CraneUsageSummary> CraneUsageSummaries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
