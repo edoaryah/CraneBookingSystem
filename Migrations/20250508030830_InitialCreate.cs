@@ -278,16 +278,17 @@ namespace AspnetCoreMvcFull.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    BookingId = table.Column<int>(type: "integer", nullable: false),
-                    Date = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CraneId = table.Column<int>(type: "integer", nullable: false),
+                    StartTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    EndTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Category = table.Column<string>(type: "text", nullable: false),
-                    SubcategoryId = table.Column<int>(type: "integer", nullable: false),
-                    StartTime = table.Column<TimeSpan>(type: "interval", nullable: false),
-                    EndTime = table.Column<TimeSpan>(type: "interval", nullable: false),
+                    UsageSubcategoryId = table.Column<int>(type: "integer", nullable: false),
+                    BookingId = table.Column<int>(type: "integer", nullable: true),
+                    MaintenanceScheduleId = table.Column<int>(type: "integer", nullable: true),
+                    Notes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    OperatorName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
-                    UpdatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -297,7 +298,25 @@ namespace AspnetCoreMvcFull.Migrations
                         column: x => x.BookingId,
                         principalTable: "Bookings",
                         principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_CraneUsageRecords_Cranes_CraneId",
+                        column: x => x.CraneId,
+                        principalTable: "Cranes",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CraneUsageRecords_MaintenanceSchedules_MaintenanceScheduleId",
+                        column: x => x.MaintenanceScheduleId,
+                        principalTable: "MaintenanceSchedules",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_CraneUsageRecords_UsageSubcategories_UsageSubcategoryId",
+                        column: x => x.UsageSubcategoryId,
+                        principalTable: "UsageSubcategories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -361,8 +380,8 @@ namespace AspnetCoreMvcFull.Migrations
                 values: new object[,]
                 {
                     { 1, new TimeSpan(0, 15, 0, 0, 0), true, "Shift 1", new TimeSpan(0, 7, 0, 0, 0) },
-                    { 2, new TimeSpan(0, 23, 0, 0, 0), true, "Shift 2", new TimeSpan(0, 15, 0, 0, 0) },
-                    { 3, new TimeSpan(0, 7, 0, 0, 0), true, "Shift 3", new TimeSpan(0, 23, 0, 0, 0) }
+                    { 2, new TimeSpan(0, 0, 0, 0, 0), true, "Shift 2", new TimeSpan(0, 15, 0, 0, 0) },
+                    { 3, new TimeSpan(0, 7, 0, 0, 0), true, "Shift 3", new TimeSpan(0, 0, 0, 0, 0) }
                 });
 
             migrationBuilder.InsertData(
@@ -441,6 +460,21 @@ namespace AspnetCoreMvcFull.Migrations
                 column: "BookingId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_CraneUsageRecords_CraneId",
+                table: "CraneUsageRecords",
+                column: "CraneId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CraneUsageRecords_MaintenanceScheduleId",
+                table: "CraneUsageRecords",
+                column: "MaintenanceScheduleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CraneUsageRecords_UsageSubcategoryId",
+                table: "CraneUsageRecords",
+                column: "UsageSubcategoryId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_MaintenanceSchedules_CraneId",
                 table: "MaintenanceSchedules",
                 column: "CraneId");
@@ -484,9 +518,6 @@ namespace AspnetCoreMvcFull.Migrations
                 name: "MaintenanceScheduleShifts");
 
             migrationBuilder.DropTable(
-                name: "UsageSubcategories");
-
-            migrationBuilder.DropTable(
                 name: "UserRoles");
 
             migrationBuilder.DropTable(
@@ -494,6 +525,9 @@ namespace AspnetCoreMvcFull.Migrations
 
             migrationBuilder.DropTable(
                 name: "Bookings");
+
+            migrationBuilder.DropTable(
+                name: "UsageSubcategories");
 
             migrationBuilder.DropTable(
                 name: "MaintenanceSchedules");

@@ -1,0 +1,62 @@
+<!-- Views/CraneUsage/Delete.cshtml -->
+@model AspnetCoreMvcFull.ViewModels.CraneUsage.CraneUsageRecordViewModel
+
+@{
+  ViewData["Title"] = "Hapus Penggunaan Crane";
+  Layout = "_ContentNavbarLayout";
+}
+
+<div class="container-fluid">
+  <h1 class="mt-4">Hapus Penggunaan Crane</h1>
+  <p class="lead">Apakah Anda yakin ingin menghapus catatan ini?</p>
+
+  <div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+      <i class="fas fa-exclamation-triangle me-1"></i>
+      Konfirmasi Penghapusan
+    </div>
+    <div class="card-body">
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <dl class="row">
+            <dt class="col-sm-4">Crane</dt>
+            <dd class="col-sm-8">@Model.CraneName</dd>
+
+            <dt class="col-sm-4">Waktu Mulai</dt>
+            <dd class="col-sm-8">@Model.StartTime.ToString("dd/MM/yyyy HH:mm")</dd>
+
+            <dt class="col-sm-4">Waktu Selesai</dt>
+            <dd class="col-sm-8">@Model.EndTime.ToString("dd/MM/yyyy HH:mm")</dd>
+          </dl>
+        </div>
+        <div class="col-md-6">
+          <dl class="row">
+            <dt class="col-sm-4">Kategori</dt>
+            <dd class="col-sm-8">@Model.CategoryName</dd>
+
+            <dt class="col-sm-4">Subkategori</dt>
+            <dd class="col-sm-8">@Model.SubcategoryName</dd>
+
+            <dt class="col-sm-4">Operator</dt>
+            <dd class="col-sm-8">@(Model.OperatorName ?? "-")</dd>
+          </dl>
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        Tindakan ini tidak dapat dibatalkan! Data yang sudah dihapus tidak dapat dikembalikan.
+      </div>
+
+      <form asp-action="Delete" method="post">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">
+          <i class="fas fa-trash me-1"></i> Hapus
+        </button>
+        <a asp-action="Index" class="btn btn-secondary">
+          <i class="fas fa-times me-1"></i> Batal
+        </a>
+      </form>
+    </div>
+  </div>
+</div>

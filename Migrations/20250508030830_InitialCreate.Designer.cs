@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AspnetCoreMvcFull.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250506024406_InitialCreate2")]
-    partial class InitialCreate2
+    [Migration("20250508030830_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -358,12 +358,15 @@ namespace AspnetCoreMvcFull.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("BookingId")
+                    b.Property<int?>("BookingId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("CraneId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
@@ -373,28 +376,35 @@ namespace AspnetCoreMvcFull.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<DateTime>("Date")
+                    b.Property<DateTime>("EndTime")
                         .HasColumnType("timestamp without time zone");
 
-                    b.Property<TimeSpan>("EndTime")
-                        .HasColumnType("interval");
-
-                    b.Property<TimeSpan>("StartTime")
-                        .HasColumnType("interval");
-
-                    b.Property<int>("SubcategoryId")
+                    b.Property<int?>("MaintenanceScheduleId")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
-                    b.Property<string>("UpdatedBy")
+                    b.Property<string>("OperatorName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("UsageSubcategoryId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.HasIndex("BookingId");
+
+                    b.HasIndex("CraneId");
+
+                    b.HasIndex("MaintenanceScheduleId");
+
+                    b.HasIndex("UsageSubcategoryId");
 
                     b.ToTable("CraneUsageRecords");
                 });
@@ -901,10 +911,32 @@ namespace AspnetCoreMvcFull.Migrations
                     b.HasOne("AspnetCoreMvcFull.Models.Booking", "Booking")
                         .WithMany()
                         .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("AspnetCoreMvcFull.Models.Crane", "Crane")
+                        .WithMany()
+                        .HasForeignKey("CraneId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("AspnetCoreMvcFull.Models.MaintenanceSchedule", "MaintenanceSchedule")
+                        .WithMany()
+                        .HasForeignKey("MaintenanceScheduleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("AspnetCoreMvcFull.Models.UsageSubcategory", "UsageSubcategory")
+                        .WithMany()
+                        .HasForeignKey("UsageSubcategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Booking");
+
+                    b.Navigation("Crane");
+
+                    b.Navigation("MaintenanceSchedule");
+
+                    b.Navigation("UsageSubcategory");
                 });
 
             modelBuilder.Entity("AspnetCoreMvcFull.Models.MaintenanceSchedule", b =>

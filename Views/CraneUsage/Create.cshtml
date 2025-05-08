@@ -1,0 +1,171 @@
+<!-- Views/CraneUsage/Create.cshtml -->
+@model AspnetCoreMvcFull.ViewModels.CraneUsage.CraneUsageRecordViewModel
+
+@{
+  ViewData["Title"] = "Tambah Penggunaan Crane";
+  Layout = "_ContentNavbarLayout";
+}
+
+<div class="container-fluid">
+  <h1 class="mt-4">Tambah Penggunaan Crane</h1>
+  <p class="lead">Tambahkan catatan penggunaan crane baru</p>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="fas fa-edit me-1"></i>
+      Form Penggunaan Crane
+    </div>
+    <div class="card-body">
+      <form asp-action="Create" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label asp-for="CraneId" class="form-label">Crane</label>
+              <select asp-for="CraneId" asp-items="Model.CraneList" class="form-select" required>
+                <option value="">-- Pilih Crane --</option>
+              </select>
+              <span asp-validation-for="CraneId" class="text-danger"></span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label asp-for="OperatorName" class="form-label">Operator</label>
+              <input asp-for="OperatorName" class="form-control" />
+              <span asp-validation-for="OperatorName" class="text-danger"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label asp-for="StartTime" class="form-label">Waktu Mulai</label>
+              <input asp-for="StartTime" type="datetime-local" class="form-control" required />
+              <span asp-validation-for="StartTime" class="text-danger"></span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label asp-for="EndTime" class="form-label">Waktu Selesai</label>
+              <input asp-for="EndTime" type="datetime-local" class="form-control" required />
+              <span asp-validation-for="EndTime" class="text-danger"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label asp-for="Category" class="form-label">Kategori</label>
+              <select asp-for="Category" asp-items="Model.CategoryList" class="form-select" id="category" required>
+                <option value="">-- Pilih Kategori --</option>
+              </select>
+              <span asp-validation-for="Category" class="text-danger"></span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label asp-for="UsageSubcategoryId" class="form-label">Subkategori</label>
+              <select asp-for="UsageSubcategoryId" asp-items="Model.SubcategoryList" class="form-select"
+                id="subcategory" required>
+                <option value="">-- Pilih Subkategori --</option>
+              </select>
+              <span asp-validation-for="UsageSubcategoryId" class="text-danger"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label asp-for="BookingId" class="form-label">Booking (opsional)</label>
+              <select asp-for="BookingId" asp-items="Model.BookingList" class="form-select" id="booking">
+                <option value="">-- Tidak ada booking terkait --</option>
+              </select>
+              <span asp-validation-for="BookingId" class="text-danger"></span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label asp-for="MaintenanceScheduleId" class="form-label">Maintenance (opsional)</label>
+              <select asp-for="MaintenanceScheduleId" asp-items="Model.MaintenanceList" class="form-select"
+                id="maintenance">
+                <option value="">-- Tidak ada maintenance terkait --</option>
+              </select>
+              <span asp-validation-for="MaintenanceScheduleId" class="text-danger"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label asp-for="Notes" class="form-label">Catatan</label>
+          <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+          <span asp-validation-for="Notes" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+          <button type="submit" class="btn btn-primary">Simpan</button>
+          <a asp-action="Index" class="btn btn-secondary">Kembali</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section PageScripts {
+  @* @{
+    await Html.RenderPartialAsync("_ValidationScriptsPartial");
+  } *@
+
+  <script>
+    $(document).ready(function () {
+      // Load subcategories when category changes
+      $('#category').change(function () {
+        var categoryId = $(this).val();
+        if (categoryId) {
+          $.getJSON('@Url.Action("GetSubcategories")?category=' + categoryId, function (data) {
+            var subcategorySelect = $('#subcategory');
+            subcategorySelect.empty();
+            subcategorySelect.append($('<option></option>').val('').text('-- Pilih Subkategori --'));
+            $.each(data, function (index, item) {
+              subcategorySelect.append($('<option></option>').val(item.value).text(item.text));
+            });
+          });
+        }
+      });
+
+      // Load related bookings and maintenance when crane or times change
+      function updateRelatedItems() {
+        var craneId = $('#CraneId').val();
+        var startTime = $('#StartTime').val();
+        var endTime = $('#EndTime').val();
+
+        if (craneId && startTime && endTime) {
+          // Get related bookings
+          $.getJSON('@Url.Action("GetRelatedBookings")?craneId=' + craneId + '&startTime=' + startTime + '&endTime=' + endTime, function (data) {
+            var bookingSelect = $('#booking');
+            bookingSelect.empty();
+            bookingSelect.append($('<option></option>').val('').text('-- Tidak ada booking terkait --'));
+            $.each(data, function (index, item) {
+              bookingSelect.append($('<option></option>').val(item.value).text(item.text));
+            });
+          });
+
+          // Get related maintenance
+          $.getJSON('@Url.Action("GetRelatedMaintenance")?craneId=' + craneId + '&startTime=' + startTime + '&endTime=' + endTime, function (data) {
+            var maintenanceSelect = $('#maintenance');
+            maintenanceSelect.empty();
+            maintenanceSelect.append($('<option></option>').val('').text('-- Tidak ada maintenance terkait --'));
+            $.each(data, function (index, item) {
+              maintenanceSelect.append($('<option></option>').val(item.value).text(item.text));
+            });
+          });
+        }
+      }
+
+      $('#CraneId, #StartTime, #EndTime').change(updateRelatedItems);
+    });
+  </script>
+}

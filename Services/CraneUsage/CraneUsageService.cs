@@ -1,390 +1,388 @@
-// Tambahkan file Services/CraneUsage/CraneUsageService.cs
-
-using Microsoft.EntityFrameworkCore;
+// Services/CraneUsage/CraneUsageService.cs
 using AspnetCoreMvcFull.Data;
 using AspnetCoreMvcFull.Models;
 using AspnetCoreMvcFull.ViewModels.CraneUsage;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace AspnetCoreMvcFull.Services.CraneUsage
 {
   public class CraneUsageService : ICraneUsageService
   {
     private readonly AppDbContext _context;
-    private readonly ILogger<CraneUsageService> _logger;
 
-    public CraneUsageService(AppDbContext context, ILogger<CraneUsageService> logger)
+    public CraneUsageService(AppDbContext context)
     {
       _context = context;
-      _logger = logger;
     }
 
-    public async Task<IEnumerable<CraneUsageRecordViewModel>> GetAllUsageRecordsAsync()
+    public async Task<CraneUsageListViewModel> GetFilteredUsageRecordsAsync(CraneUsageFilterViewModel filter)
     {
-      try
-      {
-        var records = await _context.CraneUsageRecords
-            .Include(r => r.Booking)
-            .OrderByDescending(r => r.Date)
-            .ToListAsync();
+      var query = _context.CraneUsageRecords
+          .Include(r => r.Crane)
+          .Include(r => r.UsageSubcategory)
+          .Include(r => r.Booking)
+          .Include(r => r.MaintenanceSchedule)
+          .AsQueryable();
 
-        return records.Select(r => MapRecordToViewModel(r)).ToList();
-      }
-      catch (Exception ex)
+      // Apply filters
+      if (filter.CraneId.HasValue && filter.CraneId > 0)
       {
-        _logger.LogError(ex, "Error getting all usage records");
-        throw;
+        query = query.Where(r => r.CraneId == filter.CraneId);
       }
+
+      if (filter.StartDate.HasValue)
+      {
+        query = query.Where(r => r.StartTime >= filter.StartDate.Value);
+      }
+
+      if (filter.EndDate.HasValue)
+      {
+        query = query.Where(r => r.StartTime <= filter.EndDate.Value);
+      }
+
+      if (filter.Category.HasValue)
+      {
+        query = query.Where(r => r.Category == filter.Category.Value);
+      }
+
+      // Order by most recent first
+      query = query.OrderByDescending(r => r.StartTime);
+
+      var records = await query.ToListAsync();
+
+      var viewModel = new CraneUsageListViewModel
+      {
+        UsageRecords = records.Select(MapToViewModel).ToList(),
+        Filter = filter
+      };
+
+      // Populate filter dropdowns
+      filter.CraneList = await GetCraneListAsync();
+      filter.CategoryList = GetCategoryList();
+
+      return viewModel;
     }
 
-    public async Task<IEnumerable<CraneUsageRecordViewModel>> GetUsageRecordsByBookingIdAsync(int bookingId)
+    public async Task<List<CraneUsageRecordViewModel>> GetAllUsageRecordsAsync(CraneUsageFilterViewModel filter)
     {
-      try
-      {
-        var records = await _context.CraneUsageRecords
-            .Where(r => r.BookingId == bookingId)
-            .Include(r => r.Booking)
-            .OrderByDescending(r => r.Date)
-            .ToListAsync();
+      var query = _context.CraneUsageRecords
+          .Include(r => r.Crane)
+          .Include(r => r.UsageSubcategory)
+          .Include(r => r.Booking)
+          .Include(r => r.MaintenanceSchedule)
+          .AsQueryable();
 
-        return records.Select(r => MapRecordToViewModel(r)).ToList();
-      }
-      catch (Exception ex)
+      // Apply filters
+      if (filter.CraneId.HasValue && filter.CraneId > 0)
       {
-        _logger.LogError(ex, "Error getting usage records for booking {BookingId}", bookingId);
-        throw;
+        query = query.Where(r => r.CraneId == filter.CraneId);
       }
+
+      if (filter.StartDate.HasValue)
+      {
+        query = query.Where(r => r.StartTime >= filter.StartDate.Value);
+      }
+
+      if (filter.EndDate.HasValue)
+      {
+        query = query.Where(r => r.EndTime <= filter.EndDate.Value);
+      }
+
+      if (filter.Category.HasValue)
+      {
+        query = query.Where(r => r.Category == filter.Category.Value);
+      }
+
+      var records = await query.ToListAsync();
+      return records.Select(MapToViewModel).ToList();
     }
 
     public async Task<CraneUsageRecordViewModel> GetUsageRecordByIdAsync(int id)
     {
-      try
-      {
-        var record = await _context.CraneUsageRecords
-            .Include(r => r.Booking)
-            .FirstOrDefaultAsync(r => r.Id == id);
+      var record = await _context.CraneUsageRecords
+          .Include(r => r.Crane)
+          .Include(r => r.UsageSubcategory)
+          .Include(r => r.Booking)
+          .Include(r => r.MaintenanceSchedule)
+          .FirstOrDefaultAsync(r => r.Id == id);
 
-        if (record == null)
-        {
-          throw new KeyNotFoundException($"Usage record with ID {id} not found");
-        }
-
-        return MapRecordToViewModel(record);
-      }
-      catch (Exception ex) when (!(ex is KeyNotFoundException))
+      if (record == null)
       {
-        _logger.LogError(ex, "Error getting usage record with ID {RecordId}", id);
-        throw;
+        return new CraneUsageRecordViewModel();
       }
+
+      var viewModel = MapToViewModel(record);
+
+      // Populate dropdowns for form
+      viewModel.CraneList = await GetCraneListAsync();
+      viewModel.CategoryList = GetCategoryList();
+      viewModel.SubcategoryList = await GetSubcategoriesByCategoryAsync(record.Category);
+      viewModel.BookingList = await GetAvailableBookingsAsync(record.CraneId, record.StartTime, record.EndTime, id);
+      viewModel.MaintenanceList = await GetAvailableMaintenanceSchedulesAsync(record.CraneId, record.StartTime, record.EndTime, id);
+
+      return viewModel;
     }
 
-    public async Task<CraneUsageRecordViewModel> CreateUsageRecordAsync(CraneUsageRecordCreateViewModel viewModel, string createdBy)
+    public async Task<CraneUsageRecordViewModel> CreateUsageRecordAsync(CraneUsageRecordViewModel model, string createdBy)
     {
-      try
+      var record = new CraneUsageRecord
       {
-        // Validate booking exists
-        var booking = await _context.Bookings.FindAsync(viewModel.BookingId);
-        if (booking == null)
-        {
-          throw new KeyNotFoundException($"Booking with ID {viewModel.BookingId} not found");
-        }
-
-        // Validate subcategory exists
-        var subcategory = await _context.UsageSubcategories.FindAsync(viewModel.SubcategoryId);
-        if (subcategory == null)
-        {
-          throw new KeyNotFoundException($"Subcategory with ID {viewModel.SubcategoryId} not found");
-        }
-
-        // Parse start time
-        if (!TryParseTimeSpan(viewModel.StartTime, out TimeSpan startTime))
-        {
-          throw new ArgumentException("Invalid start time format. Expected format is HH:MM");
-        }
-
-        // Parse end time
-        if (!TryParseTimeSpan(viewModel.EndTime, out TimeSpan endTime))
-        {
-          throw new ArgumentException("Invalid end time format. Expected format is HH:MM");
-        }
-
-        // Create new record
-        var record = new CraneUsageRecord
-        {
-          BookingId = viewModel.BookingId,
-          Date = viewModel.Date.Date, // Use only the date part
-          Category = viewModel.Category,
-          SubcategoryId = viewModel.SubcategoryId,
-          StartTime = startTime,
-          EndTime = endTime,
-          CreatedAt = DateTime.Now,
-          CreatedBy = createdBy
-        };
-
-        _context.CraneUsageRecords.Add(record);
-        await _context.SaveChangesAsync();
-
-        return await GetUsageRecordByIdAsync(record.Id);
-      }
-      catch (Exception ex) when (!(ex is KeyNotFoundException || ex is ArgumentException))
-      {
-        _logger.LogError(ex, "Error creating usage record for booking {BookingId}", viewModel.BookingId);
-        throw;
-      }
-    }
-
-    public async Task<CraneUsageRecordViewModel> UpdateUsageRecordAsync(int id, CraneUsageRecordUpdateViewModel viewModel, string updatedBy)
-    {
-      try
-      {
-        var record = await _context.CraneUsageRecords.FindAsync(id);
-        if (record == null)
-        {
-          throw new KeyNotFoundException($"Usage record with ID {id} not found");
-        }
-
-        // Validate subcategory exists
-        var subcategory = await _context.UsageSubcategories.FindAsync(viewModel.SubcategoryId);
-        if (subcategory == null)
-        {
-          throw new KeyNotFoundException($"Subcategory with ID {viewModel.SubcategoryId} not found");
-        }
-
-        // Parse start time
-        if (!TryParseTimeSpan(viewModel.StartTime, out TimeSpan startTime))
-        {
-          throw new ArgumentException("Invalid start time format. Expected format is HH:MM");
-        }
-
-        // Parse end time
-        if (!TryParseTimeSpan(viewModel.EndTime, out TimeSpan endTime))
-        {
-          throw new ArgumentException("Invalid end time format. Expected format is HH:MM");
-        }
-
-        // Update record
-        record.Category = viewModel.Category;
-        record.SubcategoryId = viewModel.SubcategoryId;
-        record.StartTime = startTime;
-        record.EndTime = endTime;
-        record.UpdatedAt = DateTime.Now;
-        record.UpdatedBy = updatedBy;
-
-        await _context.SaveChangesAsync();
-
-        return await GetUsageRecordByIdAsync(record.Id);
-      }
-      catch (Exception ex) when (!(ex is KeyNotFoundException || ex is ArgumentException))
-      {
-        _logger.LogError(ex, "Error updating usage record with ID {RecordId}", id);
-        throw;
-      }
-    }
-
-    public async Task DeleteUsageRecordAsync(int id)
-    {
-      try
-      {
-        var record = await _context.CraneUsageRecords.FindAsync(id);
-        if (record == null)
-        {
-          throw new KeyNotFoundException($"Usage record with ID {id} not found");
-        }
-
-        _context.CraneUsageRecords.Remove(record);
-        await _context.SaveChangesAsync();
-      }
-      catch (Exception ex) when (!(ex is KeyNotFoundException))
-      {
-        _logger.LogError(ex, "Error deleting usage record with ID {RecordId}", id);
-        throw;
-      }
-    }
-
-    public async Task<UsageSummaryViewModel> GetUsageSummaryByBookingIdAsync(int bookingId)
-    {
-      try
-      {
-        // Get booking details
-        var booking = await _context.Bookings.FindAsync(bookingId);
-        if (booking == null)
-        {
-          throw new KeyNotFoundException($"Booking with ID {bookingId} not found");
-        }
-
-        // Get all usage records for this booking
-        var records = await GetUsageRecordsByBookingIdAsync(bookingId);
-        var recordsList = records.ToList();
-
-        // Initialize summary
-        var summary = new UsageSummaryViewModel
-        {
-          BookingId = bookingId,
-          BookingNumber = booking.BookingNumber,
-          Date = booking.StartDate,
-          UsageRecords = recordsList
-        };
-
-        // Calculate totals by category
-        TimeSpan operatingTime = TimeSpan.Zero;
-        TimeSpan delayTime = TimeSpan.Zero;
-        TimeSpan standbyTime = TimeSpan.Zero;
-        TimeSpan serviceTime = TimeSpan.Zero;
-        TimeSpan breakdownTime = TimeSpan.Zero;
-
-        foreach (var record in recordsList)
-        {
-          switch (record.Category)
-          {
-            case UsageCategory.Operating:
-              operatingTime = operatingTime.Add(record.Duration);
-              break;
-            case UsageCategory.Delay:
-              delayTime = delayTime.Add(record.Duration);
-              break;
-            case UsageCategory.Standby:
-              standbyTime = standbyTime.Add(record.Duration);
-              break;
-            case UsageCategory.Service:
-              serviceTime = serviceTime.Add(record.Duration);
-              break;
-            case UsageCategory.Breakdown:
-              breakdownTime = breakdownTime.Add(record.Duration);
-              break;
-          }
-        }
-
-        // Set category totals
-        summary.TotalOperatingTime = operatingTime.ToString(@"hh\:mm\:ss");
-        summary.TotalDelayTime = delayTime.ToString(@"hh\:mm\:ss");
-        summary.TotalStandbyTime = standbyTime.ToString(@"hh\:mm\:ss");
-        summary.TotalServiceTime = serviceTime.ToString(@"hh\:mm\:ss");
-        summary.TotalBreakdownTime = breakdownTime.ToString(@"hh\:mm\:ss");
-
-        // Calculate KPI metrics
-        TimeSpan totalUnavailableTime = serviceTime.Add(breakdownTime);
-        TimeSpan totalAvailableTime = operatingTime.Add(delayTime).Add(standbyTime);
-
-        summary.TotalUnavailableTime = totalUnavailableTime.ToString(@"hh\:mm\:ss");
-        summary.TotalAvailableTime = totalAvailableTime.ToString(@"hh\:mm\:ss");
-        summary.TotalUsageTime = operatingTime.ToString(@"hh\:mm\:ss");
-
-        // Calculate total minutes for percentage calculations
-        double totalMinutes = (totalAvailableTime + totalUnavailableTime).TotalMinutes;
-        double availableMinutes = totalAvailableTime.TotalMinutes;
-        double operatingMinutes = operatingTime.TotalMinutes;
-
-        // Calculate percentages
-        if (totalMinutes > 0)
-        {
-          summary.AvailabilityPercentage = (decimal)(availableMinutes / totalMinutes * 100);
-        }
-
-        if (availableMinutes > 0)
-        {
-          summary.UtilisationPercentage = (decimal)(operatingMinutes / availableMinutes * 100);
-        }
-
-        return summary;
-      }
-      catch (Exception ex) when (!(ex is KeyNotFoundException))
-      {
-        _logger.LogError(ex, "Error getting usage summary for booking {BookingId}", bookingId);
-        throw;
-      }
-    }
-
-    public async Task<IEnumerable<UsageSubcategoryViewModel>> GetSubcategoriesByCategoryAsync(UsageCategory category)
-    {
-      try
-      {
-        var subcategories = await _context.UsageSubcategories
-            .Where(s => s.Category == category && s.IsActive)
-            .OrderBy(s => s.Name)
-            .ToListAsync();
-
-        return subcategories.Select(s => new UsageSubcategoryViewModel
-        {
-          Id = s.Id,
-          Category = s.Category,
-          Name = s.Name,
-          Description = s.Description,
-          IsActive = s.IsActive
-        }).ToList();
-      }
-      catch (Exception ex)
-      {
-        _logger.LogError(ex, "Error getting subcategories for category {Category}", category);
-        throw;
-      }
-    }
-
-    // Helper method to map entity to ViewModel
-    private CraneUsageRecordViewModel MapRecordToViewModel(CraneUsageRecord record)
-    {
-      // Get subcategory name
-      string subcategoryName = "Unknown";
-      var subcategory = _context.UsageSubcategories.Find(record.SubcategoryId);
-      if (subcategory != null)
-      {
-        subcategoryName = subcategory.Name;
-      }
-
-      // Calculate duration (it's automatically calculated in the model)
-      TimeSpan duration = record.Duration;
-
-      return new CraneUsageRecordViewModel
-      {
-        Id = record.Id,
-        BookingId = record.BookingId,
-        BookingNumber = record.Booking?.BookingNumber ?? "Unknown",
-        Date = record.Date,
-        Category = record.Category,
-        CategoryName = record.Category.ToString(),
-        SubcategoryId = record.SubcategoryId,
-        SubcategoryName = subcategoryName,
-        StartTime = record.StartTime,
-        StartTimeFormatted = FormatTimeSpan(record.StartTime),
-        EndTime = record.EndTime,
-        EndTimeFormatted = FormatTimeSpan(record.EndTime),
-        Duration = duration,
-        DurationFormatted = FormatTimeSpan(duration),
-        CreatedAt = record.CreatedAt,
-        CreatedBy = record.CreatedBy,
-        UpdatedAt = record.UpdatedAt,
-        UpdatedBy = record.UpdatedBy
+        CraneId = model.CraneId,
+        StartTime = model.StartTime,
+        EndTime = model.EndTime,
+        Category = model.Category,
+        UsageSubcategoryId = model.UsageSubcategoryId,
+        BookingId = model.BookingId,
+        MaintenanceScheduleId = model.MaintenanceScheduleId,
+        Notes = model.Notes,
+        OperatorName = model.OperatorName,
+        CreatedAt = DateTime.Now,
+        CreatedBy = createdBy
       };
+
+      _context.CraneUsageRecords.Add(record);
+      await _context.SaveChangesAsync();
+
+      return MapToViewModel(record);
     }
 
-    // Helper method to parse timespan from HH:MM format
-    private bool TryParseTimeSpan(string timeString, out TimeSpan result)
+    public async Task<CraneUsageRecordViewModel> UpdateUsageRecordAsync(CraneUsageRecordViewModel model, string updatedBy)
     {
-      result = TimeSpan.Zero;
+      var record = await _context.CraneUsageRecords.FindAsync(model.Id);
+      if (record == null)
+      {
+        throw new KeyNotFoundException($"Usage record with ID {model.Id} not found");
+      }
 
-      if (string.IsNullOrEmpty(timeString))
+      // Update properties
+      record.CraneId = model.CraneId;
+      record.StartTime = model.StartTime;
+      record.EndTime = model.EndTime;
+      record.Category = model.Category;
+      record.UsageSubcategoryId = model.UsageSubcategoryId;
+      record.BookingId = model.BookingId;
+      record.MaintenanceScheduleId = model.MaintenanceScheduleId;
+      record.Notes = model.Notes;
+      record.OperatorName = model.OperatorName;
+
+      await _context.SaveChangesAsync();
+
+      return MapToViewModel(record);
+    }
+
+    public async Task<bool> DeleteUsageRecordAsync(int id)
+    {
+      var record = await _context.CraneUsageRecords.FindAsync(id);
+      if (record == null)
       {
         return false;
       }
 
-      // Try parse HH:MM format
-      string[] parts = timeString.Split(':');
-      if (parts.Length != 2)
-      {
-        return false;
-      }
-
-      if (!int.TryParse(parts[0], out int hours) || !int.TryParse(parts[1], out int minutes))
-      {
-        return false;
-      }
-
-      result = new TimeSpan(hours, minutes, 0);
+      _context.CraneUsageRecords.Remove(record);
+      await _context.SaveChangesAsync();
       return true;
     }
 
-    // Helper method to format timespan as HH:MM
-    private string FormatTimeSpan(TimeSpan timeSpan)
+    public async Task<CraneUsageVisualizationViewModel> GetUsageVisualizationDataAsync(int craneId, DateTime date)
     {
-      return $"{timeSpan.Hours:D2}:{timeSpan.Minutes:D2}";
+      var startDate = date.Date;
+      var endDate = startDate.AddDays(1);
+
+      var crane = await _context.Cranes.FindAsync(craneId);
+      if (crane == null)
+      {
+        throw new KeyNotFoundException($"Crane with ID {craneId} not found");
+      }
+
+      // Get all usage records for the specified crane and date
+      var usageRecords = await _context.CraneUsageRecords
+          .Include(r => r.UsageSubcategory)
+          .Include(r => r.Booking)
+          .Include(r => r.MaintenanceSchedule)
+          .Where(r => r.CraneId == craneId &&
+                    ((r.StartTime >= startDate && r.StartTime < endDate) ||
+                     (r.EndTime > startDate && r.EndTime <= endDate) ||
+                     (r.StartTime <= startDate && r.EndTime >= endDate)))
+          .OrderBy(r => r.StartTime)
+          .ToListAsync();
+
+      var viewModel = new CraneUsageVisualizationViewModel
+      {
+        CraneId = craneId,
+        Date = date,
+        CraneName = crane.Code,
+        CraneList = await GetCraneListAsync()
+      };
+
+      // Initialize hourly data with default (Standby)
+      var hourlyData = new List<HourlyUsageData>();
+      for (int hour = 0; hour < 24; hour++)
+      {
+        hourlyData.Add(new HourlyUsageData
+        {
+          Hour = hour,
+          Category = "Standby",
+          ColorCode = GetCategoryColorCode(UsageCategory.Standby)
+        });
+      }
+
+      // Process each usage record and update hourly data
+      foreach (var record in usageRecords)
+      {
+        var recordStartHour = GetHourInDate(record.StartTime, startDate);
+        var recordEndHour = GetHourInDate(record.EndTime, startDate);
+
+        for (int hour = recordStartHour; hour < recordEndHour; hour++)
+        {
+          if (hour >= 0 && hour < 24) // Ensure hour is within range
+          {
+            hourlyData[hour].Category = record.Category.ToString();
+            hourlyData[hour].SubcategoryName = record.UsageSubcategory?.Name ?? string.Empty;
+            hourlyData[hour].ColorCode = GetCategoryColorCode(record.Category);
+            hourlyData[hour].Notes = record.Notes ?? string.Empty;
+
+            if (record.BookingId.HasValue && record.Booking != null)
+            {
+              hourlyData[hour].BookingNumber = record.Booking.BookingNumber;
+            }
+
+            if (record.MaintenanceScheduleId.HasValue && record.MaintenanceSchedule != null)
+            {
+              hourlyData[hour].MaintenanceTitle = record.MaintenanceSchedule.Title;
+            }
+          }
+        }
+      }
+
+      viewModel.HourlyData = hourlyData;
+      return viewModel;
+    }
+
+    public async Task<List<SelectListItem>> GetSubcategoriesByCategoryAsync(UsageCategory category)
+    {
+      var subcategories = await _context.UsageSubcategories
+          .Where(s => s.Category == category && s.IsActive)
+          .OrderBy(s => s.Name)
+          .ToListAsync();
+
+      return subcategories.Select(s => new SelectListItem
+      {
+        Value = s.Id.ToString(),
+        Text = s.Name
+      }).ToList();
+    }
+
+    public async Task<List<SelectListItem>> GetAvailableBookingsAsync(int craneId, DateTime startTime, DateTime endTime, int? currentRecordId = null)
+    {
+      var overlappingBookings = await _context.Bookings
+          .Where(b => b.CraneId == craneId &&
+                    b.Status == BookingStatus.PICApproved &&
+                    ((b.StartDate <= startTime && b.EndDate >= startTime) ||
+                     (b.StartDate <= endTime && b.EndDate >= endTime) ||
+                     (b.StartDate >= startTime && b.EndDate <= endTime)))
+          .ToListAsync();
+
+      return overlappingBookings.Select(b => new SelectListItem
+      {
+        Value = b.Id.ToString(),
+        Text = $"{b.BookingNumber} - {b.Name} ({b.StartDate:dd/MM/yyyy HH:mm} - {b.EndDate:dd/MM/yyyy HH:mm})"
+      }).ToList();
+    }
+
+    public async Task<List<SelectListItem>> GetAvailableMaintenanceSchedulesAsync(int craneId, DateTime startTime, DateTime endTime, int? currentRecordId = null)
+    {
+      var overlappingMaintenance = await _context.MaintenanceSchedules
+          .Where(m => m.CraneId == craneId &&
+                    ((m.StartDate <= startTime && m.EndDate >= startTime) ||
+                     (m.StartDate <= endTime && m.EndDate >= endTime) ||
+                     (m.StartDate >= startTime && m.EndDate <= endTime)))
+          .ToListAsync();
+
+      return overlappingMaintenance.Select(m => new SelectListItem
+      {
+        Value = m.Id.ToString(),
+        Text = $"{m.Title} ({m.StartDate:dd/MM/yyyy HH:mm} - {m.EndDate:dd/MM/yyyy HH:mm})"
+      }).ToList();
+    }
+
+    // Helper methods
+    private async Task<List<SelectListItem>> GetCraneListAsync()
+    {
+      var cranes = await _context.Cranes.OrderBy(c => c.Code).ToListAsync();
+      return cranes.Select(c => new SelectListItem
+      {
+        Value = c.Id.ToString(),
+        Text = $"{c.Code} - {c.Capacity} Ton"
+      }).ToList();
+    }
+
+    private List<SelectListItem> GetCategoryList()
+    {
+      return Enum.GetValues(typeof(UsageCategory))
+          .Cast<UsageCategory>()
+          .Select(c => new SelectListItem
+          {
+            Value = ((int)c).ToString(),
+            Text = c.ToString()
+          }).ToList();
+    }
+
+    private CraneUsageRecordViewModel MapToViewModel(CraneUsageRecord record)
+    {
+      return new CraneUsageRecordViewModel
+      {
+        Id = record.Id,
+        CraneId = record.CraneId,
+        StartTime = record.StartTime,
+        EndTime = record.EndTime,
+        Category = record.Category,
+        UsageSubcategoryId = record.UsageSubcategoryId,
+        BookingId = record.BookingId,
+        MaintenanceScheduleId = record.MaintenanceScheduleId,
+        Notes = record.Notes,
+        OperatorName = record.OperatorName,
+        CraneName = record.Crane?.Code ?? string.Empty,
+        CategoryName = record.Category.ToString(),
+        SubcategoryName = record.UsageSubcategory?.Name ?? string.Empty,
+        BookingNumber = record.Booking?.BookingNumber,
+        MaintenanceTitle = record.MaintenanceSchedule?.Title,
+        CreatedAt = record.CreatedAt,
+        CreatedBy = record.CreatedBy
+      };
+    }
+
+    private string GetCategoryColorCode(UsageCategory category)
+    {
+      return category switch
+      {
+        UsageCategory.Operating => "#28a745", // Green
+        UsageCategory.Delay => "#ffc107",     // Yellow
+        UsageCategory.Standby => "#6c757d",   // Gray
+        UsageCategory.Service => "#17a2b8",   // Cyan
+        UsageCategory.Breakdown => "#dc3545", // Red
+        _ => "#6c757d"                        // Default Gray
+      };
+    }
+
+    private int GetHourInDate(DateTime time, DateTime baseDate)
+    {
+      // If time is before base date, return 0
+      if (time < baseDate)
+      {
+        return 0;
+      }
+
+      // If time is after base date + 1 day, return 24
+      if (time >= baseDate.AddDays(1))
+      {
+        return 24;
+      }
+
+      // Calculate hour within the day
+      var diff = time - baseDate;
+      return (int)Math.Floor(diff.TotalHours);
     }
   }
 }

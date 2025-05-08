@@ -36,8 +36,10 @@ namespace AspnetCoreMvcFull.Data
     public DbSet<UserRole> UserRoles { get; set; }
 
     // crane usage records
-    public DbSet<CraneUsageRecord> CraneUsageRecords { get; set; }
     public DbSet<UsageSubcategory> UsageSubcategories { get; set; }
+    // Tambahkan di class AppDbContext
+    public DbSet<CraneUsageRecord> CraneUsageRecords { get; set; }
+    // public DbSet<CraneUsageSummary> CraneUsageSummaries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,7 +90,7 @@ namespace AspnetCoreMvcFull.Data
           .HasOne(bs => bs.ShiftDefinition)
           .WithMany(sd => sd.BookingShifts)
           .HasForeignKey(bs => bs.ShiftDefinitionId)
-          .OnDelete(DeleteBehavior.Restrict); // Gunakan Restrict alih-alih Cascade
+          .OnDelete(DeleteBehavior.Restrict);
 
       // Relasi Booking dan BookingItem
       modelBuilder.Entity<BookingItem>()
@@ -131,12 +133,34 @@ namespace AspnetCoreMvcFull.Data
           .HasForeignKey(mss => mss.ShiftDefinitionId)
           .OnDelete(DeleteBehavior.Restrict);
 
+      // Tambahkan di OnModelCreating di AppDbContext
+      // Relasi CraneUsageRecord dan Crane
+      modelBuilder.Entity<CraneUsageRecord>()
+          .HasOne(u => u.Crane)
+          .WithMany()
+          .HasForeignKey(u => u.CraneId)
+          .OnDelete(DeleteBehavior.Cascade);
+
       // Relasi CraneUsageRecord dan Booking
       modelBuilder.Entity<CraneUsageRecord>()
-          .HasOne(r => r.Booking)
+          .HasOne(u => u.Booking)
           .WithMany()
-          .HasForeignKey(r => r.BookingId)
-          .OnDelete(DeleteBehavior.Cascade);
+          .HasForeignKey(u => u.BookingId)
+          .OnDelete(DeleteBehavior.SetNull);
+
+      // Relasi CraneUsageRecord dan MaintenanceSchedule
+      modelBuilder.Entity<CraneUsageRecord>()
+          .HasOne(u => u.MaintenanceSchedule)
+          .WithMany()
+          .HasForeignKey(u => u.MaintenanceScheduleId)
+          .OnDelete(DeleteBehavior.SetNull);
+
+      // Relasi CraneUsageRecord dan UsageSubcategory
+      modelBuilder.Entity<CraneUsageRecord>()
+          .HasOne(u => u.UsageSubcategory)
+          .WithMany()
+          .HasForeignKey(u => u.UsageSubcategoryId)
+          .OnDelete(DeleteBehavior.Restrict);
 
       // Configure UserRole entity
       modelBuilder.Entity<UserRole>(entity =>
