@@ -5,149 +5,146 @@
   Layout = "_ContentNavbarLayout";
 }
 
-<div class="container-fluid">
-  <h1 class="mt-4">Daftar Penggunaan Crane</h1>
-  <p class="lead">Daftar semua penggunaan crane yang telah dicatat</p>
+@if (TempData["SuccessMessage"] != null)
+{
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    @TempData["SuccessMessage"]
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+}
 
-  @if (TempData["SuccessMessage"] != null)
-  {
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      @TempData["SuccessMessage"]
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  }
+@if (TempData["ErrorMessage"] != null)
+{
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    @TempData["ErrorMessage"]
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+}
 
-  @if (TempData["ErrorMessage"] != null)
-  {
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-      @TempData["ErrorMessage"]
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  }
-
-  <div class="card mb-4">
-    <div class="card-header">
-      <i class="fas fa-filter me-1"></i>
-      Filter
-    </div>
-    <div class="card-body">
-      <form asp-action="Index" method="get" id="filterForm">
-        <div class="row g-3">
-          <div class="col-md-3">
-            <label asp-for="Filter.CraneId" class="form-label">Crane</label>
-            <select asp-for="Filter.CraneId" asp-items="Model.Filter.CraneList" class="form-select">
-              <option value="">-- Semua Crane --</option>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label asp-for="Filter.StartDate" class="form-label">Tanggal Mulai</label>
-            <input asp-for="Filter.StartDate" class="form-control" type="date" />
-          </div>
-          <div class="col-md-2">
-            <label asp-for="Filter.EndDate" class="form-label">Tanggal Selesai</label>
-            <input asp-for="Filter.EndDate" class="form-control" type="date" />
-          </div>
-          <div class="col-md-3">
-            <label asp-for="Filter.Category" class="form-label">Kategori</label>
-            <select asp-for="Filter.Category" asp-items="Model.Filter.CategoryList" class="form-select">
-              <option value="">-- Semua Kategori --</option>
-            </select>
-          </div>
-          <div class="col-md-2 d-flex align-items-end">
-            <div class="btn-group w-100 mb-2">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-search me-1"></i> Filter
-              </button>
-              <a asp-action="Index" class="btn btn-outline-secondary">
-                <i class="fas fa-redo me-1"></i> Reset
-              </a>
-            </div>
+<h1>Daftar Penggunaan Crane</h1>
+<p class="lead">Daftar semua penggunaan crane yang telah dicatat</p>
+<div class="card mb-4">
+  <div class="card-header">
+    <i class="fas fa-filter me-1"></i>
+    Filter
+  </div>
+  <div class="card-body">
+    <form asp-action="Index" method="get" id="filterForm">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label asp-for="Filter.CraneId" class="form-label">Crane</label>
+          <select asp-for="Filter.CraneId" asp-items="Model.Filter.CraneList" class="form-select">
+            <option value="">-- Semua Crane --</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label asp-for="Filter.StartDate" class="form-label">Tanggal Mulai</label>
+          <input asp-for="Filter.StartDate" class="form-control" type="date" />
+        </div>
+        <div class="col-md-2">
+          <label asp-for="Filter.EndDate" class="form-label">Tanggal Selesai</label>
+          <input asp-for="Filter.EndDate" class="form-control" type="date" />
+        </div>
+        <div class="col-md-3">
+          <label asp-for="Filter.Category" class="form-label">Kategori</label>
+          <select asp-for="Filter.Category" asp-items="Model.Filter.CategoryList" class="form-select">
+            <option value="">-- Semua Kategori --</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <div class="btn-group w-100 mb-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-search me-1"></i> Filter
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+              <i class="fas fa-redo me-1"></i> Reset
+            </a>
           </div>
         </div>
-      </form>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <div>
+      <i class="fas fa-table me-1"></i>
+      Daftar Penggunaan Crane
+    </div>
+    <div>
+      <a asp-action="Form" class="btn btn-success">
+        <i class="fas fa-plus me-1"></i> Input Penggunaan
+      </a>
+      <a asp-action="Visualization" class="btn btn-info text-white ms-2">
+        <i class="fas fa-chart-bar me-1"></i> Visualisasi
+      </a>
     </div>
   </div>
-
-  <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <div>
-        <i class="fas fa-table me-1"></i>
-        Daftar Penggunaan Crane
-      </div>
-      <div>
-        <a asp-action="Form" class="btn btn-success">
-          <i class="fas fa-plus me-1"></i> Input Penggunaan
-        </a>
-        <a asp-action="Visualization" class="btn btn-info text-white ms-2">
-          <i class="fas fa-chart-bar me-1"></i> Visualisasi
-        </a>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-bordered table-hover" id="usageTable">
-          <thead class="table-light">
-            <tr>
-              <th>Crane</th>
-              <th>Tanggal</th>
-              <th>Jam</th>
-              <th>Kategori</th>
-              <th>Subkategori</th>
-              <th>Operator</th>
-              <th>Booking/Maintenance</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            @if (Model.UsageRecords != null && Model.UsageRecords.Any())
-            {
-              @foreach (var item in Model.UsageRecords)
-              {
-                <tr>
-                  <td>@item.CraneName</td>
-                  <td>@(item.Date.HasValue ? item.Date.Value.ToString("dd/MM/yyyy") : "")</td>
-                  <td>@item.StartTime.ToString(@"hh\:mm") - @item.EndTime.ToString(@"hh\:mm")</td>
-                  <td>
-                    <span class="badge" style="background-color: @GetCategoryColor(item.Category)">
-                      @item.CategoryName
-                    </span>
-                  </td>
-                  <td>@item.SubcategoryName</td>
-                  <td>@item.OperatorName</td>
-                  <td>
-                    @if (!string.IsNullOrEmpty(item.BookingNumber))
-                    {
-                      <span class="badge bg-primary">Booking: @item.BookingNumber</span>
-                    }
-                    @if (!string.IsNullOrEmpty(item.MaintenanceTitle))
-                    {
-                      <span class="badge bg-info">Maintenance: @item.MaintenanceTitle</span>
-                    }
-                  </td>
-                  <td>
-                    <div class="btn-group">
-                      <a asp-action="Visualization" asp-route-craneId="@item.CraneId"
-                        asp-route-date="@(item.Date?.ToString("yyyy-MM-dd"))" class="btn btn-sm btn-primary">
-                        <i class="fas fa-chart-bar"></i>
-                      </a>
-                      <a asp-action="Form" asp-route-craneId="@item.CraneId"
-                        asp-route-date="@(item.Date?.ToString("yyyy-MM-dd"))" class="btn btn-sm btn-warning text-white">
-                        <i class="fas fa-edit"></i>
-                      </a>
-                    </div>
-                  </td>
-                </tr>
-              }
-            }
-            else
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover" id="usageTable">
+        <thead class="table-light">
+          <tr>
+            <th>Crane</th>
+            <th>Tanggal</th>
+            <th>Jam</th>
+            <th>Kategori</th>
+            <th>Subkategori</th>
+            <th>Operator</th>
+            <th>Booking/Maintenance</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (Model.UsageRecords != null && Model.UsageRecords.Any())
+          {
+            @foreach (var item in Model.UsageRecords)
             {
               <tr>
-                <td colspan="8" class="text-center">Tidak ada data yang ditemukan.</td>
+                <td>@item.CraneName</td>
+                <td>@(item.Date.HasValue ? item.Date.Value.ToString("dd/MM/yyyy") : "")</td>
+                <td>@item.StartTime.ToString(@"hh\:mm") - @item.EndTime.ToString(@"hh\:mm")</td>
+                <td>
+                  <span class="badge" style="background-color: @GetCategoryColor(item.Category)">
+                    @item.CategoryName
+                  </span>
+                </td>
+                <td>@item.SubcategoryName</td>
+                <td>@item.OperatorName</td>
+                <td>
+                  @if (!string.IsNullOrEmpty(item.BookingNumber))
+                  {
+                    <span class="badge bg-primary">Booking: @item.BookingNumber</span>
+                  }
+                  @if (!string.IsNullOrEmpty(item.MaintenanceTitle))
+                  {
+                    <span class="badge bg-info">Maintenance: @item.MaintenanceTitle</span>
+                  }
+                </td>
+                <td>
+                  <div class="btn-group">
+                    <a asp-action="Visualization" asp-route-craneId="@item.CraneId"
+                      asp-route-date="@(item.Date?.ToString("yyyy-MM-dd"))" class="btn btn-sm btn-primary">
+                      <i class="fas fa-chart-bar"></i>
+                    </a>
+                    <a asp-action="Form" asp-route-craneId="@item.CraneId"
+                      asp-route-date="@(item.Date?.ToString("yyyy-MM-dd"))" class="btn btn-sm btn-warning text-white">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                  </div>
+                </td>
               </tr>
             }
-          </tbody>
-        </table>
-      </div>
+          }
+          else
+          {
+            <tr>
+              <td colspan="8" class="text-center">Tidak ada data yang ditemukan.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

@@ -343,6 +343,37 @@ namespace AspnetCoreMvcFull.Controllers
       }
     }
 
+    // AJAX: CraneUsage/SearchBookings
+    [HttpGet]
+    public async Task<IActionResult> SearchBookings(string term, int craneId)
+    {
+      try
+      {
+        // Cari semua booking yang status PICApproved atau Done dengan craneId yang sama
+        var bookings = await _context.Bookings
+            .Where(b => b.CraneId == craneId &&
+                       (b.Status == BookingStatus.PICApproved ||
+                        b.Status == BookingStatus.Done) &&
+                       (b.BookingNumber.Contains(term) ||
+                        b.DocumentNumber.Contains(term) ||
+                        b.Name.Contains(term)))
+            .Select(b => new SelectListItem
+            {
+              Value = b.Id.ToString(),
+              Text = $"{b.BookingNumber} - {b.Name} ({b.StartDate:dd/MM/yyyy HH:mm} - {b.EndDate:dd/MM/yyyy HH:mm})"
+            })
+            .Take(10)
+            .ToListAsync();
+
+        return Json(bookings);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error searching bookings");
+        return Json(new List<SelectListItem>());
+      }
+    }
+
     // Helper methods
     private async Task<List<SelectListItem>> GetCraneListAsync()
     {

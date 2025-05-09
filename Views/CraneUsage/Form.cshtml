@@ -6,270 +6,278 @@
   Layout = "_ContentNavbarLayout";
 }
 
-<div class="container-fluid">
+@* <div class="container-fluid">
   <h1 class="mt-4">Input Penggunaan Crane</h1>
-  <p class="lead">Catat penggunaan crane dalam satu hari</p>
+  <p class="lead">Catat penggunaan crane dalam satu hari</p> *@
 
-  @if (TempData["SuccessMessage"] != null)
-  {
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      @TempData["SuccessMessage"]
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  }
-
-  @if (TempData["ErrorMessage"] != null)
-  {
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-      @TempData["ErrorMessage"]
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  }
-
-  <div class="card mb-4">
-    <div class="card-header">
-      <i class="fas fa-calendar-day me-1"></i>
-      Pilih Crane dan Tanggal
-    </div>
-    <div class="card-body">
-      <form id="craneFormSelector" asp-action="Form" method="get">
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label asp-for="CraneId" class="form-label">Crane</label>
-            <select asp-for="CraneId" asp-items="Model.CraneList" class="form-select" required>
-              <option value="">-- Pilih Crane --</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label asp-for="Date" class="form-label">Tanggal</label>
-            <input asp-for="Date" type="date" class="form-control" required />
-          </div>
-          <div class="col-md-4 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-search me-1"></i> Tampilkan
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
+@if (TempData["SuccessMessage"] != null)
+{
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    @TempData["SuccessMessage"]
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
+}
 
-  @if (Model.CraneId > 0)
-  {
-    <form id="usageForm" asp-action="Form" method="post">
-      <input type="hidden" asp-for="CraneId" />
-      <input type="hidden" asp-for="Date" />
+@if (TempData["ErrorMessage"] != null)
+{
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    @TempData["ErrorMessage"]
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+}
 
-      <div class="card mb-4">
-        <div class="card-header">
-          <i class="fas fa-user me-1"></i>
-          Informasi Operator
+<h1>Input Penggunaan Crane</h1>
+<p class="lead">Catat penggunaan crane dalam satu hari</p>
+<div class="card mb-4">
+  <div class="card-header">
+    <i class="bx bx-calendar-alt me-1"></i>
+    Pilih Crane dan Tanggal
+  </div>
+  <div class="card-body">
+    <form id="craneFormSelector" asp-action="Form" method="get">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label asp-for="CraneId" class="form-label">Crane</label>
+          <select asp-for="CraneId" asp-items="Model.CraneList" class="form-select" required>
+            <option value="">-- Pilih Crane --</option>
+          </select>
         </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
-              <label asp-for="OperatorName" class="form-label">Nama Operator</label>
-              <input asp-for="OperatorName" class="form-control" required />
-              <span asp-validation-for="OperatorName" class="text-danger"></span>
-            </div>
-          </div>
+        <div class="col-md-4">
+          <label asp-for="Date" class="form-label">Tanggal</label>
+          <input asp-for="Date" type="date" class="form-control" required />
         </div>
-      </div>
-
-      <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <div>
-            <i class="fas fa-clock me-1"></i>
-            Daftar Penggunaan Waktu
-          </div>
-          <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addEntryModal">
-            <i class="fas fa-plus me-1"></i> Tambah Penggunaan
-          </button>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-bordered table-hover" id="entriesTable">
-              <thead class="table-light">
-                <tr>
-                  <th>Jam Mulai</th>
-                  <th>Jam Selesai</th>
-                  <th>Kategori</th>
-                  <th>Subkategori</th>
-                  <th>Booking/Maintenance</th>
-                  <th>Catatan</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="entriesTableBody">
-                @if (Model.Entries != null && Model.Entries.Any())
-                {
-                  @for (int i = 0; i < Model.Entries.Count; i++)
-                  {
-                    var entry = Model.Entries[i];
-                    <tr data-entry-id="@entry.Id">
-                      <td>@entry.StartTime.ToString(@"hh\:mm")</td>
-                      <td>@entry.EndTime.ToString(@"hh\:mm")</td>
-                      <td>
-                        <span class="badge" style="background-color: @GetCategoryColor(entry.Category)">
-                          @entry.CategoryName
-                        </span>
-                      </td>
-                      <td>@entry.SubcategoryName</td>
-                      <td>
-                        @if (!string.IsNullOrEmpty(entry.BookingNumber))
-                        {
-                          <span class="badge bg-primary">Booking: @entry.BookingNumber</span>
-                        }
-                        @if (!string.IsNullOrEmpty(entry.MaintenanceTitle))
-                        {
-                          <span class="badge bg-info">Maintenance: @entry.MaintenanceTitle</span>
-                        }
-                      </td>
-                      <td>@entry.Notes</td>
-                      <td>
-                        <div class="btn-group">
-                          <button type="button" class="btn btn-sm btn-warning text-white edit-entry" data-id="@entry.Id"
-                            data-start="@entry.StartTime.ToString(@"hh\:mm")" data-end="@entry.EndTime.ToString(@"hh\:mm")"
-                            data-category="@((int)entry.Category)" data-subcategory="@entry.UsageSubcategoryId"
-                            data-booking="@entry.BookingId" data-maintenance="@entry.MaintenanceScheduleId"
-                            data-notes="@entry.Notes">
-                            <i class="fas fa-edit"></i>
-                          </button>
-                          <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="@entry.Id">
-                            <i class="fas fa-trash"></i>
-                          </button>
-                        </div>
-                      </td>
-
-                      <input type="hidden" name="Entries[@i].Id" value="@entry.Id" />
-                      <input type="hidden" name="Entries[@i].StartTime" value="@entry.StartTime" />
-                      <input type="hidden" name="Entries[@i].EndTime" value="@entry.EndTime" />
-                      <input type="hidden" name="Entries[@i].Category" value="@((int)entry.Category)" />
-                      <input type="hidden" name="Entries[@i].UsageSubcategoryId" value="@entry.UsageSubcategoryId" />
-                      <input type="hidden" name="Entries[@i].BookingId" value="@entry.BookingId" />
-                      <input type="hidden" name="Entries[@i].MaintenanceScheduleId" value="@entry.MaintenanceScheduleId" />
-                      <input type="hidden" name="Entries[@i].Notes" value="@entry.Notes" />
-                    </tr>
-                  }
-                }
-                else
-                {
-                  <tr id="noEntriesRow">
-                    <td colspan="7" class="text-center">Belum ada data penggunaan. Klik "Tambah Penggunaan" untuk
-                      menambahkan.</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="card-footer">
+        <div class="col-md-4 d-flex align-items-end">
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save me-1"></i> Simpan Semua Perubahan
+            <i class="bx bx-search me-1"></i> Tampilkan
           </button>
-          <a asp-action="Index" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-1"></i> Kembali ke Daftar
-          </a>
         </div>
       </div>
     </form>
+  </div>
+</div>
 
-    <!-- Modal for Adding Entry -->
-    <div class="modal fade" id="addEntryModal" tabindex="-1" aria-labelledby="addEntryModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="addEntryModalLabel">Tambah Penggunaan Crane</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="entryForm">
-              <input type="hidden" id="entryId" value="0" />
+@if (Model.CraneId > 0)
+{
+  <form id="usageForm" asp-action="Form" method="post">
+    <input type="hidden" asp-for="CraneId" />
+    <input type="hidden" asp-for="Date" />
 
-              <!-- Perubahan di Views/CraneUsage/Form.cshtml pada bagian modal form -->
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="startTime" class="form-label">Jam Mulai</label>
-                    <input type="time" id="startTime" class="form-control" required />
-                    <div class="invalid-feedback">Jam mulai harus diisi.</div>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="endTime" class="form-label">Jam Selesai</label>
-                    <input type="time" id="endTime" class="form-control" required />
-                    <div class="invalid-feedback">Jam selesai harus diisi.</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="category" class="form-label">Kategori</label>
-                    <select id="category" class="form-select" required>
-                      <option value="">-- Pilih Kategori --</option>
-                      @foreach (var category in Enum.GetValues(typeof(UsageCategory)))
-                      {
-                        <option value="@((int)category)">@category</option>
-                      }
-                    </select>
-                    <div class="invalid-feedback">Kategori harus dipilih.</div>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="subcategory" class="form-label">Subkategori</label>
-                    <select id="subcategory" class="form-select" required>
-                      <option value="">-- Pilih Subkategori --</option>
-                    </select>
-                    <div class="invalid-feedback">Subkategori harus dipilih.</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="booking" class="form-label">Booking (opsional)</label>
-                    <select id="booking" class="form-select">
-                      <option value="">-- Tidak ada booking terkait --</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="maintenance" class="form-label">Maintenance (opsional)</label>
-                    <select id="maintenance" class="form-select">
-                      <option value="">-- Tidak ada maintenance terkait --</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div class="mb-3">
-                <label for="notes" class="form-label">Catatan (opsional)</label>
-                <textarea id="notes" class="form-control" rows="3"></textarea>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="button" class="btn btn-primary" id="saveEntryBtn">Simpan</button>
+    <div class="card mb-4">
+      <div class="card-header">
+        <i class="bx bx-user me-1"></i>
+        Informasi Operator
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <label asp-for="OperatorName" class="form-label">Nama Operator</label>
+            <input asp-for="OperatorName" class="form-control" required />
+            <span asp-validation-for="OperatorName" class="text-danger"></span>
           </div>
         </div>
       </div>
     </div>
-  }
-  else
-  {
-    <div class="alert alert-info">
-      <i class="fas fa-info-circle me-2"></i>
-      Silakan pilih crane dan tanggal untuk melihat atau menambahkan data penggunaan.
+
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <i class="bx bx-time me-1"></i>
+          Daftar Penggunaan Waktu
+        </div>
+        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addEntryModal">
+          <i class="bx bx-plus me-1"></i> Tambah Penggunaan
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover" id="entriesTable">
+            <thead class="table-light">
+              <tr>
+                <th>Jam Mulai</th>
+                <th>Jam Selesai</th>
+                <th>Kategori</th>
+                <th>Subkategori</th>
+                <th>Booking/Maintenance</th>
+                <th>Catatan</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="entriesTableBody">
+              @if (Model.Entries != null && Model.Entries.Any())
+              {
+                @for (int i = 0; i < Model.Entries.Count; i++)
+                {
+                  var entry = Model.Entries[i];
+                  <tr data-entry-id="@entry.Id">
+                    <td>@entry.StartTime.ToString(@"hh\:mm")</td>
+                    <td>@entry.EndTime.ToString(@"hh\:mm")</td>
+                    <td>
+                      <span class="badge" style="background-color: @GetCategoryColor(entry.Category)">
+                        @entry.CategoryName
+                      </span>
+                    </td>
+                    <td>@entry.SubcategoryName</td>
+                    <td>
+                      @if (!string.IsNullOrEmpty(entry.BookingNumber))
+                      {
+                        <span class="badge bg-primary">Booking: @entry.BookingNumber</span>
+                      }
+                      @if (!string.IsNullOrEmpty(entry.MaintenanceTitle))
+                      {
+                        <span class="badge bg-info">Maintenance: @entry.MaintenanceTitle</span>
+                      }
+                    </td>
+                    <td>@entry.Notes</td>
+                    <td>
+                      <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-warning text-white edit-entry" data-id="@entry.Id"
+                          data-start="@entry.StartTime.ToString(@"hh\:mm")" data-end="@entry.EndTime.ToString(@"hh\:mm")"
+                          data-category="@((int)entry.Category)" data-subcategory="@entry.UsageSubcategoryId"
+                          data-booking="@entry.BookingId" data-maintenance="@entry.MaintenanceScheduleId"
+                          data-notes="@entry.Notes">
+                          <i class="bx bx-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="@entry.Id">
+                          <i class="bx bx-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+
+                    <input type="hidden" name="Entries[@i].Id" value="@entry.Id" />
+                    <input type="hidden" name="Entries[@i].StartTime" value="@entry.StartTime" />
+                    <input type="hidden" name="Entries[@i].EndTime" value="@entry.EndTime" />
+                    <input type="hidden" name="Entries[@i].Category" value="@((int)entry.Category)" />
+                    <input type="hidden" name="Entries[@i].UsageSubcategoryId" value="@entry.UsageSubcategoryId" />
+                    <input type="hidden" name="Entries[@i].BookingId" value="@entry.BookingId" />
+                    <input type="hidden" name="Entries[@i].MaintenanceScheduleId" value="@entry.MaintenanceScheduleId" />
+                    <input type="hidden" name="Entries[@i].Notes" value="@entry.Notes" />
+                  </tr>
+                }
+              }
+              else
+              {
+                <tr id="noEntriesRow">
+                  <td colspan="7" class="text-center">Belum ada data penggunaan. Klik "Tambah Penggunaan" untuk
+                    menambahkan.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer">
+        <button type="submit" class="btn btn-primary">
+          <i class="bx bx-save me-1"></i> Simpan Semua Perubahan
+        </button>
+        <a asp-action="Index" class="btn btn-secondary">
+          <i class="bx bx-arrow-back me-1"></i> Kembali ke Daftar
+        </a>
+      </div>
     </div>
-  }
-</div>
+  </form>
+
+  <!-- Modal for Adding Entry -->
+  <div class="modal fade" id="addEntryModal" tabindex="-1" aria-labelledby="addEntryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addEntryModalLabel">Tambah Penggunaan Crane</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="entryForm">
+            <input type="hidden" id="entryId" value="0" />
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="startTime" class="form-label">Jam Mulai</label>
+                  <input type="time" id="startTime" class="form-control" required />
+                  <div class="invalid-feedback">Jam mulai harus diisi.</div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="endTime" class="form-label">Jam Selesai</label>
+                  <input type="time" id="endTime" class="form-control" required />
+                  <div class="invalid-feedback">Jam selesai harus diisi.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="category" class="form-label">Kategori</label>
+                  <select id="category" class="form-select" required>
+                    <option value="">-- Pilih Kategori --</option>
+                    @foreach (var category in Enum.GetValues(typeof(UsageCategory)))
+                    {
+                      <option value="@((int)category)">@category</option>
+                    }
+                  </select>
+                  <div class="invalid-feedback">Kategori harus dipilih.</div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="subcategory" class="form-label">Subkategori</label>
+                  <select id="subcategory" class="form-select" required>
+                    <option value="">-- Pilih Subkategori --</option>
+                  </select>
+                  <div class="invalid-feedback">Subkategori harus dipilih.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <!-- Ganti bagian modal form untuk booking -->
+                <div class="form-group">
+                  <label for="booking" class="form-label">Booking (opsional)</label>
+                  <div class="input-group">
+                    <input type="text" id="bookingSearch" class="form-control" placeholder="Masukkan kode booking...">
+                    <button class="btn btn-outline-secondary" type="button" id="searchBookingBtn">
+                      <i class="bx bx-search"></i>
+                    </button>
+                    <input type="hidden" id="booking" value="">
+                  </div>
+                  <div id="bookingSearchResults" class="search-results mt-1"></div>
+                  <div class="mt-1" id="selectedBookingInfo"></div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="maintenance" class="form-label">Maintenance (opsional)</label>
+                  <select id="maintenance" class="form-select">
+                    <option value="">-- Tidak ada maintenance terkait --</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="notes" class="form-label">Catatan (opsional)</label>
+              <textarea id="notes" class="form-control" rows="3"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" id="saveEntryBtn">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+else
+{
+  <div class="alert alert-info">
+    <i class="bx bx-info-circle me-2"></i>
+    Silakan pilih crane dan tanggal untuk melihat atau menambahkan data penggunaan.
+  </div>
+}
+@* </div> *@
 
 @functions {
   public string GetCategoryColor(UsageCategory category)
@@ -287,14 +295,51 @@
 }
 
 @section PageScripts {
-  @* @{
-    await Html.RenderPartialAsync("_ValidationScriptsPartial");
-  } *@
+  <style>
+    .search-results {
+      position: absolute;
+      width: 100%;
+      max-height: 200px;
+      overflow-y: auto;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      z-index: 1000;
+      display: none;
+    }
+
+    .search-results .result-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .search-results .result-item:hover {
+      background-color: #f5f5f5;
+    }
+
+    .selected-booking {
+      padding: 6px 12px;
+      border-radius: 4px;
+      background-color: #e9f2ff;
+      border: 1px solid #c1d9ff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .selected-booking .remove-btn {
+      cursor: pointer;
+      color: #dc3545;
+    }
+  </style>
 
   <script>
     $(document).ready(function () {
       var isEditMode = false;
       var entryCount = @Model.Entries.Count;
+      var searchTimeout;
+      var selectedBooking = null;
 
       // Load subcategories when category changes
       $('#category').change(function () {
@@ -313,7 +358,93 @@
         }
       });
 
-      // Load related bookings and maintenance when time changes
+      // Handle booking search
+      $('#searchBookingBtn').click(function () {
+        searchBookings();
+      });
+
+      $('#bookingSearch').keyup(function (e) {
+        clearTimeout(searchTimeout);
+
+        // If Enter key is pressed, perform search immediately
+        if (e.keyCode === 13) {
+          searchBookings();
+          return;
+        }
+
+        // Otherwise, set a timeout to avoid too many requests
+        searchTimeout = setTimeout(function () {
+          if ($('#bookingSearch').val().length >= 3) {
+            searchBookings();
+          }
+        }, 500);
+      });
+
+      // Ganti fungsi searchBookings dengan yang baru
+      function searchBookings() {
+        var searchTerm = $('#bookingSearch').val();
+        if (!searchTerm || searchTerm.length < 2) {
+          $('#bookingSearchResults').hide();
+          return;
+        }
+
+        var craneId = '@Model.CraneId';
+
+        // Show loading indicator
+        $('#bookingSearchResults').html('<div class="p-2 text-center"><i class="bx bx-loader-alt bx-spin"></i> Mencari...</div>').show();
+
+        // Gunakan endpoint baru yang khusus untuk pencarian booking
+        $.getJSON('@Url.Action("SearchBookings")?term=' + searchTerm + '&craneId=' + craneId,
+          function (data) {
+            if (!data || data.length === 0) {
+              $('#bookingSearchResults').html('<div class="p-2 text-center">Tidak ada booking yang ditemukan</div>');
+              return;
+            }
+
+            // Display results
+            var resultHtml = '';
+            $.each(data, function (index, item) {
+              resultHtml += '<div class="result-item" data-id="' + item.value + '" data-text="' + item.text + '">' + item.text + '</div>';
+            });
+
+            $('#bookingSearchResults').html(resultHtml).show();
+
+            // Add click event to result items
+            $('.result-item').click(function () {
+              var id = $(this).data('id');
+              var text = $(this).data('text');
+              selectBooking(id, text);
+              $('#bookingSearchResults').hide();
+            });
+          });
+      }
+
+      function selectBooking(id, text) {
+        selectedBooking = { id: id, text: text };
+        $('#booking').val(id);
+        $('#bookingSearch').val('');
+
+        // Display selected booking
+        var bookingInfo = '<div class="selected-booking">' +
+          '<span>' + text + '</span>' +
+          '<span class="remove-btn" title="Hapus booking"><i class="bx bx-x"></i></span>' +
+          '</div>';
+        $('#selectedBookingInfo').html(bookingInfo);
+
+        // Add event to remove button
+        $('.remove-btn').click(function (e) {
+          e.stopPropagation();
+          removeSelectedBooking();
+        });
+      }
+
+      function removeSelectedBooking() {
+        selectedBooking = null;
+        $('#booking').val('');
+        $('#selectedBookingInfo').empty();
+      }
+
+      // Load related maintenance when time changes
       function updateRelatedItems() {
         var craneId = '@Model.CraneId';
         var date = '@Model.Date.ToString("yyyy-MM-dd")';
@@ -324,23 +455,8 @@
           return;
         }
 
-        // Show loading indicators
-        $('#booking').html('<option value="">Loading bookings...</option>');
+        // Show loading indicators for maintenance
         $('#maintenance').html('<option value="">Loading maintenance...</option>');
-
-        // Get related bookings
-        $.getJSON('@Url.Action("GetRelatedBookings")?craneId=' + craneId +
-          '&date=' + date +
-          '&startTime=' + startTime +
-          '&endTime=' + endTime,
-          function (data) {
-            var bookingSelect = $('#booking');
-            bookingSelect.empty();
-            bookingSelect.append($('<option></option>').val('').text('-- Tidak ada booking terkait --'));
-            $.each(data, function (index, item) {
-              bookingSelect.append($('<option></option>').val(item.value).text(item.text));
-            });
-          });
 
         // Get related maintenance
         $.getJSON('@Url.Action("GetRelatedMaintenance")?craneId=' + craneId +
@@ -372,9 +488,13 @@
           $('#endTime').val('09:00');
           $('#category').val('');
           $('#subcategory').empty().append($('<option></option>').val('').text('-- Pilih Subkategori --'));
-          $('#booking').empty().append($('<option></option>').val('').text('-- Tidak ada booking terkait --'));
+          $('#booking').val('');
+          $('#bookingSearch').val('');
+          $('#selectedBookingInfo').empty();
           $('#maintenance').empty().append($('<option></option>').val('').text('-- Tidak ada maintenance terkait --'));
           $('#notes').val('');
+
+          selectedBooking = null;
         }
       });
 
@@ -396,8 +516,19 @@
         var maintenance = $('#maintenance').val();
         var notes = $('#notes').val();
 
+        // Convert time strings to Date objects for proper comparison
+        function parseTimeString(timeStr, baseDate) {
+          const [hours, minutes] = timeStr.split(':').map(Number);
+          const date = new Date(baseDate);
+          date.setHours(hours, minutes, 0, 0);
+          return date;
+        }
+
         // Validate times
-        if (startTime >= endTime) {
+        const today = new Date();
+        const startDateTime = parseTimeString(startTime, today);
+        const endDateTime = parseTimeString(endTime, today);
+        if (startDateTime >= endDateTime) {
           alert('Jam mulai harus lebih awal dari jam selesai.');
           return;
         }
@@ -412,7 +543,7 @@
           BookingId: booking ? parseInt(booking) : null,
           MaintenanceScheduleId: maintenance ? parseInt(maintenance) : null,
           Notes: notes
-        };
+        }
 
         // Either add new or update existing entry
         if (isEditMode) {
@@ -488,7 +619,21 @@
         $('#startTime').val(startTime);
         $('#endTime').val(endTime);
         $('#category').val(category);
+        $('#booking').val(booking || '');
         $('#notes').val(notes);
+
+        // Clear any previous selected booking
+        $('#selectedBookingInfo').empty();
+
+        // Set booking information if exists
+        if (booking) {
+          // Find booking info from the table
+          var bookingInfo = $('tr[data-entry-id="' + id + '"] td:eq(4) .badge.bg-primary').text();
+          if (bookingInfo) {
+            var text = bookingInfo;
+            selectBooking(booking, text);
+          }
+        }
 
         // Load subcategories
         $('#category').trigger('change');
@@ -497,14 +642,11 @@
         setTimeout(function () {
           $('#subcategory').val(subcategory);
 
-          // Load related bookings and maintenance
+          // Load related maintenance
           updateRelatedItems();
 
-          // Set timeout to allow bookings and maintenance to load
+          // Set timeout to allow maintenance to load
           setTimeout(function () {
-            if (booking) {
-              $('#booking').val(booking);
-            }
             if (maintenance) {
               $('#maintenance').val(maintenance);
             }
@@ -565,6 +707,13 @@
         }
       });
 
+      // Close search results when clicking outside
+      $(document).click(function (e) {
+        if (!$(e.target).closest('#bookingSearch, #searchBookingBtn, #bookingSearchResults').length) {
+          $('#bookingSearchResults').hide();
+        }
+      });
+
       // Function to add a new row to the table
       function addTableRow(entry) {
         // Remove "no entries" row if it exists
@@ -582,46 +731,46 @@
         }
 
         var newRow = `
-                              <tr data-entry-id="${entry.id}">
-                                  <td>${formatTime(entry.startTime)}</td>
-                                  <td>${formatTime(entry.endTime)}</td>
-                                  <td>
-                                      <span class="badge" style="background-color: ${categoryColor}">
-                                          ${entry.categoryName}
-                                      </span>
-                                  </td>
-                                  <td>${entry.subcategoryName}</td>
-                                  <td>${relatedItems}</td>
-                                  <td>${entry.notes || ''}</td>
-                                  <td>
-                                      <div class="btn-group">
-                                          <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
-                                                  data-id="${entry.id}"
-                                                  data-start="${formatTime(entry.startTime)}"
-                                                  data-end="${formatTime(entry.endTime)}"
-                                                  data-category="${entry.category}"
-                                                  data-subcategory="${entry.usageSubcategoryId}"
-                                                  data-booking="${entry.bookingId || ''}"
-                                                  data-maintenance="${entry.maintenanceScheduleId || ''}"
-                                                  data-notes="${entry.notes || ''}">
-                                              <i class="fas fa-edit"></i>
-                                          </button>
-                                          <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
-                                              <i class="fas fa-trash"></i>
-                                          </button>
-                                      </div>
-                                  </td>
+                          <tr data-entry-id="${entry.id}">
+                            <td>${formatTime(entry.startTime)}</td>
+                            <td>${formatTime(entry.endTime)}</td>
+                            <td>
+                              <span class="badge" style="background-color: ${categoryColor}">
+                                ${entry.categoryName}
+                              </span>
+                            </td>
+                            <td>${entry.subcategoryName}</td>
+                            <td>${relatedItems}</td>
+                            <td>${entry.notes || ''}</td>
+                            <td>
+                              <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
+                                  data-id="${entry.id}"
+                                  data-start="${formatTime(entry.startTime)}"
+                                  data-end="${formatTime(entry.endTime)}"
+                                  data-category="${entry.category}"
+                                  data-subcategory="${entry.usageSubcategoryId}"
+                                  data-booking="${entry.bookingId || ''}"
+                                  data-maintenance="${entry.maintenanceScheduleId || ''}"
+                                  data-notes="${entry.notes || ''}">
+                                  <i class="bx bx-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
+                                  <i class="bx bx-trash"></i>
+                                </button>
+                              </div>
+                            </td>
 
-                                  <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
-                                  <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
-                                  <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
-                                  <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
-                                  <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
-                                  <input type="hidden" name="Entries[${index}].BookingId" value="${entry.bookingId || ''}" />
-                                  <input type="hidden" name="Entries[${index}].MaintenanceScheduleId" value="${entry.maintenanceScheduleId || ''}" />
-                                  <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
-                              </tr>
-                              `;
+                            <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
+                            <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
+                            <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
+                            <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
+                            <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
+                            <input type="hidden" name="Entries[${index}].BookingId" value="${entry.bookingId || ''}" />
+                            <input type="hidden" name="Entries[${index}].MaintenanceScheduleId" value="${entry.maintenanceScheduleId || ''}" />
+                            <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
+                          </tr>
+                        `;
 
         $('#entriesTableBody').append(newRow);
       }
@@ -691,7 +840,6 @@
         return colors[category] || '#6c757d';
       }
 
-      // Di dalam script di bawah form
       // Fungsi formatTime yang akan menampilkan waktu dengan benar
       function formatTime(timeString) {
         // If it's already in HH:MM format, return as is
