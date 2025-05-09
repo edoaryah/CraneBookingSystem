@@ -476,7 +476,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
     {
       var query = _context.CraneUsageEntries
           .Include(e => e.CraneUsageRecord)
-              .ThenInclude(r => r.Crane)
+              .ThenInclude(r => r!.Crane) // Use null-forgiving operator
           .Include(e => e.UsageSubcategory)
           .Include(e => e.Booking)
           .Include(e => e.MaintenanceSchedule)
@@ -484,19 +484,19 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
 
       if (filter.CraneId.HasValue && filter.CraneId > 0)
       {
-        query = query.Where(e => e.CraneUsageRecord.CraneId == filter.CraneId);
+        query = query.Where(e => e.CraneUsageRecord != null && e.CraneUsageRecord.CraneId == filter.CraneId);
       }
 
       if (filter.StartDate.HasValue)
       {
         var startDate = filter.StartDate.Value.Date;
-        query = query.Where(e => e.CraneUsageRecord.Date >= startDate);
+        query = query.Where(e => e.CraneUsageRecord != null && e.CraneUsageRecord.Date >= startDate);
       }
 
       if (filter.EndDate.HasValue)
       {
         var endDate = filter.EndDate.Value.Date.AddDays(1).AddSeconds(-1);
-        query = query.Where(e => e.CraneUsageRecord.Date <= endDate);
+        query = query.Where(e => e.CraneUsageRecord != null && e.CraneUsageRecord.Date <= endDate);
       }
 
       if (filter.Category.HasValue)
@@ -504,8 +504,8 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         query = query.Where(e => e.Category == filter.Category);
       }
 
-      // Order by date and time
-      query = query.OrderByDescending(e => e.CraneUsageRecord.Date)
+      // Order by date and time with null checks
+      query = query.OrderByDescending(e => e.CraneUsageRecord != null ? e.CraneUsageRecord.Date : DateTime.MinValue)
                    .ThenBy(e => e.StartTime);
 
       var entries = await query.ToListAsync();
@@ -521,16 +521,16 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           UsageSubcategoryId = e.UsageSubcategoryId,
           BookingId = e.BookingId,
           MaintenanceScheduleId = e.MaintenanceScheduleId,
-          Notes = e.Notes,
+          Notes = e.Notes ?? string.Empty,
           CategoryName = e.Category.ToString(),
           SubcategoryName = e.UsageSubcategory?.Name ?? string.Empty,
-          BookingNumber = e.Booking?.BookingNumber,
-          MaintenanceTitle = e.MaintenanceSchedule?.Title,
+          BookingNumber = e.Booking?.BookingNumber ?? string.Empty,
+          MaintenanceTitle = e.MaintenanceSchedule?.Title ?? string.Empty,
           // Tambahkan properti yang dibutuhkan view Index
-          CraneId = e.CraneUsageRecord.CraneId,
-          CraneName = e.CraneUsageRecord.Crane?.Code ?? string.Empty,
-          Date = e.CraneUsageRecord.Date,
-          OperatorName = e.CraneUsageRecord.OperatorName
+          CraneId = e.CraneUsageRecord?.CraneId ?? 0,
+          CraneName = e.CraneUsageRecord?.Crane?.Code ?? string.Empty,
+          Date = e.CraneUsageRecord?.Date ?? DateTime.MinValue,
+          OperatorName = e.CraneUsageRecord?.OperatorName ?? string.Empty
         }).ToList(),
         Filter = filter
       };
