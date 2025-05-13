@@ -2,6 +2,7 @@
 using AspnetCoreMvcFull.Data;
 using AspnetCoreMvcFull.Models;
 using AspnetCoreMvcFull.Services.CraneUsage;
+using AspnetCoreMvcFull.ViewModels.BookingManagement;
 using AspnetCoreMvcFull.ViewModels.CraneUsage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -371,6 +372,275 @@ namespace AspnetCoreMvcFull.Controllers
       {
         _logger.LogError(ex, "Error searching bookings");
         return Json(new List<SelectListItem>());
+      }
+    }
+
+    // Metode tambahan untuk List.cshtml dan BookingForm.cshtml
+
+    // GET: CraneUsage/List
+    [HttpGet]
+    public async Task<IActionResult> List()
+    {
+      try
+      {
+        // Ambil booking dengan status Cancelled atau Done
+        var bookings = await _context.Bookings
+            .Include(b => b.Crane)
+            .Where(b => b.Status == BookingStatus.Cancelled || b.Status == BookingStatus.Done)
+            .OrderByDescending(b => b.SubmitTime)  // Booking terbaru di atas
+            .Select(b => new BookingViewModel
+            {
+              Id = b.Id,
+              BookingNumber = b.BookingNumber,
+              CraneCode = b.Crane != null ? b.Crane.Code : "N/A",
+              StartDate = b.StartDate,
+              EndDate = b.EndDate,
+              Department = b.Department,
+              Location = b.Location ?? "N/A",
+              Status = b.Status
+            })
+            .ToListAsync();
+
+        return View(bookings);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error loading bookings for crane usage input");
+        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat daftar booking.";
+        return View(new List<BookingViewModel>());
+      }
+    }
+
+    // GET: CraneUsage/BookingForm
+    [HttpGet]
+    public async Task<IActionResult> BookingForm(int bookingId, DateTime? date = null)
+    {
+      try
+      {
+        // Ambil detail booking
+        var booking = await _context.Bookings
+            .Include(b => b.Crane)
+            .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+        if (booking == null)
+        {
+          TempData["ErrorMessage"] = "Booking tidak ditemukan.";
+          return RedirectToAction(nameof(List));
+        }
+
+        // Default tanggal ke hari ini jika tidak dispesifikasikan
+        var viewDate = date ?? DateTime.Today;
+
+        // Buat view model
+        var viewModel = new BookingUsageFormViewModel
+        {
+          BookingId = booking.Id,
+          BookingNumber = booking.BookingNumber,
+          BookingName = booking.Name,
+          Department = booking.Department,
+          CraneCode = booking.Crane?.Code ?? "N/A",
+          CraneId = booking.CraneId,
+          StartDate = booking.StartDate,
+          EndDate = booking.EndDate,
+          Location = booking.Location ?? "N/A",
+          Status = booking.Status,
+          Date = viewDate,
+          OperatorName = User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty
+        };
+
+        // Load entri yang sudah ada untuk tanggal ini
+        if (booking.CraneId > 0)
+        {
+          viewModel.Entries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(booking.CraneId, viewDate);
+
+          // Filter entri untuk menampilkan hanya yang terkait dengan booking ini
+          viewModel.Entries = viewModel.Entries
+              .Where(e => e.BookingId == booking.Id)
+              .ToList();
+        }
+
+        return View(viewModel);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error loading booking form for crane usage with ID: {BookingId}", bookingId);
+        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat form penggunaan crane.";
+        return RedirectToAction(nameof(List));
+      }
+    }
+
+    // POST: CraneUsage/BookingForm
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BookingForm(BookingUsageFormViewModel viewModel)
+    {
+      try
+      {
+        if (ModelState.IsValid)
+        {
+          // Ambil info user saat ini dari claims
+          var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+
+          // Pastikan semua entri memiliki BookingId yang diset
+          foreach (var entry in viewModel.Entries)
+          {
+            entry.BookingId = viewModel.BookingId;
+          }
+
+          // Coba simpan form menggunakan metode baru
+          var success = await _craneUsageService.SaveBookingUsageFormAsync(viewModel, userName);
+
+          if (success)
+          {
+            TempData["SuccessMessage"] = "Data penggunaan crane berhasil disimpan.";
+            return RedirectToAction(nameof(BookingForm), new { bookingId = viewModel.BookingId, date = viewModel.Date.ToString("yyyy-MM-dd") });
+          }
+          else
+          {
+            TempData["ErrorMessage"] = "Terdapat konflik waktu pada entri penggunaan. Pastikan waktu tidak tumpang tindih.";
+          }
+        }
+
+        // Jika validasi gagal, kembalikan form dengan data yang dibutuhkan
+        // Muat ulang detail booking
+        var booking = await _context.Bookings
+            .Include(b => b.Crane)
+            .FirstOrDefaultAsync(b => b.Id == viewModel.BookingId);
+
+        if (booking == null)
+        {
+          TempData["ErrorMessage"] = "Booking tidak ditemukan.";
+          return RedirectToAction(nameof(List));
+        }
+
+        // Update viewModel dengan detail booking
+        viewModel.BookingNumber = booking.BookingNumber;
+        viewModel.BookingName = booking.Name;
+        viewModel.Department = booking.Department;
+        viewModel.CraneCode = booking.Crane?.Code ?? "N/A";
+        viewModel.StartDate = booking.StartDate;
+        viewModel.EndDate = booking.EndDate;
+        viewModel.Location = booking.Location ?? "N/A";
+        viewModel.Status = booking.Status;
+
+        // Muat ulang entri jika validasi gagal
+        var entries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(viewModel.CraneId, viewModel.Date);
+        viewModel.Entries = entries.Where(e => e.BookingId == viewModel.BookingId).ToList();
+
+        return View(viewModel);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error saving booking usage form");
+        TempData["ErrorMessage"] = "Terjadi kesalahan saat menyimpan data penggunaan crane.";
+
+        // Kembali ke form dengan ID booking dan tanggal
+        return RedirectToAction(nameof(BookingForm), new { bookingId = viewModel.BookingId, date = viewModel.Date.ToString("yyyy-MM-dd") });
+      }
+    }
+
+    // AJAX: CraneUsage/AddBookingEntry
+    [HttpPost]
+    public async Task<IActionResult> AddBookingEntry(CraneUsageEntryViewModel entry, int craneId, DateTime date, string operatorName, int bookingId)
+    {
+      try
+      {
+        // Validasi format waktu
+        if (entry.StartTime >= entry.EndTime)
+        {
+          return Json(new { success = false, message = "Waktu mulai harus lebih awal dari waktu selesai." });
+        }
+
+        // Set booking ID
+        entry.BookingId = bookingId;
+
+        // Cek konflik dengan entri yang sudah ada
+        var existingEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(craneId, date);
+        if (!_craneUsageService.ValidateNoTimeConflicts(existingEntries, entry))
+        {
+          return Json(new { success = false, message = "Terdapat konflik waktu dengan entri yang sudah ada." });
+        }
+
+        // Tambah entri baru
+        var result = await _craneUsageService.AddCraneUsageEntryAsync(craneId, date, entry, operatorName);
+
+        if (result)
+        {
+          // Ambil entri lengkap dengan ID dan navigation properties
+          var updatedEntry = await _craneUsageService.GetCraneUsageEntryByTimeAsync(craneId, date, entry.StartTime, entry.EndTime);
+          return Json(new { success = true, entry = updatedEntry });
+        }
+        else
+        {
+          return Json(new { success = false, message = "Gagal menambahkan entri penggunaan crane." });
+        }
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error adding booking crane usage entry");
+        return Json(new { success = false, message = "Terjadi kesalahan saat menambahkan entri penggunaan crane." });
+      }
+    }
+
+    // AJAX: CraneUsage/UpdateBookingEntry
+    [HttpPost]
+    public async Task<IActionResult> UpdateBookingEntry(CraneUsageEntryViewModel entry)
+    {
+      try
+      {
+        // Validasi format waktu
+        if (entry.StartTime >= entry.EndTime)
+        {
+          return Json(new { success = false, message = "Waktu mulai harus lebih awal dari waktu selesai." });
+        }
+
+        // Ambil existing entry
+        var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
+        if (existingEntry == null)
+        {
+          return Json(new { success = false, message = "Entri tidak ditemukan." });
+        }
+
+        // Ambil record
+        var record = await _context.CraneUsageRecords.FindAsync(existingEntry.CraneUsageRecordId);
+        if (record == null)
+        {
+          return Json(new { success = false, message = "Record tidak ditemukan." });
+        }
+
+        // Cek konflik dengan entri lain
+        var allEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(record.CraneId, record.Date);
+        var otherEntries = allEntries.Where(e => e.Id != entry.Id).ToList();
+
+        if (!_craneUsageService.ValidateNoTimeConflicts(otherEntries, entry))
+        {
+          return Json(new { success = false, message = "Terdapat konflik waktu dengan entri yang sudah ada." });
+        }
+
+        // Pastikan booking ID tidak hilang
+        if (existingEntry.BookingId.HasValue)
+        {
+          entry.BookingId = existingEntry.BookingId;
+        }
+
+        // Update entri
+        var result = await _craneUsageService.UpdateCraneUsageEntryAsync(entry);
+
+        if (result)
+        {
+          // Ambil entri yang sudah diupdate dengan navigation properties
+          var updatedEntry = await _craneUsageService.GetCraneUsageEntryByIdAsync(entry.Id);
+          return Json(new { success = true, entry = updatedEntry });
+        }
+        else
+        {
+          return Json(new { success = false, message = "Gagal memperbarui entri penggunaan crane." });
+        }
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error updating booking crane usage entry");
+        return Json(new { success = false, message = "Terjadi kesalahan saat memperbarui entri penggunaan crane." });
       }
     }
 

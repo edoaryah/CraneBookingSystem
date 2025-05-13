@@ -27,5 +27,8 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
 
     // Metode untuk list dan filter
     Task<CraneUsageListViewModel> GetFilteredUsageRecordsAsync(CraneUsageFilterViewModel filter);
+
+    // Tambahkan ke ICraneUsageService
+    Task<bool> SaveBookingUsageFormAsync(BookingUsageFormViewModel viewModel, string userName);
   }
 }

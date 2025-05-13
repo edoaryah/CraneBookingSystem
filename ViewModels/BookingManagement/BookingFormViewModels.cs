@@ -41,6 +41,8 @@ namespace AspnetCoreMvcFull.ViewModels.BookingManagement
     public DateTime EndDate { get; set; }
     public DateTime SubmitTime { get; set; }
     public string? Location { get; set; }
+    // Tambahkan properti Status
+    public BookingStatus Status { get; set; }
     public string? ProjectSupervisor { get; set; }
     public string? CostCode { get; set; }
     public string? PhoneNumber { get; set; }
@@ -51,7 +53,7 @@ namespace AspnetCoreMvcFull.ViewModels.BookingManagement
   public class BookingDetailViewModel : BookingViewModel
   {
     // Status approval
-    public BookingStatus Status { get; set; }
+    // public BookingStatus Status { get; set; }
 
     // Manager approval info
     public string? ManagerName { get; set; }

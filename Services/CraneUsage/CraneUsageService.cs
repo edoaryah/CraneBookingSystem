@@ -570,5 +570,20 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         _ => "#6c757d"                        // Default Gray
       };
     }
+
+    public async Task<bool> SaveBookingUsageFormAsync(BookingUsageFormViewModel viewModel, string userName)
+    {
+      // Konversi ke CraneUsageFormViewModel untuk memanfaatkan kode yang sudah ada
+      var craneViewModel = new CraneUsageFormViewModel
+      {
+        CraneId = viewModel.CraneId,
+        Date = viewModel.Date,
+        OperatorName = viewModel.OperatorName,
+        Entries = viewModel.Entries
+      };
+
+      // Gunakan metode yang sudah ada
+      return await SaveCraneUsageFormAsync(craneViewModel, userName);
+    }
   }
 }
