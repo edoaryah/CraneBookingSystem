@@ -42,7 +42,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading maintenance form");
-        TempData["ErrorMessage"] = "Error loading maintenance form: " + ex.Message;
+        TempData["MaintenanceErrorMessage"] = "Error loading maintenance form: " + ex.Message;
         return View("Error");
       }
     }
@@ -57,16 +57,20 @@ namespace AspnetCoreMvcFull.Controllers
         var viewModel = new MaintenanceListViewModel
         {
           Schedules = schedules,
-          SuccessMessage = TempData["SuccessMessage"] as string,
-          ErrorMessage = TempData["ErrorMessage"] as string
+          SuccessMessage = TempData["MaintenanceSuccessMessage"] as string,
+          ErrorMessage = TempData["MaintenanceErrorMessage"] as string
         };
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("MaintenanceSuccessMessage");
+        TempData.Remove("MaintenanceErrorMessage");
 
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading maintenance schedules");
-        TempData["ErrorMessage"] = "Error loading maintenance schedules: " + ex.Message;
+        TempData["MaintenanceErrorMessage"] = "Error loading maintenance schedules: " + ex.Message;
         return View(new MaintenanceListViewModel { ErrorMessage = ex.Message });
       }
     }
@@ -86,7 +90,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading maintenance schedule details for document number: {DocumentNumber}", documentNumber);
-        TempData["ErrorMessage"] = "Error loading maintenance details: " + ex.Message;
+        TempData["MaintenanceErrorMessage"] = "Error loading maintenance details: " + ex.Message;
         return RedirectToAction(nameof(List));
       }
     }
@@ -108,7 +112,7 @@ namespace AspnetCoreMvcFull.Controllers
 
           var createdSchedule = await _maintenanceService.CreateMaintenanceScheduleAsync(viewModel);
 
-          TempData["SuccessMessage"] = "Maintenance schedule created successfully";
+          TempData["MaintenanceSuccessMessage"] = "Maintenance schedule created successfully";
           return RedirectToAction(nameof(Details), new { documentNumber = createdSchedule.DocumentNumber });
         }
 
@@ -129,7 +133,7 @@ namespace AspnetCoreMvcFull.Controllers
         _logger.LogError(ex, "Error creating maintenance schedule");
 
         // Redirect ke Index dengan pesan error
-        TempData["ErrorMessage"] = "Error membuat jadwal maintenance: " + ex.Message;
+        TempData["MaintenanceErrorMessage"] = "Error membuat jadwal maintenance: " + ex.Message;
         return RedirectToAction("Index");
       }
     }
@@ -166,7 +170,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading maintenance schedule for edit with document number: {DocumentNumber}", documentNumber);
-        TempData["ErrorMessage"] = "Error loading maintenance schedule: " + ex.Message;
+        TempData["MaintenanceErrorMessage"] = "Error loading maintenance schedule: " + ex.Message;
         return RedirectToAction(nameof(List));
       }
     }
@@ -182,7 +186,7 @@ namespace AspnetCoreMvcFull.Controllers
         {
           var updatedSchedule = await _maintenanceService.UpdateMaintenanceScheduleAsync(id, viewModel);
 
-          TempData["SuccessMessage"] = "Maintenance schedule updated successfully";
+          TempData["MaintenanceSuccessMessage"] = "Maintenance schedule updated successfully";
           return RedirectToAction(nameof(Details), new { documentNumber = updatedSchedule.DocumentNumber });
         }
 
@@ -236,7 +240,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading maintenance schedule for deletion with document number: {DocumentNumber}", documentNumber);
-        TempData["ErrorMessage"] = "Error loading maintenance schedule: " + ex.Message;
+        TempData["MaintenanceErrorMessage"] = "Error loading maintenance schedule: " + ex.Message;
         return RedirectToAction(nameof(List));
       }
     }
@@ -250,7 +254,7 @@ namespace AspnetCoreMvcFull.Controllers
       {
         await _maintenanceService.DeleteMaintenanceScheduleAsync(id);
 
-        TempData["SuccessMessage"] = "Maintenance schedule deleted successfully";
+        TempData["MaintenanceSuccessMessage"] = "Maintenance schedule deleted successfully";
         return RedirectToAction(nameof(List));
       }
       catch (KeyNotFoundException)
@@ -260,7 +264,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error deleting maintenance schedule with ID: {Id}", id);
-        TempData["ErrorMessage"] = "Error deleting maintenance schedule: " + ex.Message;
+        TempData["MaintenanceErrorMessage"] = "Error deleting maintenance schedule: " + ex.Message;
         return RedirectToAction(nameof(List));
       }
     }
@@ -299,7 +303,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading maintenance calendar");
-        TempData["ErrorMessage"] = "Error loading maintenance calendar: " + ex.Message;
+        TempData["MaintenanceErrorMessage"] = "Error loading maintenance calendar: " + ex.Message;
         return View("Error");
       }
     }

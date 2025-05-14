@@ -33,16 +33,20 @@ namespace AspnetCoreMvcFull.Controllers
         var viewModel = new RoleIndexViewModel
         {
           Roles = roles,
-          ErrorMessage = TempData["ErrorMessage"] as string,
-          SuccessMessage = TempData["SuccessMessage"] as string
+          SuccessMessage = TempData["RoleSuccessMessage"] as string,
+          ErrorMessage = TempData["RoleErrorMessage"] as string
         };
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("RoleSuccessMessage");
+        TempData.Remove("RoleErrorMessage");
 
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading role management index page");
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat data role.";
+        TempData["RoleErrorMessage"] = "Terjadi kesalahan saat memuat data role.";
         return View(new RoleIndexViewModel
         {
           ErrorMessage = "Terjadi kesalahan saat memuat data role."
@@ -59,7 +63,7 @@ namespace AspnetCoreMvcFull.Controllers
         var role = await _roleService.GetRoleByNameAsync(roleName);
         if (role == null)
         {
-          TempData["ErrorMessage"] = $"Role {roleName} tidak ditemukan.";
+          TempData["RoleErrorMessage"] = $"Role {roleName} tidak ditemukan.";
           return RedirectToAction("Index");
         }
 
@@ -71,9 +75,13 @@ namespace AspnetCoreMvcFull.Controllers
           RoleName = roleName,
           RoleDescription = role.Description,
           Users = users,
-          ErrorMessage = TempData["ErrorMessage"] as string,
-          SuccessMessage = TempData["SuccessMessage"] as string
+          ErrorMessage = TempData["RoleErrorMessage"] as string,
+          SuccessMessage = TempData["RoleSuccessMessage"] as string
         };
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("RoleSuccessMessage");
+        TempData.Remove("RoleErrorMessage");
 
         // Pass role id to view
         ViewData["RoleName"] = roleName;
@@ -83,7 +91,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading users for role: {RoleName}", roleName);
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat data user.";
+        TempData["RoleErrorMessage"] = "Terjadi kesalahan saat memuat data user.";
         return RedirectToAction("Index");
       }
     }

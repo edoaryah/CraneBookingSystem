@@ -32,16 +32,20 @@ namespace AspnetCoreMvcFull.Controllers
         var viewModel = new MaintenanceListViewModel
         {
           Schedules = schedules,
-          SuccessMessage = TempData["SuccessMessage"] as string,
-          ErrorMessage = TempData["ErrorMessage"] as string
+          SuccessMessage = TempData["MaintenanceHistorySuccessMessage"] as string,
+          ErrorMessage = TempData["MaintenanceHistoryErrorMessage"] as string
         };
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("MaintenanceHistorySuccessMessage");
+        TempData.Remove("MaintenanceHistoryErrorMessage");
 
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading maintenance history");
-        TempData["ErrorMessage"] = "Error loading maintenance history: " + ex.Message;
+        TempData["MaintenanceHistoryErrorMessage"] = "Error loading maintenance history: " + ex.Message;
         return View(new MaintenanceListViewModel { ErrorMessage = ex.Message });
       }
     }
@@ -61,7 +65,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading maintenance schedule details for document number: {DocumentNumber}", documentNumber);
-        TempData["ErrorMessage"] = "Error loading maintenance details: " + ex.Message;
+        TempData["MaintenanceHistoryErrorMessage"] = "Error loading maintenance details: " + ex.Message;
         return RedirectToAction(nameof(Index));
       }
     }
@@ -77,9 +81,13 @@ namespace AspnetCoreMvcFull.Controllers
         var viewModel = new MaintenanceListViewModel
         {
           Schedules = schedules,
-          SuccessMessage = TempData["SuccessMessage"] as string,
-          ErrorMessage = TempData["ErrorMessage"] as string
+          SuccessMessage = TempData["MaintenanceHistorySuccessMessage"] as string,
+          ErrorMessage = TempData["MaintenanceHistoryErrorMessage"] as string
         };
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("MaintenanceHistorySuccessMessage");
+        TempData.Remove("MaintenanceHistoryErrorMessage");
 
         ViewBag.CraneName = crane.Code;
         ViewBag.CraneId = craneId;
@@ -93,7 +101,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading maintenance history for crane ID: {CraneId}", craneId);
-        TempData["ErrorMessage"] = "Error loading maintenance history: " + ex.Message;
+        TempData["MaintenanceHistoryErrorMessage"] = "Error loading maintenance history: " + ex.Message;
         return RedirectToAction(nameof(Index));
       }
     }

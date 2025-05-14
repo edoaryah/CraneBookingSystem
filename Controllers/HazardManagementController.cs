@@ -27,16 +27,21 @@ namespace AspnetCoreMvcFull.Controllers
         var viewModel = new HazardListViewModel
         {
           Hazards = hazards,
-          SuccessMessage = TempData["SuccessMessage"] as string,
-          ErrorMessage = TempData["ErrorMessage"] as string
+          SuccessMessage = TempData["HazardSuccessMessage"] as string,
+          ErrorMessage = TempData["HazardErrorMessage"] as string
         };
+
+        // Hapus TempData setelah digunakan, ini akan mencegah
+        // pesan muncul kembali saat halaman di-refresh
+        TempData.Remove("HazardSuccessMessage");
+        TempData.Remove("HazardErrorMessage");
 
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading hazards");
-        TempData["ErrorMessage"] = "Error loading hazards: " + ex.Message;
+        TempData["HazardErrorMessage"] = "Error loading hazards: " + ex.Message;
         return View(new HazardListViewModel { ErrorMessage = ex.Message });
       }
     }
@@ -56,7 +61,7 @@ namespace AspnetCoreMvcFull.Controllers
         {
           await _hazardService.CreateHazardAsync(viewModel);
 
-          TempData["SuccessMessage"] = "Hazard created successfully";
+          TempData["HazardSuccessMessage"] = "Hazard created successfully";
           return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
@@ -93,7 +98,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading hazard with ID {id}", id);
-        TempData["ErrorMessage"] = "Error loading hazard: " + ex.Message;
+        TempData["HazardErrorMessage"] = "Error loading hazard: " + ex.Message;
         return RedirectToAction(nameof(Index));
       }
     }
@@ -108,7 +113,7 @@ namespace AspnetCoreMvcFull.Controllers
         {
           await _hazardService.UpdateHazardAsync(id, viewModel);
 
-          TempData["SuccessMessage"] = "Hazard updated successfully";
+          TempData["HazardSuccessMessage"] = "Hazard updated successfully";
           return RedirectToAction(nameof(Index));
         }
         catch (KeyNotFoundException)
@@ -143,7 +148,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading hazard with ID {id} for deletion", id);
-        TempData["ErrorMessage"] = "Error loading hazard: " + ex.Message;
+        TempData["HazardErrorMessage"] = "Error loading hazard: " + ex.Message;
         return RedirectToAction(nameof(Index));
       }
     }
@@ -155,7 +160,7 @@ namespace AspnetCoreMvcFull.Controllers
       try
       {
         await _hazardService.DeleteHazardAsync(id);
-        TempData["SuccessMessage"] = "Hazard deleted successfully";
+        TempData["HazardSuccessMessage"] = "Hazard deleted successfully";
         return RedirectToAction(nameof(Index));
       }
       catch (KeyNotFoundException)
@@ -164,13 +169,13 @@ namespace AspnetCoreMvcFull.Controllers
       }
       catch (InvalidOperationException ex)
       {
-        TempData["ErrorMessage"] = ex.Message;
+        TempData["HazardErrorMessage"] = ex.Message;
         return RedirectToAction(nameof(Delete), new { id });
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error deleting hazard with ID {id}", id);
-        TempData["ErrorMessage"] = "Error deleting hazard: " + ex.Message;
+        TempData["HazardErrorMessage"] = "Error deleting hazard: " + ex.Message;
         return RedirectToAction(nameof(Index));
       }
     }
@@ -189,7 +194,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading hazard details for ID {id}", id);
-        TempData["ErrorMessage"] = "Error loading hazard details: " + ex.Message;
+        TempData["HazardErrorMessage"] = "Error loading hazard details: " + ex.Message;
         return RedirectToAction(nameof(Index));
       }
     }
