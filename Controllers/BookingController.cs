@@ -51,7 +51,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading booking form");
-        TempData["ErrorMessage"] = "Error loading booking form: " + ex.Message;
+        TempData["BookingErrorMessage"] = "Error loading booking form: " + ex.Message;
         return View("Error");
       }
     }
@@ -66,17 +66,22 @@ namespace AspnetCoreMvcFull.Controllers
         var viewModel = new BookingListViewModel
         {
           Bookings = bookings,
-          SuccessMessage = TempData["SuccessMessage"] as string,
-          ErrorMessage = TempData["ErrorMessage"] as string
+          Title = "Booking List",
+          SuccessMessage = TempData["BookingSuccessMessage"] as string,
+          ErrorMessage = TempData["BookingErrorMessage"] as string
         };
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("BookingSuccessMessage");
+        TempData.Remove("BookingErrorMessage");
 
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading bookings");
-        TempData["ErrorMessage"] = "Error loading bookings: " + ex.Message;
-        return View(new BookingListViewModel { ErrorMessage = ex.Message });
+        TempData["BookingErrorMessage"] = "Error loading bookings: " + ex.Message;
+        return View(new BookingListViewModel { Title = "Booking List", ErrorMessage = ex.Message });
       }
     }
 
@@ -132,7 +137,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Terjadi kesalahan saat memuat detail booking dengan document number {documentNumber}", documentNumber);
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat detail booking. Silakan coba lagi.";
+        TempData["BookingErrorMessage"] = "Terjadi kesalahan saat memuat detail booking. Silakan coba lagi.";
         return RedirectToAction(nameof(List));
       }
     }
@@ -148,7 +153,7 @@ namespace AspnetCoreMvcFull.Controllers
         {
           var createdBooking = await _bookingService.CreateBookingAsync(viewModel);
 
-          TempData["SuccessMessage"] = "Booking created successfully";
+          TempData["BookingSuccessMessage"] = "Booking berhasil dibuat";
           return RedirectToAction(nameof(Details), new { documentNumber = createdBooking.DocumentNumber });
         }
 
@@ -170,7 +175,7 @@ namespace AspnetCoreMvcFull.Controllers
         _logger.LogError(ex, "Error creating booking");
 
         // Redirect ke Index dengan pesan error
-        TempData["ErrorMessage"] = "Error membuat booking: " + ex.Message;
+        TempData["BookingErrorMessage"] = "Error membuat booking: " + ex.Message;
         return RedirectToAction("Index");
       }
     }
@@ -222,7 +227,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading booking for edit with document number: {DocumentNumber}", documentNumber);
-        TempData["ErrorMessage"] = "Error loading booking: " + ex.Message;
+        TempData["BookingErrorMessage"] = "Error loading booking: " + ex.Message;
         return RedirectToAction(nameof(List));
       }
     }
@@ -238,7 +243,7 @@ namespace AspnetCoreMvcFull.Controllers
         {
           var updatedBooking = await _bookingService.UpdateBookingAsync(id, viewModel);
 
-          TempData["SuccessMessage"] = "Booking updated successfully";
+          TempData["BookingSuccessMessage"] = "Booking berhasil diperbarui";
           return RedirectToAction(nameof(Details), new { documentNumber = updatedBooking.DocumentNumber });
         }
 
@@ -294,7 +299,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading booking for deletion with document number: {DocumentNumber}", documentNumber);
-        TempData["ErrorMessage"] = "Error loading booking: " + ex.Message;
+        TempData["BookingErrorMessage"] = "Error loading booking: " + ex.Message;
         return RedirectToAction(nameof(List));
       }
     }
@@ -310,16 +315,20 @@ namespace AspnetCoreMvcFull.Controllers
         {
           Bookings = bookings,
           Title = "Booking History",
-          SuccessMessage = TempData["SuccessMessage"] as string,
-          ErrorMessage = TempData["ErrorMessage"] as string
+          SuccessMessage = TempData["BookingSuccessMessage"] as string,
+          ErrorMessage = TempData["BookingErrorMessage"] as string
         };
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("BookingSuccessMessage");
+        TempData.Remove("BookingErrorMessage");
 
         return View("List", viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading booking history");
-        TempData["ErrorMessage"] = "Error loading booking history: " + ex.Message;
+        TempData["BookingErrorMessage"] = "Error loading booking history: " + ex.Message;
         return View("List", new BookingListViewModel
         {
           Title = "Booking History",
@@ -337,7 +346,7 @@ namespace AspnetCoreMvcFull.Controllers
       {
         await _bookingService.DeleteBookingAsync(id);
 
-        TempData["SuccessMessage"] = "Booking deleted successfully";
+        TempData["BookingSuccessMessage"] = "Booking berhasil dihapus";
         return RedirectToAction(nameof(List));
       }
       catch (KeyNotFoundException)
@@ -347,7 +356,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error deleting booking with ID: {Id}", id);
-        TempData["ErrorMessage"] = "Error deleting booking: " + ex.Message;
+        TempData["BookingErrorMessage"] = "Error deleting booking: " + ex.Message;
         return RedirectToAction(nameof(List));
       }
     }
@@ -376,7 +385,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading calendar view");
-        TempData["ErrorMessage"] = "Error loading calendar: " + ex.Message;
+        TempData["BookingErrorMessage"] = "Error loading calendar: " + ex.Message;
         return View("Error");
       }
     }
@@ -392,16 +401,20 @@ namespace AspnetCoreMvcFull.Controllers
         {
           Bookings = approvedBookings,
           Title = "Approved Bookings",
-          SuccessMessage = TempData["SuccessMessage"] as string,
-          ErrorMessage = TempData["ErrorMessage"] as string
+          SuccessMessage = TempData["BookingSuccessMessage"] as string,
+          ErrorMessage = TempData["BookingErrorMessage"] as string
         };
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("BookingSuccessMessage");
+        TempData.Remove("BookingErrorMessage");
 
         return View("List", viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading approved bookings");
-        TempData["ErrorMessage"] = "Error loading approved bookings: " + ex.Message;
+        TempData["BookingErrorMessage"] = "Error loading approved bookings: " + ex.Message;
         return View(new BookingListViewModel
         {
           Title = "Approved Bookings",

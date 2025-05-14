@@ -35,12 +35,21 @@ namespace AspnetCoreMvcFull.Controllers
       try
       {
         var viewModel = await _craneUsageService.GetFilteredUsageRecordsAsync(filter);
+
+        // Menggunakan ViewBag untuk pesan dari TempData
+        ViewBag.SuccessMessage = TempData["CraneUsageSuccessMessage"] as string;
+        ViewBag.ErrorMessage = TempData["CraneUsageErrorMessage"] as string;
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("CraneUsageSuccessMessage");
+        TempData.Remove("CraneUsageErrorMessage");
+
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error retrieving crane usage records");
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat mengambil data penggunaan crane.";
+        TempData["CraneUsageErrorMessage"] = "Terjadi kesalahan saat mengambil data penggunaan crane: " + ex.Message;
         return View(new CraneUsageListViewModel());
       }
     }
@@ -94,12 +103,20 @@ namespace AspnetCoreMvcFull.Controllers
           }
         }
 
+        // Menggunakan ViewBag untuk pesan dari TempData
+        ViewBag.SuccessMessage = TempData["CraneUsageSuccessMessage"] as string;
+        ViewBag.ErrorMessage = TempData["CraneUsageErrorMessage"] as string;
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("CraneUsageSuccessMessage");
+        TempData.Remove("CraneUsageErrorMessage");
+
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading crane usage form");
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat form penggunaan crane.";
+        TempData["CraneUsageErrorMessage"] = "Terjadi kesalahan saat memuat form penggunaan crane: " + ex.Message;
         return RedirectToAction(nameof(Index));
       }
     }
@@ -121,12 +138,12 @@ namespace AspnetCoreMvcFull.Controllers
 
           if (success)
           {
-            TempData["SuccessMessage"] = "Data penggunaan crane berhasil disimpan.";
+            TempData["CraneUsageSuccessMessage"] = "Data penggunaan crane berhasil disimpan.";
             return RedirectToAction(nameof(Form), new { craneId = viewModel.CraneId, date = viewModel.Date.ToString("yyyy-MM-dd") });
           }
           else
           {
-            TempData["ErrorMessage"] = "Terdapat konflik waktu pada entri penggunaan. Pastikan waktu tidak tumpang tindih.";
+            TempData["CraneUsageErrorMessage"] = "Terdapat konflik waktu pada entri penggunaan. Pastikan waktu tidak tumpang tindih.";
           }
         }
 
@@ -142,7 +159,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error saving crane usage form");
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat menyimpan data penggunaan crane.";
+        TempData["CraneUsageErrorMessage"] = "Terjadi kesalahan saat menyimpan data penggunaan crane: " + ex.Message;
 
         // Repopulate form
         viewModel.CraneList = await GetCraneListAsync();
@@ -334,12 +351,21 @@ namespace AspnetCoreMvcFull.Controllers
 
         var viewDate = date ?? DateTime.Today;
         var viewModel = await _craneUsageService.GetUsageVisualizationDataAsync(craneId, viewDate);
+
+        // Menggunakan ViewBag untuk pesan dari TempData
+        ViewBag.SuccessMessage = TempData["CraneUsageSuccessMessage"] as string;
+        ViewBag.ErrorMessage = TempData["CraneUsageErrorMessage"] as string;
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("CraneUsageSuccessMessage");
+        TempData.Remove("CraneUsageErrorMessage");
+
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error retrieving crane usage visualization data");
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat visualisasi penggunaan crane.";
+        TempData["CraneUsageErrorMessage"] = "Terjadi kesalahan saat memuat visualisasi penggunaan crane: " + ex.Message;
         return View(new CraneUsageVisualizationViewModel());
       }
     }
@@ -401,12 +427,20 @@ namespace AspnetCoreMvcFull.Controllers
             })
             .ToListAsync();
 
+        // Menggunakan ViewBag untuk pesan dari TempData
+        ViewBag.SuccessMessage = TempData["CraneUsageSuccessMessage"] as string;
+        ViewBag.ErrorMessage = TempData["CraneUsageErrorMessage"] as string;
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("CraneUsageSuccessMessage");
+        TempData.Remove("CraneUsageErrorMessage");
+
         return View(bookings);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading bookings for crane usage input");
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat daftar booking.";
+        TempData["CraneUsageErrorMessage"] = "Terjadi kesalahan saat memuat daftar booking: " + ex.Message;
         return View(new List<BookingViewModel>());
       }
     }
@@ -424,7 +458,7 @@ namespace AspnetCoreMvcFull.Controllers
 
         if (booking == null)
         {
-          TempData["ErrorMessage"] = "Booking tidak ditemukan.";
+          TempData["CraneUsageErrorMessage"] = "Booking tidak ditemukan.";
           return RedirectToAction(nameof(List));
         }
 
@@ -459,12 +493,20 @@ namespace AspnetCoreMvcFull.Controllers
               .ToList();
         }
 
+        // Menggunakan ViewBag untuk pesan dari TempData
+        ViewBag.SuccessMessage = TempData["CraneUsageSuccessMessage"] as string;
+        ViewBag.ErrorMessage = TempData["CraneUsageErrorMessage"] as string;
+
+        // Hapus TempData setelah digunakan
+        TempData.Remove("CraneUsageSuccessMessage");
+        TempData.Remove("CraneUsageErrorMessage");
+
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading booking form for crane usage with ID: {BookingId}", bookingId);
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat memuat form penggunaan crane.";
+        TempData["CraneUsageErrorMessage"] = "Terjadi kesalahan saat memuat form penggunaan crane: " + ex.Message;
         return RedirectToAction(nameof(List));
       }
     }
@@ -492,12 +534,12 @@ namespace AspnetCoreMvcFull.Controllers
 
           if (success)
           {
-            TempData["SuccessMessage"] = "Data penggunaan crane berhasil disimpan.";
+            TempData["CraneUsageSuccessMessage"] = "Data penggunaan crane berhasil disimpan.";
             return RedirectToAction(nameof(BookingForm), new { bookingId = viewModel.BookingId, date = viewModel.Date.ToString("yyyy-MM-dd") });
           }
           else
           {
-            TempData["ErrorMessage"] = "Terdapat konflik waktu pada entri penggunaan. Pastikan waktu tidak tumpang tindih.";
+            TempData["CraneUsageErrorMessage"] = "Terdapat konflik waktu pada entri penggunaan. Pastikan waktu tidak tumpang tindih.";
           }
         }
 
@@ -509,7 +551,7 @@ namespace AspnetCoreMvcFull.Controllers
 
         if (booking == null)
         {
-          TempData["ErrorMessage"] = "Booking tidak ditemukan.";
+          TempData["CraneUsageErrorMessage"] = "Booking tidak ditemukan.";
           return RedirectToAction(nameof(List));
         }
 
@@ -532,7 +574,7 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error saving booking usage form");
-        TempData["ErrorMessage"] = "Terjadi kesalahan saat menyimpan data penggunaan crane.";
+        TempData["CraneUsageErrorMessage"] = "Terjadi kesalahan saat menyimpan data penggunaan crane: " + ex.Message;
 
         // Kembali ke form dengan ID booking dan tanggal
         return RedirectToAction(nameof(BookingForm), new { bookingId = viewModel.BookingId, date = viewModel.Date.ToString("yyyy-MM-dd") });
