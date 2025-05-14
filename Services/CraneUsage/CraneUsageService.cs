@@ -196,24 +196,74 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       return true;
     }
 
+    // Di CraneUsageService.cs
     public async Task<bool> UpdateCraneUsageEntryAsync(CraneUsageEntryViewModel entry)
     {
-      var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
-      if (existingEntry == null)
+      try
       {
+        _logger.LogInformation($"Service - Update entry dengan ID: {entry.Id}");
+        _logger.LogInformation($"Service - Waktu yang diterima - Start: {entry.StartTime}, End: {entry.EndTime}");
+
+        var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
+        if (existingEntry == null)
+        {
+          _logger.LogWarning($"Service - Entry dengan ID {entry.Id} tidak ditemukan");
+          return false;
+        }
+
+        // PERBAIKAN: Pastikan konversi waktu benar
+        // Parse waktu dengan format yang benar
+        string startTimeStr = entry.StartTime.ToString();
+        string endTimeStr = entry.EndTime.ToString();
+
+        // Pastikan format HH:mm
+        if (startTimeStr.Count(c => c == ':') > 1)
+          startTimeStr = string.Join(":", startTimeStr.Split(':').Take(2));
+        if (endTimeStr.Count(c => c == ':') > 1)
+          endTimeStr = string.Join(":", endTimeStr.Split(':').Take(2));
+
+        TimeSpan startTime, endTime;
+
+        // Gunakan TryParse untuk menghindari error
+        if (!TimeSpan.TryParse(startTimeStr, out startTime) ||
+            !TimeSpan.TryParse(endTimeStr, out endTime))
+        {
+          _logger.LogError($"Service - Gagal parsing waktu: {startTimeStr} atau {endTimeStr}");
+          return false;
+        }
+
+        _logger.LogInformation($"Service - Waktu setelah parsing - Start: {startTime}, End: {endTime}");
+
+        // Bandingkan waktu dengan benar
+        if (startTime >= endTime)
+        {
+          _logger.LogWarning($"Service - Validasi waktu: {startTime} >= {endTime}");
+          return false;
+        }
+
+        // Update entry dengan nilai waktu yang benar
+        existingEntry.StartTime = startTime;
+        existingEntry.EndTime = endTime;
+        existingEntry.Category = entry.Category;
+        existingEntry.UsageSubcategoryId = entry.UsageSubcategoryId;
+
+        // Pastikan BookingId tetap ada
+        if (entry.BookingId.HasValue)
+        {
+          existingEntry.BookingId = entry.BookingId;
+        }
+
+        existingEntry.Notes = entry.Notes;
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation($"Service - Entry berhasil diupdate");
+        return true;
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Service - Error updating crane usage entry");
         return false;
       }
-
-      existingEntry.StartTime = entry.StartTime;
-      existingEntry.EndTime = entry.EndTime;
-      existingEntry.Category = entry.Category;
-      existingEntry.UsageSubcategoryId = entry.UsageSubcategoryId;
-      existingEntry.BookingId = entry.BookingId;
-      existingEntry.MaintenanceScheduleId = entry.MaintenanceScheduleId;
-      existingEntry.Notes = entry.Notes;
-
-      await _context.SaveChangesAsync();
-      return true;
     }
 
     public async Task<bool> DeleteCraneUsageEntryAsync(int entryId)
@@ -334,13 +384,43 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
 
     public bool ValidateNoTimeConflicts(List<CraneUsageEntryViewModel> existingEntries, CraneUsageEntryViewModel newEntry)
     {
+      _logger.LogInformation($"Validasi konflik waktu untuk entry baru: {newEntry.StartTime} - {newEntry.EndTime}");
+
+      // Parse waktu entry baru
+      string startTimeStr = newEntry.StartTime.ToString();
+      string endTimeStr = newEntry.EndTime.ToString();
+
+      // Format HH:mm
+      if (startTimeStr.Count(c => c == ':') > 1)
+        startTimeStr = string.Join(":", startTimeStr.Split(':').Take(2));
+      if (endTimeStr.Count(c => c == ':') > 1)
+        endTimeStr = string.Join(":", endTimeStr.Split(':').Take(2));
+
+      TimeSpan newStart = TimeSpan.Parse(startTimeStr);
+      TimeSpan newEnd = TimeSpan.Parse(endTimeStr);
+
       foreach (var entry in existingEntries)
       {
-        if (TimeSpansOverlap(entry.StartTime, entry.EndTime, newEntry.StartTime, newEntry.EndTime))
+        // Parse waktu entry yang ada
+        string existingStartStr = entry.StartTime.ToString();
+        string existingEndStr = entry.EndTime.ToString();
+
+        // Format HH:mm
+        if (existingStartStr.Count(c => c == ':') > 1)
+          existingStartStr = string.Join(":", existingStartStr.Split(':').Take(2));
+        if (existingEndStr.Count(c => c == ':') > 1)
+          existingEndStr = string.Join(":", existingEndStr.Split(':').Take(2));
+
+        TimeSpan existingStart = TimeSpan.Parse(existingStartStr);
+        TimeSpan existingEnd = TimeSpan.Parse(existingEndStr);
+
+        if (newStart < existingEnd && existingStart < newEnd)
         {
+          _logger.LogWarning($"Konflik waktu: Baru {newStart}-{newEnd} vs Existing {existingStart}-{existingEnd}");
           return false;
         }
       }
+
       return true;
     }
 
