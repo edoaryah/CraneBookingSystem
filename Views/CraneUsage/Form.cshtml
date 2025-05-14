@@ -25,8 +25,8 @@
   </div>
 }
 
-<h1>Input Penggunaan Crane</h1>
-<p class="lead">Catat penggunaan crane dalam satu hari</p>
+@* <h1>Input Penggunaan Crane</h1>
+<p class="lead">Catat penggunaan crane dalam satu hari</p> *@
 <div class="card mb-4">
   <div class="card-header">
     <i class="bx bx-calendar-alt me-1"></i>
@@ -739,46 +739,46 @@ else
         }
 
         var newRow = `
-            <tr data-entry-id="${entry.id}">
-              <td>${formatTime(entry.startTime)}</td>
-              <td>${formatTime(entry.endTime)}</td>
-              <td>
-                <span class="badge" style="background-color: ${categoryColor}">
-                  ${entry.categoryName}
-                </span>
-              </td>
-              <td>${entry.subcategoryName}</td>
-              <td>${relatedItems}</td>
-              <td>${entry.notes || ''}</td>
-              <td>
-                <div class="btn-group">
-                  <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
-                    data-id="${entry.id}"
-                    data-start="${formatTime(entry.startTime)}"
-                    data-end="${formatTime(entry.endTime)}"
-                    data-category="${entry.category}"
-                    data-subcategory="${entry.usageSubcategoryId}"
-                    data-booking="${entry.bookingId || ''}"
-                    data-maintenance="${entry.maintenanceScheduleId || ''}"
-                    data-notes="${entry.notes || ''}">
-                    <i class="bx bx-edit"></i>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
-                    <i class="bx bx-trash"></i>
-                  </button>
-                </div>
-              </td>
+              <tr data-entry-id="${entry.id}">
+                <td>${formatTime(entry.startTime)}</td>
+                <td>${formatTime(entry.endTime)}</td>
+                <td>
+                  <span class="badge" style="background-color: ${categoryColor}">
+                    ${entry.categoryName}
+                  </span>
+                </td>
+                <td>${entry.subcategoryName}</td>
+                <td>${relatedItems}</td>
+                <td>${entry.notes || ''}</td>
+                <td>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
+                      data-id="${entry.id}"
+                      data-start="${formatTime(entry.startTime)}"
+                      data-end="${formatTime(entry.endTime)}"
+                      data-category="${entry.category}"
+                      data-subcategory="${entry.usageSubcategoryId}"
+                      data-booking="${entry.bookingId || ''}"
+                      data-maintenance="${entry.maintenanceScheduleId || ''}"
+                      data-notes="${entry.notes || ''}">
+                      <i class="bx bx-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
+                      <i class="bx bx-trash"></i>
+                    </button>
+                  </div>
+                </td>
 
-              <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
-              <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
-              <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
-              <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
-              <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
-              <input type="hidden" name="Entries[${index}].BookingId" value="${entry.bookingId || ''}" />
-              <input type="hidden" name="Entries[${index}].MaintenanceScheduleId" value="${entry.maintenanceScheduleId || ''}" />
-              <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
-            </tr>
-          `;
+                <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
+                <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
+                <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
+                <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
+                <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
+                <input type="hidden" name="Entries[${index}].BookingId" value="${entry.bookingId || ''}" />
+                <input type="hidden" name="Entries[${index}].MaintenanceScheduleId" value="${entry.maintenanceScheduleId || ''}" />
+                <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
+              </tr>
+            `;
 
         $('#entriesTableBody').append(newRow);
       }
