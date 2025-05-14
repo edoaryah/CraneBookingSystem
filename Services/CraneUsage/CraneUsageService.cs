@@ -366,58 +366,101 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       };
     }
 
-    public bool ValidateNoTimeConflicts(List<CraneUsageEntryViewModel> existingEntries)
-    {
-      for (int i = 0; i < existingEntries.Count; i++)
-      {
-        for (int j = i + 1; j < existingEntries.Count; j++)
-        {
-          if (TimeSpansOverlap(existingEntries[i].StartTime, existingEntries[i].EndTime,
-                              existingEntries[j].StartTime, existingEntries[j].EndTime))
-          {
-            return false;
-          }
-        }
-      }
-      return true;
-    }
-
     public bool ValidateNoTimeConflicts(List<CraneUsageEntryViewModel> existingEntries, CraneUsageEntryViewModel newEntry)
     {
       _logger.LogInformation($"Validasi konflik waktu untuk entry baru: {newEntry.StartTime} - {newEntry.EndTime}");
 
       // Parse waktu entry baru
-      string startTimeStr = newEntry.StartTime.ToString();
-      string endTimeStr = newEntry.EndTime.ToString();
+      TimeSpan newStart, newEnd;
 
-      // Format HH:mm
-      if (startTimeStr.Count(c => c == ':') > 1)
-        startTimeStr = string.Join(":", startTimeStr.Split(':').Take(2));
-      if (endTimeStr.Count(c => c == ':') > 1)
-        endTimeStr = string.Join(":", endTimeStr.Split(':').Take(2));
+      // Ensure we have valid TimeSpan objects
+      if (newEntry.StartTime is TimeSpan startTimeSpan)
+        newStart = startTimeSpan;
+      else if (!TimeSpan.TryParse(newEntry.StartTime.ToString(), out newStart))
+      {
+        _logger.LogWarning($"Format waktu start tidak valid: {newEntry.StartTime}");
+        return false;
+      }
 
-      TimeSpan newStart = TimeSpan.Parse(startTimeStr);
-      TimeSpan newEnd = TimeSpan.Parse(endTimeStr);
+      if (newEntry.EndTime is TimeSpan endTimeSpan)
+        newEnd = endTimeSpan;
+      else if (!TimeSpan.TryParse(newEntry.EndTime.ToString(), out newEnd))
+      {
+        _logger.LogWarning($"Format waktu end tidak valid: {newEntry.EndTime}");
+        return false;
+      }
 
+      // Check for conflicts with existing entries
       foreach (var entry in existingEntries)
       {
-        // Parse waktu entry yang ada
-        string existingStartStr = entry.StartTime.ToString();
-        string existingEndStr = entry.EndTime.ToString();
+        // Skip comparing to self (for edit case)
+        if (entry.Id == newEntry.Id)
+          continue;
 
-        // Format HH:mm
-        if (existingStartStr.Count(c => c == ':') > 1)
-          existingStartStr = string.Join(":", existingStartStr.Split(':').Take(2));
-        if (existingEndStr.Count(c => c == ':') > 1)
-          existingEndStr = string.Join(":", existingEndStr.Split(':').Take(2));
+        // Parse existing entry times
+        TimeSpan existingStart, existingEnd;
 
-        TimeSpan existingStart = TimeSpan.Parse(existingStartStr);
-        TimeSpan existingEnd = TimeSpan.Parse(existingEndStr);
+        if (entry.StartTime is TimeSpan existingStartTimeSpan)
+          existingStart = existingStartTimeSpan;
+        else if (!TimeSpan.TryParse(entry.StartTime.ToString(), out existingStart))
+          continue;
 
+        if (entry.EndTime is TimeSpan existingEndTimeSpan)
+          existingEnd = existingEndTimeSpan;
+        else if (!TimeSpan.TryParse(entry.EndTime.ToString(), out existingEnd))
+          continue;
+
+        // Check for overlap: if new start is before existing end AND existing start is before new end
         if (newStart < existingEnd && existingStart < newEnd)
         {
           _logger.LogWarning($"Konflik waktu: Baru {newStart}-{newEnd} vs Existing {existingStart}-{existingEnd}");
           return false;
+        }
+      }
+
+      return true;
+    }
+
+    // Also update the validation method for checking conflicts between multiple entries
+    public bool ValidateNoTimeConflicts(List<CraneUsageEntryViewModel> entries)
+    {
+      if (entries == null || !entries.Any())
+        return true;
+
+      for (int i = 0; i < entries.Count; i++)
+      {
+        for (int j = i + 1; j < entries.Count; j++)
+        {
+          TimeSpan start1, end1, start2, end2;
+
+          // Parse times for the first entry
+          if (entries[i].StartTime is TimeSpan startTimeSpan1)
+            start1 = startTimeSpan1;
+          else if (!TimeSpan.TryParse(entries[i].StartTime.ToString(), out start1))
+            continue;
+
+          if (entries[i].EndTime is TimeSpan endTimeSpan1)
+            end1 = endTimeSpan1;
+          else if (!TimeSpan.TryParse(entries[i].EndTime.ToString(), out end1))
+            continue;
+
+          // Parse times for the second entry
+          if (entries[j].StartTime is TimeSpan startTimeSpan2)
+            start2 = startTimeSpan2;
+          else if (!TimeSpan.TryParse(entries[j].StartTime.ToString(), out start2))
+            continue;
+
+          if (entries[j].EndTime is TimeSpan endTimeSpan2)
+            end2 = endTimeSpan2;
+          else if (!TimeSpan.TryParse(entries[j].EndTime.ToString(), out end2))
+            continue;
+
+          // Check for overlap: if start1 is before end2 AND start2 is before end1
+          if (start1 < end2 && start2 < end1)
+          {
+            _logger.LogWarning($"Konflik waktu: Entry {i} {start1}-{end1} vs Entry {j} {start2}-{end2}");
+            return false;
+          }
         }
       }
 

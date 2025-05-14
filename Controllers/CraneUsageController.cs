@@ -168,17 +168,32 @@ namespace AspnetCoreMvcFull.Controllers
       }
     }
 
-    // AJAX: CraneUsage/AddEntry
     [HttpPost]
     public async Task<IActionResult> AddEntry(CraneUsageEntryViewModel entry, int craneId, DateTime date, string operatorName)
     {
       try
       {
-        // Validate time format
-        if (entry.StartTime >= entry.EndTime)
+        _logger.LogInformation($"Adding entry: Start={entry.StartTime}, End={entry.EndTime}");
+
+        // Parse and validate time values
+        TimeSpan startTime, endTime;
+        if (!TimeSpan.TryParse(entry.StartTime.ToString(), out startTime) ||
+            !TimeSpan.TryParse(entry.EndTime.ToString(), out endTime))
         {
+          _logger.LogWarning($"Invalid time format: {entry.StartTime} - {entry.EndTime}");
+          return Json(new { success = false, message = "Format waktu tidak valid." });
+        }
+
+        // Ensure start time is before end time
+        if (startTime >= endTime)
+        {
+          _logger.LogWarning($"Start time ({startTime}) is not before end time ({endTime})");
           return Json(new { success = false, message = "Waktu mulai harus lebih awal dari waktu selesai." });
         }
+
+        // Update the entry with parsed values to ensure correct validation
+        entry.StartTime = startTime;
+        entry.EndTime = endTime;
 
         // Check for conflicts with existing entries
         var existingEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(craneId, date);
@@ -208,115 +223,91 @@ namespace AspnetCoreMvcFull.Controllers
       }
     }
 
-    // AJAX: CraneUsage/UpdateEntry
     [HttpPost]
     public async Task<IActionResult> UpdateEntry([FromBody] CraneUsageEntryViewModel entry)
     {
       try
       {
-        // Log detail request yang diterima
-        _logger.LogInformation($"Request body: {JsonSerializer.Serialize(entry)}");
-        _logger.LogInformation($"ID Entri: {entry.Id}, Type: {entry.Id.GetType().Name}");
+        _logger.LogInformation($"Updating entry ID: {entry.Id}, Start={entry.StartTime}, End={entry.EndTime}");
 
-        // PERBAIKAN: Cek nilai ID, pastikan integer dan positif
+        // Validate entry ID
         if (entry == null || entry.Id <= 0)
         {
-          _logger.LogWarning($"ID entri tidak valid atau null: {(entry == null ? "null" : entry.Id.ToString())}");
           return Json(new { success = false, message = "ID entri tidak valid." });
         }
 
-        // Buat ID query yang eksplisit sebagai int
-        int entryId = entry.Id;
-        _logger.LogInformation($"Mencari entri dengan ID: {entryId}");
-
-        // Coba ambil entri dari database
-        var existingEntry = await _context.CraneUsageEntries.FirstOrDefaultAsync(e => e.Id == entryId);
-
+        // Get existing entry
+        var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
         if (existingEntry == null)
         {
-          _logger.LogWarning($"Entri dengan ID {entryId} tidak ditemukan");
-          return Json(new { success = false, message = $"Entri dengan ID {entryId} tidak tersedia di database." });
+          return Json(new { success = false, message = "Entri tidak ditemukan." });
         }
 
-        _logger.LogInformation($"Entri ditemukan dengan ID {existingEntry.Id}");
+        // Get record
+        var record = await _context.CraneUsageRecords.FindAsync(existingEntry.CraneUsageRecordId);
+        if (record == null)
+        {
+          return Json(new { success = false, message = "Record tidak ditemukan." });
+        }
 
-        // Parse waktu yang diterima
+        // Parse and validate time values
         TimeSpan startTime, endTime;
-
-        // Pastikan waktu diberikan sebagai string HH:MM
         if (!TimeSpan.TryParse(entry.StartTime.ToString(), out startTime) ||
             !TimeSpan.TryParse(entry.EndTime.ToString(), out endTime))
         {
-          _logger.LogWarning($"Format waktu tidak valid: {entry.StartTime} - {entry.EndTime}");
+          _logger.LogWarning($"Invalid time format: {entry.StartTime} - {entry.EndTime}");
           return Json(new { success = false, message = "Format waktu tidak valid." });
         }
 
-        _logger.LogInformation($"Waktu valid: {startTime} - {endTime}");
-
-        // Verifikasi waktu mulai < waktu selesai
+        // Ensure start time is before end time
         if (startTime >= endTime)
         {
-          _logger.LogWarning($"Validasi waktu gagal: {startTime} >= {endTime}");
+          _logger.LogWarning($"Start time ({startTime}) is not before end time ({endTime})");
           return Json(new { success = false, message = "Waktu mulai harus lebih awal dari waktu selesai." });
         }
 
-        // Update entri langsung di controller, bukan via service
+        // Update the entry with parsed values to ensure correct validation
+        entry.StartTime = startTime;
+        entry.EndTime = endTime;
+
+        // Check for conflicts with other entries
+        var allEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(record.CraneId, record.Date);
+        var otherEntries = allEntries.Where(e => e.Id != entry.Id).ToList();
+
+        if (!_craneUsageService.ValidateNoTimeConflicts(otherEntries, entry))
+        {
+          return Json(new { success = false, message = "Terdapat konflik waktu dengan entri yang sudah ada." });
+        }
+
+        // Update entry
         existingEntry.StartTime = startTime;
         existingEntry.EndTime = endTime;
         existingEntry.Category = entry.Category;
         existingEntry.UsageSubcategoryId = entry.UsageSubcategoryId;
-        existingEntry.BookingId = entry.BookingId;
-        existingEntry.MaintenanceScheduleId = entry.MaintenanceScheduleId;
         existingEntry.Notes = entry.Notes;
 
-        // Simpan perubahan
+        // Preserve booking ID if present
+        if (entry.BookingId.HasValue)
+        {
+          existingEntry.BookingId = entry.BookingId;
+        }
+
+        // Preserve maintenance ID if present
+        if (entry.MaintenanceScheduleId.HasValue)
+        {
+          existingEntry.MaintenanceScheduleId = entry.MaintenanceScheduleId;
+        }
+
         await _context.SaveChangesAsync();
-        _logger.LogInformation($"Entri berhasil diupdate di database");
 
-        // Ambil data tambahan untuk response
-        var subcategory = await _context.UsageSubcategories.FindAsync(entry.UsageSubcategoryId);
-
-        // Buat response
-        var updatedEntry = new CraneUsageEntryViewModel
-        {
-          Id = existingEntry.Id,
-          StartTime = existingEntry.StartTime,
-          EndTime = existingEntry.EndTime,
-          Category = existingEntry.Category,
-          CategoryName = existingEntry.Category.ToString(),
-          UsageSubcategoryId = existingEntry.UsageSubcategoryId,
-          SubcategoryName = subcategory?.Name ?? "",
-          BookingId = existingEntry.BookingId,
-          MaintenanceScheduleId = existingEntry.MaintenanceScheduleId,
-          Notes = existingEntry.Notes
-        };
-
-        // Tambahkan booking info jika ada
-        if (existingEntry.BookingId.HasValue)
-        {
-          var booking = await _context.Bookings.FindAsync(existingEntry.BookingId.Value);
-          if (booking != null)
-          {
-            updatedEntry.BookingNumber = booking.BookingNumber;
-          }
-        }
-
-        // Tambahkan maintenance info jika ada
-        if (existingEntry.MaintenanceScheduleId.HasValue)
-        {
-          var maintenance = await _context.MaintenanceSchedules.FindAsync(existingEntry.MaintenanceScheduleId.Value);
-          if (maintenance != null)
-          {
-            updatedEntry.MaintenanceTitle = maintenance.Title;
-          }
-        }
-
+        // Get the updated entry with navigation properties
+        var updatedEntry = await _craneUsageService.GetCraneUsageEntryByIdAsync(entry.Id);
         return Json(new { success = true, entry = updatedEntry });
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Error saat update entri: {Message}", ex.Message);
-        return Json(new { success = false, message = $"Terjadi kesalahan: {ex.Message}" });
+        _logger.LogError(ex, "Error updating crane usage entry");
+        return Json(new { success = false, message = "Terjadi kesalahan saat memperbarui entri penggunaan crane." });
       }
     }
 
@@ -638,34 +629,49 @@ namespace AspnetCoreMvcFull.Controllers
       }
     }
 
-    // AJAX: CraneUsage/AddBookingEntry
     [HttpPost]
     public async Task<IActionResult> AddBookingEntry(CraneUsageEntryViewModel entry, int craneId, DateTime date, string operatorName, int bookingId)
     {
       try
       {
-        // Validasi format waktu
-        if (entry.StartTime >= entry.EndTime)
+        _logger.LogInformation($"Adding booking entry: Start={entry.StartTime}, End={entry.EndTime}");
+
+        // Parse and validate time values
+        TimeSpan startTime, endTime;
+        if (!TimeSpan.TryParse(entry.StartTime.ToString(), out startTime) ||
+            !TimeSpan.TryParse(entry.EndTime.ToString(), out endTime))
         {
+          _logger.LogWarning($"Invalid time format: {entry.StartTime} - {entry.EndTime}");
+          return Json(new { success = false, message = "Format waktu tidak valid." });
+        }
+
+        // Ensure start time is before end time
+        if (startTime >= endTime)
+        {
+          _logger.LogWarning($"Start time ({startTime}) is not before end time ({endTime})");
           return Json(new { success = false, message = "Waktu mulai harus lebih awal dari waktu selesai." });
         }
 
         // Set booking ID
         entry.BookingId = bookingId;
 
-        // Cek konflik dengan entri yang sudah ada
+        // Update the entry with parsed values to ensure correct validation
+        entry.StartTime = startTime;
+        entry.EndTime = endTime;
+
+        // Check for conflicts with existing entries
         var existingEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(craneId, date);
         if (!_craneUsageService.ValidateNoTimeConflicts(existingEntries, entry))
         {
           return Json(new { success = false, message = "Terdapat konflik waktu dengan entri yang sudah ada." });
         }
 
-        // Tambah entri baru
+        // Add new entry
         var result = await _craneUsageService.AddCraneUsageEntryAsync(craneId, date, entry, operatorName);
 
         if (result)
         {
-          // Ambil entri lengkap dengan ID dan navigation properties
+          // Get the complete entry with ID and navigation properties
           var updatedEntry = await _craneUsageService.GetCraneUsageEntryByTimeAsync(craneId, date, entry.StartTime, entry.EndTime);
           return Json(new { success = true, entry = updatedEntry });
         }
@@ -681,84 +687,85 @@ namespace AspnetCoreMvcFull.Controllers
       }
     }
 
-    // AJAX: CraneUsage/UpdateBookingEntry
     [HttpPost]
     public async Task<IActionResult> UpdateBookingEntry([FromBody] CraneUsageEntryViewModel entry)
     {
       try
       {
-        // Log detail request yang diterima
-        _logger.LogInformation($"Request body: {JsonSerializer.Serialize(entry)}");
-        _logger.LogInformation($"ID Entri: {entry.Id}, Type: {entry.Id.GetType().Name}");
+        _logger.LogInformation($"Updating booking entry ID: {entry.Id}, Start={entry.StartTime}, End={entry.EndTime}");
 
-        // PERBAIKAN: Cek nilai ID, pastikan integer dan positif
         if (entry == null || entry.Id <= 0)
         {
-          _logger.LogWarning($"ID entri tidak valid atau null: {(entry == null ? "null" : entry.Id.ToString())}");
+          _logger.LogWarning($"Invalid entry ID: {(entry == null ? "null" : entry.Id.ToString())}");
           return Json(new { success = false, message = "ID entri tidak valid." });
         }
 
-        // Buat ID query yang eksplisit sebagai int
-        int entryId = entry.Id;
-        _logger.LogInformation($"Mencari entri dengan ID: {entryId}");
-
-        // Coba ambil entri dari database
-        var existingEntry = await _context.CraneUsageEntries.FirstOrDefaultAsync(e => e.Id == entryId);
-
+        // Get existing entry
+        var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
         if (existingEntry == null)
         {
-          // Log data diagnostik untuk debug
-          _logger.LogWarning($"Entri dengan ID {entryId} tidak ditemukan");
-
-          // Cek total entri dan beberapa ID teratas
-          var allEntryIds = await _context.CraneUsageEntries
-              .Select(e => e.Id)
-              .OrderBy(id => id)
-              .Take(10)
-              .ToListAsync();
-
-          _logger.LogInformation($"Beberapa ID entri yang ada: {string.Join(", ", allEntryIds)}");
-
-          return Json(new { success = false, message = $"Entri dengan ID {entryId} tidak tersedia di database." });
+          _logger.LogWarning($"Entry with ID {entry.Id} not found");
+          return Json(new { success = false, message = $"Entri dengan ID {entry.Id} tidak ditemukan." });
         }
 
-        _logger.LogInformation($"Entri ditemukan dengan ID {existingEntry.Id}");
+        // Get record
+        var record = await _context.CraneUsageRecords.FindAsync(existingEntry.CraneUsageRecordId);
+        if (record == null)
+        {
+          _logger.LogWarning($"Record for entry ID {entry.Id} not found");
+          return Json(new { success = false, message = "Record tidak ditemukan." });
+        }
 
-        // Parse waktu yang diterima
+        // Parse and validate time values
         TimeSpan startTime, endTime;
-
-        // Pastikan waktu diberikan sebagai string HH:MM
         if (!TimeSpan.TryParse(entry.StartTime.ToString(), out startTime) ||
             !TimeSpan.TryParse(entry.EndTime.ToString(), out endTime))
         {
-          _logger.LogWarning($"Format waktu tidak valid: {entry.StartTime} - {entry.EndTime}");
+          _logger.LogWarning($"Invalid time format: {entry.StartTime} - {entry.EndTime}");
           return Json(new { success = false, message = "Format waktu tidak valid." });
         }
 
-        _logger.LogInformation($"Waktu valid: {startTime} - {endTime}");
-
-        // Verifikasi waktu mulai < waktu selesai
+        // Ensure start time is before end time
         if (startTime >= endTime)
         {
-          _logger.LogWarning($"Validasi waktu gagal: {startTime} >= {endTime}");
+          _logger.LogWarning($"Start time ({startTime}) is not before end time ({endTime})");
           return Json(new { success = false, message = "Waktu mulai harus lebih awal dari waktu selesai." });
         }
 
-        // Update entri
+        // Update the entry with parsed values to ensure correct validation
+        entry.StartTime = startTime;
+        entry.EndTime = endTime;
+
+        // Check for conflicts with other entries
+        var allEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(record.CraneId, record.Date);
+        var otherEntries = allEntries.Where(e => e.Id != entry.Id).ToList();
+
+        if (!_craneUsageService.ValidateNoTimeConflicts(otherEntries, entry))
+        {
+          return Json(new { success = false, message = "Terdapat konflik waktu dengan entri yang sudah ada." });
+        }
+
+        // Update entry
         existingEntry.StartTime = startTime;
         existingEntry.EndTime = endTime;
         existingEntry.Category = entry.Category;
         existingEntry.UsageSubcategoryId = entry.UsageSubcategoryId;
         existingEntry.Notes = entry.Notes;
 
-        // Simpan perubahan
+        // Preserve booking ID
+        if (entry.BookingId.HasValue)
+        {
+          // If update includes a booking ID, use it
+          existingEntry.BookingId = entry.BookingId;
+        }
+        // If entry.BookingId is null, we keep existingEntry.BookingId as is
+
         await _context.SaveChangesAsync();
-        _logger.LogInformation($"Entri berhasil diupdate di database");
 
-        // Ambil data subcategory
-        var subcategory = await _context.UsageSubcategories.FindAsync(entry.UsageSubcategoryId);
+        // Get updated subcategory info
+        var subcategory = await _context.UsageSubcategories.FindAsync(existingEntry.UsageSubcategoryId);
 
-        // Buat response
+        // Prepare response
         var updatedEntry = new CraneUsageEntryViewModel
         {
           Id = existingEntry.Id,
@@ -769,10 +776,10 @@ namespace AspnetCoreMvcFull.Controllers
           UsageSubcategoryId = existingEntry.UsageSubcategoryId,
           SubcategoryName = subcategory?.Name ?? "",
           BookingId = existingEntry.BookingId,
-          Notes = existingEntry.Notes
+          Notes = existingEntry.Notes ?? ""
         };
 
-        // Tambahkan booking info jika ada
+        // Add booking info if available
         if (existingEntry.BookingId.HasValue)
         {
           var booking = await _context.Bookings.FindAsync(existingEntry.BookingId.Value);
@@ -786,7 +793,7 @@ namespace AspnetCoreMvcFull.Controllers
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Error saat update entri: {Message}", ex.Message);
+        _logger.LogError(ex, "Error updating booking entry: {Message}", ex.Message);
         return Json(new { success = false, message = $"Terjadi kesalahan: {ex.Message}" });
       }
     }
