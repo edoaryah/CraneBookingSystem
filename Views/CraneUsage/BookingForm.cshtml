@@ -5,18 +5,17 @@
   Layout = "_ContentNavbarLayout";
 }
 
-@if (TempData["SuccessMessage"] != null)
+@if (ViewBag.SuccessMessage != null)
 {
   <div class="alert alert-success alert-dismissible fade show" role="alert">
-    @TempData["SuccessMessage"]
+    @ViewBag.SuccessMessage
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 }
-
-@if (TempData["ErrorMessage"] != null)
+@if (ViewBag.ErrorMessage != null)
 {
   <div class="alert alert-danger alert-dismissible fade show" role="alert">
-    @TempData["ErrorMessage"]
+    @ViewBag.ErrorMessage
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 }
@@ -296,7 +295,7 @@
     $(document).ready(function () {
       var isEditMode = false;
       @* var entryCount = @Model.Entries.Count; *@
-        var entryCount = @(Model.Entries?.Count ?? 0);
+          var entryCount = @(Model.Entries?.Count ?? 0);
 
       // Load subcategories when category changes
       $('#category').change(function () {
@@ -522,42 +521,42 @@
         var categoryColor = getCategoryColor(entry.category);
 
         var newRow = `
-                    <tr data-entry-id="${entry.id}">
-                      <td>${formatTime(entry.startTime)}</td>
-                      <td>${formatTime(entry.endTime)}</td>
-                      <td>
-                        <span class="badge" style="background-color: ${categoryColor}">
-                          ${entry.categoryName}
-                        </span>
-                      </td>
-                      <td>${entry.subcategoryName}</td>
-                      <td>${entry.notes || ''}</td>
-                      <td>
-                        <div class="btn-group">
-                          <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
-                            data-id="${entry.id}"
-                            data-start="${formatTime(entry.startTime)}"
-                            data-end="${formatTime(entry.endTime)}"
-                            data-category="${entry.category}"
-                            data-subcategory="${entry.usageSubcategoryId}"
-                            data-notes="${entry.notes || ''}">
-                            <i class="bx bx-edit"></i>
-                          </button>
-                          <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
-                            <i class="bx bx-trash"></i>
-                          </button>
-                        </div>
-                      </td>
+                      <tr data-entry-id="${entry.id}">
+                        <td>${formatTime(entry.startTime)}</td>
+                        <td>${formatTime(entry.endTime)}</td>
+                        <td>
+                          <span class="badge" style="background-color: ${categoryColor}">
+                            ${entry.categoryName}
+                          </span>
+                        </td>
+                        <td>${entry.subcategoryName}</td>
+                        <td>${entry.notes || ''}</td>
+                        <td>
+                          <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
+                              data-id="${entry.id}"
+                              data-start="${formatTime(entry.startTime)}"
+                              data-end="${formatTime(entry.endTime)}"
+                              data-category="${entry.category}"
+                              data-subcategory="${entry.usageSubcategoryId}"
+                              data-notes="${entry.notes || ''}">
+                              <i class="bx bx-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
+                              <i class="bx bx-trash"></i>
+                            </button>
+                          </div>
+                        </td>
 
-                      <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
-                      <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
-                      <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
-                      <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
-                      <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
-                      <input type="hidden" name="Entries[${index}].BookingId" value="${@Model.BookingId}" />
-                      <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
-                    </tr>
-                  `;
+                        <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
+                        <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
+                        <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
+                        <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
+                        <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
+                        <input type="hidden" name="Entries[${index}].BookingId" value="${@Model.BookingId}" />
+                        <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
+                      </tr>
+                    `;
 
         $('#entriesTableBody').append(newRow);
       }

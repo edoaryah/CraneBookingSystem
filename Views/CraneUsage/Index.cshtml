@@ -5,18 +5,17 @@
   Layout = "_ContentNavbarLayout";
 }
 
-@if (TempData["SuccessMessage"] != null)
+@if (ViewBag.SuccessMessage != null)
 {
   <div class="alert alert-success alert-dismissible fade show" role="alert">
-    @TempData["SuccessMessage"]
+    @ViewBag.SuccessMessage
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 }
-
-@if (TempData["ErrorMessage"] != null)
+@if (ViewBag.ErrorMessage != null)
 {
   <div class="alert alert-danger alert-dismissible fade show" role="alert">
-    @TempData["ErrorMessage"]
+    @ViewBag.ErrorMessage
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 }

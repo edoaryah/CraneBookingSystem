@@ -6,10 +6,17 @@
   Layout = "_ContentNavbarLayout";
 }
 
-@if (TempData["ErrorMessage"] != null)
+@if (ViewBag.SuccessMessage != null)
+{
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    @ViewBag.SuccessMessage
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+}
+@if (ViewBag.ErrorMessage != null)
 {
   <div class="alert alert-danger alert-dismissible fade show" role="alert">
-    @TempData["ErrorMessage"]
+    @ViewBag.ErrorMessage
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 }
@@ -309,42 +316,42 @@
 
         // Create detail HTML
         var detailHtml = `
-                            <h5>${hour}:00 - ${hour + 1}:00</h5>
-                            <dl class="row mb-0">
-                                <dt class="col-sm-4">Status</dt>
-                                <dd class="col-sm-8">
-                                    <span class="badge" style="background-color: ${$(this).css('background-color')}">
-                                        ${category}
-                                    </span>
-                                </dd>
-                        `;
+                              <h5>${hour}:00 - ${hour + 1}:00</h5>
+                              <dl class="row mb-0">
+                                  <dt class="col-sm-4">Status</dt>
+                                  <dd class="col-sm-8">
+                                      <span class="badge" style="background-color: ${$(this).css('background-color')}">
+                                          ${category}
+                                      </span>
+                                  </dd>
+                          `;
 
         if (subcategory) {
           detailHtml += `
-                                <dt class="col-sm-4">Subkategori</dt>
-                                <dd class="col-sm-8">${subcategory}</dd>
-                            `;
+                                  <dt class="col-sm-4">Subkategori</dt>
+                                  <dd class="col-sm-8">${subcategory}</dd>
+                              `;
         }
 
         if (booking) {
           detailHtml += `
-                                <dt class="col-sm-4">Booking</dt>
-                                <dd class="col-sm-8">${booking}</dd>
-                            `;
+                                  <dt class="col-sm-4">Booking</dt>
+                                  <dd class="col-sm-8">${booking}</dd>
+                              `;
         }
 
         if (maintenance) {
           detailHtml += `
-                                <dt class="col-sm-4">Maintenance</dt>
-                                <dd class="col-sm-8">${maintenance}</dd>
-                            `;
+                                  <dt class="col-sm-4">Maintenance</dt>
+                                  <dd class="col-sm-8">${maintenance}</dd>
+                              `;
         }
 
         if (notes) {
           detailHtml += `
-                                <dt class="col-sm-4">Catatan</dt>
-                                <dd class="col-sm-8">${notes}</dd>
-                            `;
+                                  <dt class="col-sm-4">Catatan</dt>
+                                  <dd class="col-sm-8">${notes}</dd>
+                              `;
         }
 
         detailHtml += `</dl>`;
