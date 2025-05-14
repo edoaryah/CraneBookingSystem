@@ -96,7 +96,7 @@
                 <th>Jam Selesai</th>
                 <th>Kategori</th>
                 <th>Subkategori</th>
-                <th>Booking/Maintenance</th>
+                <th>Booking</th>
                 <th>Catatan</th>
                 <th>Aksi</th>
               </tr>
@@ -228,33 +228,6 @@
                 </div>
               </div>
             </div>
-
-            @* <div class="row mb-3">
-              <div class="col-md-6">
-                <!-- Ganti bagian modal form untuk booking -->
-                <div class="form-group">
-                  <label for="booking" class="form-label">Booking (opsional)</label>
-                  <div class="input-group">
-                    <input type="text" id="bookingSearch" class="form-control" placeholder="Masukkan kode booking...">
-                    <button class="btn btn-outline-secondary" type="button" id="searchBookingBtn">
-                      <i class="bx bx-search"></i>
-                    </button>
-                    <input type="hidden" id="booking" value="">
-                  </div>
-                  <div id="bookingSearchResults" class="search-results mt-1"></div>
-                  <div class="mt-1" id="selectedBookingInfo"></div>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label for="maintenance" class="form-label">Maintenance (opsional)</label>
-                  <select id="maintenance" class="form-select">
-                    <option value="">-- Tidak ada maintenance terkait --</option>
-                  </select>
-                </div>
-              </div>
-            </div> *@
-
             <div class="mb-3">
               <label for="notes" class="form-label">Catatan (opsional)</label>
               <textarea id="notes" class="form-control" rows="3"></textarea>
@@ -336,8 +309,7 @@ else
   <script>
     $(document).ready(function () {
       var isEditMode = false;
-      @* var entryCount = @Model.Entries.Count; *@
-            var entryCount = @(Model.Entries?.Count ?? 0);
+      var entryCount = @(Model.Entries?.Count ?? 0);
       var searchTimeout;
       var selectedBooking = null;
 
@@ -498,46 +470,137 @@ else
         }
       });
 
+      // Edit entry button click
+      $(document).on('click', '.edit-entry', function () {
+        isEditMode = true;
+
+        // Get entry data from button data attributes
+        var id = $(this).data('id');
+        var startTime = $(this).data('start');
+        var endTime = $(this).data('end');
+        var category = $(this).data('category');
+        var subcategory = $(this).data('subcategory');
+        var booking = $(this).data('booking');
+        var maintenance = $(this).data('maintenance');
+        var notes = $(this).data('notes');
+
+        console.log("Edit - Data Atribut - ID:", id);
+        console.log("Edit - Data Atribut - Start:", startTime);
+        console.log("Edit - Data Atribut - End:", endTime);
+
+        // PENTING: Pastikan format waktu adalah HH:MM
+        startTime = formatTime(startTime);
+        endTime = formatTime(endTime);
+
+        console.log("Edit - Setelah Format - Start:", startTime);
+        console.log("Edit - Setelah Format - End:", endTime);
+
+        // Setel nilai form
+        $('#entryId').val(id);
+        $('#startTime').val(startTime);
+        $('#endTime').val(endTime);
+        $('#category').val(category);
+        $('#booking').val(booking || '');
+        $('#notes').val(notes);
+
+        // Tampilkan nilai form untuk debugging
+        console.log("Edit - Nilai Form Setelah Diset - Start:", $('#startTime').val());
+        console.log("Edit - Nilai Form Setelah Diset - End:", $('#endTime').val());
+
+        // Hapus semua booking yang dipilih sebelumnya
+        $('#selectedBookingInfo').empty();
+
+        // Setel informasi booking jika ada
+        if (booking) {
+          var bookingInfo = $('tr[data-entry-id="' + id + '"] td:eq(4) .badge.bg-primary').text();
+          if (bookingInfo) {
+            selectBooking(booking, bookingInfo);
+          }
+        }
+
+        // Muat subcategory
+        $('#category').trigger('change');
+
+        // Set timeout untuk memungkinkan subcategories dimuat
+        setTimeout(function () {
+          $('#subcategory').val(subcategory);
+
+          // Muat maintenance terkait
+          updateRelatedItems();
+
+          // Set timeout untuk memungkinkan maintenance dimuat
+          setTimeout(function () {
+            if (maintenance) {
+              $('#maintenance').val(maintenance);
+            }
+          }, 500);
+        }, 500);
+
+        // Update judul modal
+        $('#addEntryModalLabel').text('Edit Penggunaan Crane');
+
+        // Tampilkan modal
+        $('#addEntryModal').modal('show');
+      });
+
       // Save entry button click
       $('#saveEntryBtn').click(function () {
-        // Validate form
+        // Validasi form
         var form = $('#entryForm')[0];
         if (!form.checkValidity()) {
           $(form).addClass('was-validated');
           return;
         }
 
+        // Ambil nilai dari input form
         var entryId = $('#entryId').val();
-        var startTime = $('#startTime').val();
-        var endTime = $('#endTime').val();
+        var startTime = $('#startTime').val(); // Format HH:MM dari input field
+        var endTime = $('#endTime').val();     // Format HH:MM juga
         var category = $('#category').val();
         var subcategory = $('#subcategory').val();
         var booking = $('#booking').val();
         var maintenance = $('#maintenance').val();
         var notes = $('#notes').val();
 
-        // Convert time strings to Date objects for proper comparison
-        function parseTimeString(timeStr, baseDate) {
-          const [hours, minutes] = timeStr.split(':').map(Number);
-          const date = new Date(baseDate);
-          date.setHours(hours, minutes, 0, 0);
-          return date;
+        console.log("Simpan - Nilai Form - ID:", entryId);
+        console.log("Simpan - Nilai Form - Start:", startTime);
+        console.log("Simpan - Nilai Form - End:", endTime);
+
+        // PENTING: Validasi client-side dengan Date objects
+        var today = new Date();
+        var startParts = startTime.split(':');
+        var endParts = endTime.split(':');
+
+        // Pastikan kita memiliki dua bagian (jam dan menit)
+        if (startParts.length < 2 || endParts.length < 2) {
+          alert('Format waktu tidak valid.');
+          return;
         }
 
-        // Validate times
-        const today = new Date();
-        const startDateTime = parseTimeString(startTime, today);
-        const endDateTime = parseTimeString(endTime, today);
+        var startDateTime = new Date(today);
+        startDateTime.setHours(parseInt(startParts[0]), parseInt(startParts[1]), 0, 0);
+
+        var endDateTime = new Date(today);
+        endDateTime.setHours(parseInt(endParts[0]), parseInt(endParts[1]), 0, 0);
+
+        console.log("Parsed - Start DateTime:", startDateTime);
+        console.log("Parsed - End DateTime:", endDateTime);
+
+        // PENTING: Perbandingan waktu harus benar
         if (startDateTime >= endDateTime) {
           alert('Jam mulai harus lebih awal dari jam selesai.');
           return;
         }
 
-        // Prepare entry data
+        // PENTING: Pastikan format waktu adalah HH:MM (hapus detik jika ada)
+        startTime = startParts.slice(0, 2).join(':');
+        endTime = endParts.slice(0, 2).join(':');
+
+        // Siapkan data entry
         var entryData = {
           Id: entryId !== '0' ? parseInt(entryId) : 0,
-          StartTime: startTime,
-          EndTime: endTime,
+          StartTime: startTime,  // Gunakan nilai dari form yang telah diformat
+          EndTime: endTime,      // Gunakan nilai dari form yang telah diformat
           Category: parseInt(category),
           UsageSubcategoryId: parseInt(subcategory),
           BookingId: booking ? parseInt(booking) : null,
@@ -545,7 +608,9 @@ else
           Notes: notes
         }
 
-        // Either add new or update existing entry
+        console.log("Data yang dikirim ke server:", entryData);
+
+        // Update atau tambah entry baru
         if (isEditMode) {
           // Update existing entry
           $.ajax({
@@ -554,20 +619,23 @@ else
             contentType: 'application/json',
             data: JSON.stringify(entryData),
             success: function (response) {
+              console.log("Response dari server:", response);
               if (response.success) {
-                // Update the row in the table
+                // Update baris di tabel
                 updateTableRow(response.entry);
 
-                // Close modal
+                // Tutup modal
                 $('#addEntryModal').modal('hide');
 
-                // Reset edit mode
+                // Reset mode edit
                 isEditMode = false;
               } else {
                 alert(response.message);
               }
             },
-            error: function () {
+            error: function (xhr, status, error) {
+              console.error("Error saat update:", error);
+              console.error("Response teks:", xhr.responseText);
               alert('Terjadi kesalahan saat memperbarui data.');
             }
           });
@@ -598,66 +666,6 @@ else
             }
           });
         }
-      });
-
-      // Edit entry button click
-      $(document).on('click', '.edit-entry', function () {
-        isEditMode = true;
-
-        // Get entry data from button data attributes
-        var id = $(this).data('id');
-        var startTime = $(this).data('start');
-        var endTime = $(this).data('end');
-        var category = $(this).data('category');
-        var subcategory = $(this).data('subcategory');
-        var booking = $(this).data('booking');
-        var maintenance = $(this).data('maintenance');
-        var notes = $(this).data('notes');
-
-        // Set form values
-        $('#entryId').val(id);
-        $('#startTime').val(startTime);
-        $('#endTime').val(endTime);
-        $('#category').val(category);
-        $('#booking').val(booking || '');
-        $('#notes').val(notes);
-
-        // Clear any previous selected booking
-        $('#selectedBookingInfo').empty();
-
-        // Set booking information if exists
-        if (booking) {
-          // Find booking info from the table
-          var bookingInfo = $('tr[data-entry-id="' + id + '"] td:eq(4) .badge.bg-primary').text();
-          if (bookingInfo) {
-            var text = bookingInfo;
-            selectBooking(booking, text);
-          }
-        }
-
-        // Load subcategories
-        $('#category').trigger('change');
-
-        // Set timeout to allow subcategories to load
-        setTimeout(function () {
-          $('#subcategory').val(subcategory);
-
-          // Load related maintenance
-          updateRelatedItems();
-
-          // Set timeout to allow maintenance to load
-          setTimeout(function () {
-            if (maintenance) {
-              $('#maintenance').val(maintenance);
-            }
-          }, 500);
-        }, 500);
-
-        // Update modal title
-        $('#addEntryModalLabel').text('Edit Penggunaan Crane');
-
-        // Show modal
-        $('#addEntryModal').modal('show');
       });
 
       // Delete entry button click
@@ -731,46 +739,46 @@ else
         }
 
         var newRow = `
-                                      <tr data-entry-id="${entry.id}">
-                                        <td>${formatTime(entry.startTime)}</td>
-                                        <td>${formatTime(entry.endTime)}</td>
-                                        <td>
-                                          <span class="badge" style="background-color: ${categoryColor}">
-                                            ${entry.categoryName}
-                                          </span>
-                                        </td>
-                                        <td>${entry.subcategoryName}</td>
-                                        <td>${relatedItems}</td>
-                                        <td>${entry.notes || ''}</td>
-                                        <td>
-                                          <div class="btn-group">
-                                            <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
-                                              data-id="${entry.id}"
-                                              data-start="${formatTime(entry.startTime)}"
-                                              data-end="${formatTime(entry.endTime)}"
-                                              data-category="${entry.category}"
-                                              data-subcategory="${entry.usageSubcategoryId}"
-                                              data-booking="${entry.bookingId || ''}"
-                                              data-maintenance="${entry.maintenanceScheduleId || ''}"
-                                              data-notes="${entry.notes || ''}">
-                                              <i class="bx bx-edit"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
-                                              <i class="bx bx-trash"></i>
-                                            </button>
-                                          </div>
-                                        </td>
+            <tr data-entry-id="${entry.id}">
+              <td>${formatTime(entry.startTime)}</td>
+              <td>${formatTime(entry.endTime)}</td>
+              <td>
+                <span class="badge" style="background-color: ${categoryColor}">
+                  ${entry.categoryName}
+                </span>
+              </td>
+              <td>${entry.subcategoryName}</td>
+              <td>${relatedItems}</td>
+              <td>${entry.notes || ''}</td>
+              <td>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
+                    data-id="${entry.id}"
+                    data-start="${formatTime(entry.startTime)}"
+                    data-end="${formatTime(entry.endTime)}"
+                    data-category="${entry.category}"
+                    data-subcategory="${entry.usageSubcategoryId}"
+                    data-booking="${entry.bookingId || ''}"
+                    data-maintenance="${entry.maintenanceScheduleId || ''}"
+                    data-notes="${entry.notes || ''}">
+                    <i class="bx bx-edit"></i>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
+                    <i class="bx bx-trash"></i>
+                  </button>
+                </div>
+              </td>
 
-                                        <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
-                                        <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
-                                        <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
-                                        <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
-                                        <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
-                                        <input type="hidden" name="Entries[${index}].BookingId" value="${entry.bookingId || ''}" />
-                                        <input type="hidden" name="Entries[${index}].MaintenanceScheduleId" value="${entry.maintenanceScheduleId || ''}" />
-                                        <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
-                                      </tr>
-                                    `;
+              <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
+              <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
+              <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
+              <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
+              <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
+              <input type="hidden" name="Entries[${index}].BookingId" value="${entry.bookingId || ''}" />
+              <input type="hidden" name="Entries[${index}].MaintenanceScheduleId" value="${entry.maintenanceScheduleId || ''}" />
+              <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
+            </tr>
+          `;
 
         $('#entriesTableBody').append(newRow);
       }
@@ -779,6 +787,16 @@ else
       function updateTableRow(entry) {
         var row = $(`tr[data-entry-id="${entry.id}"]`);
         var categoryColor = getCategoryColor(entry.category);
+
+        // Format time with our improved function
+        var startTimeFormatted = formatTime(entry.startTime);
+        var endTimeFormatted = formatTime(entry.endTime);
+
+        console.log("Update Row - ID:", entry.id);
+        console.log("Update Row - Raw Start:", entry.startTime);
+        console.log("Update Row - Raw End:", entry.endTime);
+        console.log("Update Row - Formatted Start:", startTimeFormatted);
+        console.log("Update Row - Formatted End:", endTimeFormatted);
 
         var relatedItems = '';
         if (entry.bookingNumber) {
@@ -789,8 +807,8 @@ else
         }
 
         // Update visible cells
-        row.find('td').eq(0).text(formatTime(entry.startTime));
-        row.find('td').eq(1).text(formatTime(entry.endTime));
+        row.find('td').eq(0).text(startTimeFormatted);
+        row.find('td').eq(1).text(endTimeFormatted);
         row.find('td').eq(2).html(`<span class="badge" style="background-color: ${categoryColor}">${entry.categoryName}</span>`);
         row.find('td').eq(3).text(entry.subcategoryName);
         row.find('td').eq(4).html(relatedItems);
@@ -798,15 +816,15 @@ else
 
         // Update data attributes for edit button
         var editButton = row.find('.edit-entry');
-        editButton.data('start', formatTime(entry.startTime));
-        editButton.data('end', formatTime(entry.endTime));
+        editButton.data('start', startTimeFormatted);
+        editButton.data('end', endTimeFormatted);
         editButton.data('category', entry.category);
         editButton.data('subcategory', entry.usageSubcategoryId);
         editButton.data('booking', entry.bookingId || '');
         editButton.data('maintenance', entry.maintenanceScheduleId || '');
         editButton.data('notes', entry.notes || '');
 
-        // Update hidden inputs
+        // Update hidden inputs with original values from server
         row.find('input[name$=".StartTime"]').val(entry.startTime);
         row.find('input[name$=".EndTime"]').val(entry.endTime);
         row.find('input[name$=".Category"]').val(entry.category);
@@ -840,8 +858,10 @@ else
         return colors[category] || '#6c757d';
       }
 
-      // Fungsi formatTime yang akan menampilkan waktu dengan benar
+      // Improved formatTime function
       function formatTime(timeString) {
+        if (!timeString) return '';
+
         // If it's already in HH:MM format, return as is
         if (/^\d{2}:\d{2}$/.test(timeString)) {
           return timeString;
@@ -849,17 +869,22 @@ else
 
         // Try to parse TimeSpan format
         try {
+          // Pisahkan string berdasarkan ':'
           var parts = timeString.split(':');
+
+          // Jika ada lebih dari 2 bagian (misalnya ada detik), ambil hanya jam dan menit
           if (parts.length >= 2) {
+            // Pastikan format dengan leading zero
             var hours = parts[0].padStart(2, '0');
             var minutes = parts[1].padStart(2, '0');
             return `${hours}:${minutes}`;
           }
         } catch (e) {
-          console.error('Error formatting time:', e);
+          console.error('Error saat memformat waktu:', e);
         }
 
-        return timeString; // Return original if parsing fails
+        // Kembalikan original jika gagal parsing
+        return timeString;
       }
     });
   </script>
