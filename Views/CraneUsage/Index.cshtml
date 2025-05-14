@@ -1,30 +1,12 @@
-<!-- Views/CraneUsage/Index.cshtml -->
 @model AspnetCoreMvcFull.ViewModels.CraneUsage.CraneUsageListViewModel
 @{
-  ViewData["Title"] = "Daftar Penggunaan Crane";
+  ViewData["Title"] = "Crane Usage List";
   Layout = "_ContentNavbarLayout";
 }
 
-@if (ViewBag.SuccessMessage != null)
-{
-  <div class="alert alert-success alert-dismissible fade show" role="alert">
-    @ViewBag.SuccessMessage
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-  </div>
-}
-@if (ViewBag.ErrorMessage != null)
-{
-  <div class="alert alert-danger alert-dismissible fade show" role="alert">
-    @ViewBag.ErrorMessage
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-  </div>
-}
-
-<h1>Daftar Penggunaan Crane</h1>
-<p class="lead">Daftar semua penggunaan crane yang telah dicatat</p>
 <div class="card mb-4">
   <div class="card-header">
-    <i class="fas fa-filter me-1"></i>
+    <i class="bx bx-filter-alt me-1"></i>
     Filter
   </div>
   <div class="card-body">
@@ -32,126 +14,133 @@
       <div class="row g-3">
         <div class="col-md-3">
           <label asp-for="Filter.CraneId" class="form-label">Crane</label>
-          <select asp-for="Filter.CraneId" asp-items="Model.Filter.CraneList" class="form-select">
-            <option value="">-- Semua Crane --</option>
+          <select asp-for="Filter.CraneId" asp-items="Model.Filter.CraneList" class="form-select"
+            onchange="document.getElementById('filterForm').submit()">
+            <option value="">-- All Cranes --</option>
           </select>
-        </div>
-        <div class="col-md-2">
-          <label asp-for="Filter.StartDate" class="form-label">Tanggal Mulai</label>
-          <input asp-for="Filter.StartDate" class="form-control" type="date" />
-        </div>
-        <div class="col-md-2">
-          <label asp-for="Filter.EndDate" class="form-label">Tanggal Selesai</label>
-          <input asp-for="Filter.EndDate" class="form-control" type="date" />
         </div>
         <div class="col-md-3">
-          <label asp-for="Filter.Category" class="form-label">Kategori</label>
-          <select asp-for="Filter.Category" asp-items="Model.Filter.CategoryList" class="form-select">
-            <option value="">-- Semua Kategori --</option>
+          <label asp-for="Filter.StartDate" class="form-label">Start Date</label>
+          <input asp-for="Filter.StartDate" class="form-control" type="date"
+            onchange="document.getElementById('filterForm').submit()" />
+        </div>
+        <div class="col-md-3">
+          <label asp-for="Filter.EndDate" class="form-label">End Date</label>
+          <input asp-for="Filter.EndDate" class="form-control" type="date"
+            onchange="document.getElementById('filterForm').submit()" />
+        </div>
+        <div class="col-md-3">
+          <label asp-for="Filter.Category" class="form-label">Category</label>
+          <select asp-for="Filter.Category" asp-items="Model.Filter.CategoryList" class="form-select"
+            onchange="document.getElementById('filterForm').submit()">
+            <option value="">-- All Categories --</option>
           </select>
         </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <div class="btn-group w-100 mb-2">
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-search me-1"></i> Filter
-            </button>
-            <a asp-action="Index" class="btn btn-outline-secondary">
-              <i class="fas fa-redo me-1"></i> Reset
-            </a>
-          </div>
+        <div class="col-md-12 d-flex justify-content-end mt-2">
+          <a href="@Url.Action("Index")" class="btn btn-outline-secondary btn-sm">
+            <i class="bx bx-reset me-1"></i> Reset Filter
+          </a>
         </div>
       </div>
     </form>
   </div>
 </div>
 
-<div class="card mb-4">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <div>
-      <i class="fas fa-table me-1"></i>
-      Daftar Penggunaan Crane
-    </div>
-    <div>
-      @* <a asp-action="Form" class="btn btn-success">
-        <i class="fas fa-plus me-1"></i> Input Penggunaan
-      </a> *@
-      <a asp-action="Form" class="btn btn-success">
-        <i class="fas fa-plus me-1"></i> Input Penggunaan Lain
-      </a>
-      <a asp-action="List" class="btn btn-primary ms-2">
-        <i class="fas fa-list me-1"></i> Input Penggunaan Booking
-      </a>
-      <a asp-action="Visualization" class="btn btn-info text-white ms-2">
-        <i class="fas fa-chart-bar me-1"></i> Visualisasi
-      </a>
+<div class="card">
+  <div class="card-header">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+      <div class="mb-2 mb-md-0">
+        <i class="bx bx-table me-1"></i>
+        Crane Usage List
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a asp-action="Form" class="btn btn-success">
+          <i class="bx bx-plus me-1"></i> <span class="d-none d-sm-inline">Other Activity</span><span
+            class="d-inline d-sm-none">Other</span>
+        </a>
+        <a asp-action="List" class="btn btn-primary">
+          <i class="bx bx-plus me-1"></i> <span class="d-none d-sm-inline">Booking Activity</span><span
+            class="d-inline d-sm-none">Booking</span>
+        </a>
+        <a asp-action="Visualization" class="btn btn-info text-white">
+          <i class="bx bx-bar-chart-alt-2 me-1"></i> <span class="d-none d-sm-inline">Visualization</span><span
+            class="d-inline d-sm-none">Visual</span>
+        </a>
+      </div>
     </div>
   </div>
-  <div class="card-body">
-    <div class="table-responsive">
-      <table class="table table-bordered table-hover" id="usageTable">
-        <thead class="table-light">
+
+  @if (ViewBag.SuccessMessage != null)
+  {
+    <div class="alert alert-success alert-dismissible mx-4 mt-4" role="alert">
+      @ViewBag.SuccessMessage
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  }
+
+  @if (ViewBag.ErrorMessage != null)
+  {
+    <div class="alert alert-danger alert-dismissible mx-4 mt-4" role="alert">
+      @ViewBag.ErrorMessage
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  }
+
+  @if (Model.UsageRecords != null && Model.UsageRecords.Any())
+  {
+    <div class="table-responsive text-nowrap">
+      <table class="table table-hover" id="usageTable">
+        <thead>
           <tr>
             <th>Crane</th>
-            <th>Tanggal</th>
-            <th>Jam</th>
-            <th>Kategori</th>
-            <th>Subkategori</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Category</th>
+            <th>Subcategory</th>
             <th>Operator</th>
-            <th>Booking/Maintenance</th>
-            <th>Aksi</th>
+            <th>Reference</th>
           </tr>
         </thead>
-        <tbody>
-          @if (Model.UsageRecords != null && Model.UsageRecords.Any())
+        <tbody class="table-border-bottom-0">
+          @foreach (var item in Model.UsageRecords)
           {
-            @foreach (var item in Model.UsageRecords)
-            {
-              <tr>
-                <td>@item.CraneName</td>
-                <td>@(item.Date.HasValue ? item.Date.Value.ToString("dd/MM/yyyy") : "")</td>
-                <td>@item.StartTime.ToString(@"hh\:mm") - @item.EndTime.ToString(@"hh\:mm")</td>
-                <td>
-                  <span class="badge" style="background-color: @GetCategoryColor(item.Category)">
-                    @item.CategoryName
-                  </span>
-                </td>
-                <td>@item.SubcategoryName</td>
-                <td>@item.OperatorName</td>
-                <td>
-                  @if (!string.IsNullOrEmpty(item.BookingNumber))
-                  {
-                    <span class="badge bg-primary">Booking: @item.BookingNumber</span>
-                  }
-                  @if (!string.IsNullOrEmpty(item.MaintenanceTitle))
-                  {
-                    <span class="badge bg-info">Maintenance: @item.MaintenanceTitle</span>
-                  }
-                </td>
-                <td>
-                  <div class="btn-group">
-                    <a asp-action="Visualization" asp-route-craneId="@item.CraneId"
-                      asp-route-date="@(item.Date?.ToString("yyyy-MM-dd"))" class="btn btn-sm btn-primary">
-                      <i class="fas fa-chart-bar"></i>
-                    </a>
-                    <a asp-action="Form" asp-route-craneId="@item.CraneId"
-                      asp-route-date="@(item.Date?.ToString("yyyy-MM-dd"))" class="btn btn-sm btn-warning text-white">
-                      <i class="fas fa-edit"></i>
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            }
-          }
-          else
-          {
-            <tr>
-              <td colspan="8" class="text-center">Tidak ada data yang ditemukan.</td>
+            <tr style="cursor: pointer;"
+              onclick="rowClicked(event, @item.Id, @item.CraneId, '@(item.Date?.ToString("yyyy-MM-dd"))', @(item.BookingId?.ToString() ?? "null"))"
+              data-crane-id="@item.CraneId" data-date="@(item.Date?.ToString("yyyy-MM-dd"))"
+              data-booking-id="@item.BookingId">
+              <td><strong>@item.CraneName</strong></td>
+              <td>@(item.Date.HasValue ? item.Date.Value.ToString("dd-MM-yyyy") : "")</td>
+              <td>@item.StartTime.ToString(@"hh\:mm") - @item.EndTime.ToString(@"hh\:mm")</td>
+              <td>
+                <span class="badge bg-@(GetCategoryClass(item.Category))">
+                  @item.CategoryName
+                </span>
+              </td>
+              <td>@item.SubcategoryName</td>
+              <td>@item.OperatorName</td>
+              <td>
+                @if (!string.IsNullOrEmpty(item.BookingNumber))
+                {
+                  <span class="badge bg-label-primary">Booking: @item.BookingNumber</span>
+                }
+                @if (!string.IsNullOrEmpty(item.MaintenanceTitle))
+                {
+                  <span class="badge bg-label-info">Maintenance: @item.MaintenanceTitle</span>
+                }
+              </td>
             </tr>
           }
         </tbody>
       </table>
     </div>
-  </div>
+  }
+  else
+  {
+    <div class="text-center py-5">
+      <i class="bx bx-calendar-x text-secondary mb-2" style="font-size: 3rem;"></i>
+      <p class="mb-0">No usage records found</p>
+    </div>
+  }
 </div>
 
 @functions {
@@ -167,11 +156,25 @@
       _ => "#6c757d" // Default Gray
     };
   }
+
+  public string GetCategoryClass(UsageCategory category)
+  {
+    return category switch
+    {
+      UsageCategory.Operating => "success",
+      UsageCategory.Delay => "warning",
+      UsageCategory.Standby => "secondary",
+      UsageCategory.Service => "info",
+      UsageCategory.Breakdown => "danger",
+      _ => "secondary"
+    };
+  }
 }
 
 @section PageScripts {
   <script>
     $(document).ready(function () {
+      // Initialize DataTable
       $('#usageTable').DataTable({
         language: {
           url: '/lib/datatables/Indonesian.json'
@@ -180,5 +183,22 @@
         responsive: true
       });
     });
+
+    function rowClicked(event, id, craneId, date, bookingId) {
+      if (
+        !event.target.closest('.dropdown') &&
+        !event.target.closest('.dropdown-menu') &&
+        !event.target.closest('.dropdown-toggle')
+      ) {
+        // Check if there's a booking ID
+        if (bookingId && bookingId !== 'null') {
+          // If there's a booking ID, go to BookingForm
+          window.location.href = '@Url.Action("BookingForm", "CraneUsage")?bookingId=' + bookingId;
+        } else {
+          // If no booking ID, go to regular Form with crane ID and date
+          window.location.href = '@Url.Action("Form", "CraneUsage")?craneId=' + craneId + '&date=' + date;
+        }
+      }
+    }
   </script>
 }
