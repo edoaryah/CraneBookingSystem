@@ -6,11 +6,12 @@
 }
 
 @section VendorStyles {
-  <link rel="stylesheet" href="~/vendor/libs/apex-charts/apex-charts.css" />
   <style>
     .minute-chart-container {
       position: relative;
       height: 550px;
+      margin-top: 10px;
+      margin-bottom: 10px;
     }
 
     .legend-item {
@@ -47,11 +48,38 @@
       margin-bottom: 0;
       color: #6c757d;
     }
-  </style>
-}
 
-@section VendorScripts {
-  <script src="~/vendor/libs/apex-charts/apexcharts.js"></script>
+    /* D3 specific styles */
+    .segment:hover {
+      stroke: #000;
+      stroke-width: 1px;
+      cursor: pointer;
+    }
+
+    .tick line {
+      stroke: #ddd;
+    }
+
+    .domain {
+      stroke: #aaa;
+    }
+
+    .hour-label {
+      font-size: 10px;
+      fill: #666;
+    }
+
+    .tooltip {
+      position: absolute;
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 8px;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      pointer-events: none;
+      font-size: 12px;
+      z-index: 1000;
+    }
+  </style>
 }
 
 @if (ViewBag.SuccessMessage != null)
@@ -68,9 +96,6 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 }
-
-@* <h1>Visualisasi Detail Penggunaan Crane</h1>
-<p class="lead">Visualisasi penggunaan crane hingga level menit</p> *@
 
 <div class="card mb-4">
   <div class="card-header">
@@ -246,6 +271,11 @@
   </a>
 </div>
 
+@section VendorScripts {
+  <!-- D3.js CDN -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+}
+
 @section PageScripts {
   <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -254,7 +284,8 @@
 
       // Periksa apakah data tersedia
       if (!minuteData || minuteData.length === 0) {
-        document.getElementById('minuteVisualizationChart').innerHTML = '<div class="text-center py-5"><p>Tidak ada data tersedia untuk tanggal ini</p></div>';
+        document.getElementById('minuteVisualizationChart').innerHTML =
+          '<div class="text-center py-5"><p>Tidak ada data tersedia untuk tanggal ini</p></div>';
         return;
       }
 
@@ -268,199 +299,6 @@
           'Breakdown': '#dc3545'
         };
         return categoryColors[category] || '#6c757d';
-      }
-
-      // Fungsi transformasi data yang telah dioptimalkan
-      function transformDataForChart(data) {
-        // Format series untuk ApexCharts
-        const series = [{
-          name: 'Activities',
-          data: []
-        }];
-
-        // Fungsi helper untuk mendapatkan jam dari waktu ISO string
-        function getHoursFromIsoString(isoString) {
-          const date = new Date(isoString);
-          return isNaN(date.getTime()) ? 0 : date.getHours() + (date.getMinutes() / 60);
-        }
-
-        // Fungsi untuk membuat data standby dengan format yang konsisten
-        function createStandbyData(startHour, endHour) {
-          // Gunakan tanggal referensi dari data pertama atau tanggal hari ini jika tidak ada
-          const referenceDate = data.length > 0 ? new Date(data[0]?.StartTime) : new Date();
-
-          // Buat objek tanggal baru untuk start dan end agar tidak memodifikasi referensi
-          const startDate = new Date(referenceDate);
-          const endDate = new Date(referenceDate);
-
-          // Set jam dan menit dengan benar
-          startDate.setHours(Math.floor(startHour), Math.round((startHour % 1) * 60), 0);
-          endDate.setHours(Math.floor(endHour), Math.round((endHour % 1) * 60), 0);
-
-          // Hitung durasi dalam menit
-          const durationMinutes = Math.round((endHour - startHour) * 60);
-
-          // Format yang konsisten dengan data asli
-          return {
-            Category: 'Standby',
-            SubcategoryName: 'Standby',
-            StartTime: startDate.toISOString(),
-            EndTime: endDate.toISOString(),
-            DurationMinutes: durationMinutes,
-            OperatorName: null,
-            BookingNumber: null,
-            MaintenanceTitle: null,
-            Notes: null
-          };
-        }
-
-        // Langkah 1: Menyiapkan dan memvalidasi aktivitas
-        let activities = [];
-        data.forEach((item, index) => {
-          if (!item) return; // Lewati item yang kosong
-
-          const startHour = getHoursFromIsoString(item.StartTime);
-          const endHour = getHoursFromIsoString(item.EndTime);
-
-          if (startHour >= endHour) {
-            console.warn('Range waktu tidak valid:', item);
-            return;
-          }
-
-          activities.push({
-            startHour,
-            endHour,
-            category: item.Category || 'Standby',
-            dataIndex: index
-          });
-        });
-
-        // Langkah 2: Urutkan aktivitas berdasarkan waktu mulai
-        activities.sort((a, b) => a.startHour - b.startHour);
-
-        // Langkah 3: Proses data untuk chart dan tambahkan gap Standby
-        let timelineData = [];
-        let syntheticData = [];
-        let currentHour = 0;
-        let nextSyntheticIndex = data.length;
-
-        // Kasus khusus: Tidak ada aktivitas sama sekali
-        if (activities.length === 0) {
-          const fullDayStandby = createStandbyData(0, 24);
-          syntheticData.push(fullDayStandby);
-
-          timelineData.push({
-            x: 'Timeline',
-            y: [0, 24],
-            fillColor: getCategoryColor('Standby'),
-            category: 'Standby',
-            dataIndex: nextSyntheticIndex
-          });
-        } else {
-          // Proses semua aktivitas dan tambahkan gap
-          activities.forEach(activity => {
-            // Jika ada gap sebelum aktivitas ini
-            if (activity.startHour > currentHour) {
-              const standbyData = createStandbyData(currentHour, activity.startHour);
-              syntheticData.push(standbyData);
-
-              timelineData.push({
-                x: 'Timeline',
-                y: [currentHour, activity.startHour],
-                fillColor: getCategoryColor('Standby'),
-                category: 'Standby',
-                dataIndex: nextSyntheticIndex++
-              });
-            }
-
-            // Tambahkan aktivitas aktual
-            timelineData.push({
-              x: 'Timeline',
-              y: [activity.startHour, activity.endHour],
-              fillColor: getCategoryColor(activity.category),
-              category: activity.category,
-              dataIndex: activity.dataIndex
-            });
-
-            // Update posisi sekarang
-            currentHour = Math.max(currentHour, activity.endHour);
-          });
-
-          // Tambahkan Standby di akhir hari jika diperlukan
-          if (currentHour < 24) {
-            const endDayStandby = createStandbyData(currentHour, 24);
-            syntheticData.push(endDayStandby);
-
-            timelineData.push({
-              x: 'Timeline',
-              y: [currentHour, 24],
-              fillColor: getCategoryColor('Standby'),
-              category: 'Standby',
-              dataIndex: nextSyntheticIndex
-            });
-          }
-        }
-
-        // Tambahkan data sintetis ke data utama
-        syntheticData.forEach(item => {
-          data.push(item);
-        });
-
-        // Setel data series
-        series[0].data = timelineData;
-
-        return { series };
-      }
-
-      // Fungsi untuk menampilkan detail aktivitas
-      function displayActivityDetails(activity) {
-        if (!activity) {
-          document.getElementById('activityDetail').innerHTML =
-            '<p class="text-center text-muted">Tidak ada detail aktivitas tersedia</p>';
-          return;
-        }
-
-        // Gunakan penamaan properti yang benar (PascalCase)
-        const startTime = formatTime(activity.StartTime);
-        const endTime = formatTime(activity.EndTime);
-        const durationMinutes = activity.DurationMinutes;
-        const hours = Math.floor(durationMinutes / 60);
-        const minutes = durationMinutes % 60;
-        const durationText = hours > 0
-          ? `${hours} jam ${minutes} menit`
-          : `${minutes} menit`;
-
-        // Dapatkan warna untuk kategori
-        const color = getCategoryColor(activity.Category);
-
-        let detailHtml = `
-        <div class="detail-segment">
-          <div class="detail-time">${startTime} - ${endTime}</div>
-          <span class="badge mb-2" style="background-color: ${color}">${activity.Category}</span>
-          <div class="detail-category">${activity.SubcategoryName}</div>
-          <div class="detail-duration mb-3">Durasi: ${durationText}</div>
-      `;
-
-        // Tambahkan informasi opsional jika tersedia
-        if (activity.OperatorName) {
-          detailHtml += `<div class="detail-info"><strong>Operator:</strong> ${activity.OperatorName}</div>`;
-        }
-
-        if (activity.BookingNumber) {
-          detailHtml += `<div class="detail-info"><strong>Booking:</strong> ${activity.BookingNumber}</div>`;
-        }
-
-        if (activity.MaintenanceTitle) {
-          detailHtml += `<div class="detail-info"><strong>Maintenance:</strong> ${activity.MaintenanceTitle}</div>`;
-        }
-
-        if (activity.Notes) {
-          detailHtml += `<div class="detail-info"><strong>Catatan:</strong> ${activity.Notes}</div>`;
-        }
-
-        detailHtml += `</div>`;
-
-        document.getElementById('activityDetail').innerHTML = detailHtml;
       }
 
       // Helper function untuk format waktu
@@ -486,146 +324,280 @@
         return hour.toString().padStart(2, '0') + ':00';
       }
 
-      // Dapatkan data chart dari fungsi transformasi
-      const chartData = transformDataForChart(minuteData);
+      // Fungsi untuk menampilkan detail aktivitas
+      function displayActivityDetails(activity) {
+        if (!activity) {
+          document.getElementById('activityDetail').innerHTML =
+            '<p class="text-center text-muted">Tidak ada detail aktivitas tersedia</p>';
+          return;
+        }
 
-      // Pastikan data valid
-      if (!chartData.series || chartData.series.length === 0 || !chartData.series[0].data.length) {
-        document.getElementById('minuteVisualizationChart').innerHTML =
-          '<div class="text-center py-5"><p>Tidak dapat memproses data untuk visualisasi</p></div>';
-        return;
+        const startTime = formatTime(activity.StartTime);
+        const endTime = formatTime(activity.EndTime);
+        const durationMinutes = activity.DurationMinutes;
+        const hours = Math.floor(durationMinutes / 60);
+        const minutes = durationMinutes % 60;
+        const durationText = hours > 0
+          ? `${hours} jam ${minutes} menit`
+          : `${minutes} menit`;
+
+        const color = getCategoryColor(activity.Category);
+
+        let detailHtml = `
+            <div class="detail-segment">
+              <div class="detail-time">${startTime} - ${endTime}</div>
+              <span class="badge mb-2" style="background-color: ${color}">${activity.Category}</span>
+              <div class="detail-category">${activity.SubcategoryName}</div>
+              <div class="detail-duration mb-3">Durasi: ${durationText}</div>
+          `;
+
+        // Tambahkan informasi opsional jika tersedia
+        if (activity.OperatorName) {
+          detailHtml += `<div class="detail-info"><strong>Operator:</strong> ${activity.OperatorName}</div>`;
+        }
+
+        if (activity.BookingNumber) {
+          detailHtml += `<div class="detail-info"><strong>Booking:</strong> ${activity.BookingNumber}</div>`;
+        }
+
+        if (activity.MaintenanceTitle) {
+          detailHtml += `<div class="detail-info"><strong>Maintenance:</strong> ${activity.MaintenanceTitle}</div>`;
+        }
+
+        if (activity.Notes) {
+          detailHtml += `<div class="detail-info"><strong>Catatan:</strong> ${activity.Notes}</div>`;
+        }
+
+        detailHtml += `</div>`;
+
+        document.getElementById('activityDetail').innerHTML = detailHtml;
       }
 
-      // Konfigurasi opsi untuk ApexCharts
-      let options = {
-        series: chartData.series,
-        chart: {
-          type: 'rangeBar',
-          height: 500,
-          toolbar: {
-            show: true
-          },
-          zoom: {
-            enabled: true
-          },
-          animations: {
-            enabled: false
-          },
-          events: {
-            dataPointSelection: function (event, chartContext, config) {
-              if (config.dataPointIndex >= 0) {
-                const dataPoint = chartData.series[0].data[config.dataPointIndex];
-                const dataIndex = dataPoint.dataIndex;
+      // Tambahkan tooltip
+      const tooltip = d3.select("body")
+        .append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
 
-                if (dataIndex !== undefined && minuteData[dataIndex]) {
-                  // Tampilkan detail aktivitas yang dipilih
-                  displayActivityDetails(minuteData[dataIndex]);
-                }
-              }
-            }
-          }
-        },
-        plotOptions: {
-          bar: {
-            horizontal: false, // Bar vertikal (jam pada sumbu Y)
-            barHeight: '100%',
-            rangeBarOverlap: true,
-            distributed: false
-          }
-        },
-        dataLabels: {
-          enabled: false
-        },
-        tooltip: {
-          custom: function ({ seriesIndex, dataPointIndex, w }) {
-            const data = w.config.series[seriesIndex].data[dataPointIndex];
-            if (!data || data.dataIndex === undefined || !minuteData[data.dataIndex]) {
-              return '<div class="custom-tooltip">Tidak ada detail tersedia</div>';
-            }
+      // Persiapkan data untuk visualisasi
+      function prepareData(data) {
+        // Urutkan data berdasarkan waktu mulai
+        const sortedData = [...data].sort((a, b) => {
+          return new Date(a.StartTime) - new Date(b.StartTime);
+        });
 
-            const item = minuteData[data.dataIndex];
-            const startTime = formatTime(item.StartTime);
-            const endTime = formatTime(item.EndTime);
-            const durationMinutes = item.DurationMinutes;
+        // Buat array untuk segmen stanby
+        let segments = [];
+        let currentHour = 0;
+
+        // Proses untuk setiap aktivitas
+        sortedData.forEach(activity => {
+          const startHour = new Date(activity.StartTime).getHours() +
+            (new Date(activity.StartTime).getMinutes() / 60);
+          const endHour = new Date(activity.EndTime).getHours() +
+            (new Date(activity.EndTime).getMinutes() / 60);
+
+          // Jika ada gap sebelum aktivitas ini, tambahkan segmen standby
+          if (startHour > currentHour) {
+            segments.push({
+              Category: 'Standby',
+              SubcategoryName: 'Standby',
+              StartTime: new Date(new Date(activity.StartTime).setHours(
+                Math.floor(currentHour),
+                Math.round((currentHour % 1) * 60), 0, 0)),
+              EndTime: new Date(new Date(activity.StartTime).setHours(
+                Math.floor(startHour),
+                Math.round((startHour % 1) * 60), 0, 0)),
+              OperatorName: null,
+              BookingNumber: null,
+              MaintenanceTitle: null,
+              Notes: null,
+              DurationMinutes: Math.round((startHour - currentHour) * 60)
+            });
+          }
+
+          // Tambahkan aktivitas saat ini
+          segments.push(activity);
+
+          // Update posisi waktu saat ini
+          currentHour = Math.max(currentHour, endHour);
+        });
+
+        // Tambahkan standby di akhir hari jika diperlukan
+        if (currentHour < 24) {
+          let startDateTime = new Date(data[0]?.StartTime || new Date());
+          startDateTime.setHours(Math.floor(currentHour), Math.round((currentHour % 1) * 60), 0, 0);
+
+          let endDateTime = new Date(startDateTime);
+          endDateTime.setHours(24, 0, 0, 0);
+
+          segments.push({
+            Category: 'Standby',
+            SubcategoryName: 'Standby',
+            StartTime: startDateTime,
+            EndTime: endDateTime,
+            OperatorName: null,
+            BookingNumber: null,
+            MaintenanceTitle: null,
+            Notes: null,
+            DurationMinutes: Math.round((24 - currentHour) * 60)
+          });
+        }
+
+        return segments;
+      }
+
+      // Menggambar visualisasi dengan D3.js
+      function drawVisualization(data) {
+        // Hapus visualisasi yang ada (jika ada)
+        d3.select("#minuteVisualizationChart").html("");
+
+        // Persiapkan data
+        const segments = data.length > 0 ? prepareData(data) : [
+          {
+            Category: 'Standby',
+            SubcategoryName: 'Standby',
+            StartTime: new Date(new Date().setHours(0, 0, 0, 0)),
+            EndTime: new Date(new Date().setHours(24, 0, 0, 0)),
+            DurationMinutes: 24 * 60
+          }
+        ];
+
+        // Siapkan dimensi dan margin
+        const margin = { top: 20, right: 20, bottom: 40, left: 50 },
+          containerWidth = document.getElementById('minuteVisualizationChart').clientWidth,
+          containerHeight = document.querySelector('.minute-chart-container').clientHeight,
+          width = containerWidth - margin.left - margin.right,
+          height = containerHeight - margin.top - margin.bottom;
+
+        // Buat SVG container
+        const svg = d3.select("#minuteVisualizationChart")
+          .append("svg")
+          .attr("width", containerWidth)
+          .attr("height", containerHeight)
+          .append("g")
+          .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Definisikan skala untuk sumbu Y (jam)
+        const yScale = d3.scaleLinear()
+          .domain([0, 24])
+          .range([0, height]);
+
+        // Tentukan lebar batang (50% dari lebar chart)
+        const barWidth = width * 0.3;
+        const barX = (width - barWidth) / 2;
+
+        // Tambahkan sumbu Y (jam)
+        const yAxis = d3.axisLeft(yScale)
+          .ticks(24)
+          .tickFormat(formatHour);
+
+        svg.append("g")
+          .attr("class", "y-axis")
+          .call(yAxis);
+
+        // Tambahkan grid lines horizontal
+        svg.selectAll("grid-line")
+          .data(d3.range(0, 25))
+          .enter()
+          .append("line")
+          .attr("class", "grid-line")
+          .attr("x1", 0)
+          .attr("x2", width)
+          .attr("y1", d => yScale(d))
+          .attr("y2", d => yScale(d))
+          .attr("stroke", "#eee")
+          .attr("stroke-width", 1);
+
+        // Buat dan tambahkan segmen
+        svg.selectAll(".segment")
+          .data(segments)
+          .enter()
+          .append("rect")
+          .attr("class", "segment")
+          .attr("x", barX)
+          .attr("y", d => yScale(new Date(d.StartTime).getHours() + new Date(d.StartTime).getMinutes() / 60))
+          .attr("width", barWidth)
+          .attr("height", d => {
+            const startHour = new Date(d.StartTime).getHours() + new Date(d.StartTime).getMinutes() / 60;
+            const endHour = new Date(d.EndTime).getHours() + new Date(d.EndTime).getMinutes() / 60;
+            return yScale(endHour) - yScale(startHour);
+          })
+          .attr("fill", d => getCategoryColor(d.Category))
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 0.5)
+          .on("mouseover", function (event, d) {
+            d3.select(this)
+              .attr("stroke", "#000")
+              .attr("stroke-width", 1);
+
+            const startTime = formatTime(d.StartTime);
+            const endTime = formatTime(d.EndTime);
+            const durationMinutes = d.DurationMinutes;
             const hours = Math.floor(durationMinutes / 60);
             const minutes = durationMinutes % 60;
             const durationText = hours > 0
               ? `${hours} jam ${minutes} menit`
               : `${minutes} menit`;
 
-            return `<div class="custom-tooltip">
-            <div><strong>${item.Category}</strong> - ${item.SubcategoryName}</div>
-            <div>${startTime} - ${endTime} (${durationText})</div>
-            ${item.OperatorName ? `<div>Operator: ${item.OperatorName}</div>` : ''}
-            ${item.BookingNumber ? `<div>Booking: ${item.BookingNumber}</div>` : ''}
-          </div>`;
-          }
-        },
-        fill: {
-          type: 'solid',
-          opacity: 0.9
-        },
-        xaxis: {
-          type: 'category',
-          categories: ['Timeline'], // Satu kategori pada sumbu X
-          axisBorder: {
-            show: true
-          },
-          axisTicks: {
-            show: true
-          }
-        },
-        yaxis: {
-          min: 0,
-          max: 24,
-          tickAmount: 24,
-          labels: {
-            formatter: function (value) {
-              return formatHour(value);
-            }
-          },
-          title: {
-            text: 'Jam'
-          },
-          reversed: false // 0 jam di bawah, 24 di atas
-        },
-        title: {
-          text: `Detail Penggunaan Crane per Menit`,
-          align: 'center',
-          style: {
-            fontSize: '16px'
-          }
-        },
-        grid: {
-          show: true,
-          yaxis: {
-            lines: {
-              show: true
-            }
-          }
-        },
-        legend: {
-          show: false // Sembunyikan legenda karena warna berbeda per item
-        }
-      };
+            tooltip.transition()
+              .duration(200)
+              .style("opacity", 0.9);
+            tooltip.html(`
+                <strong>${d.Category}</strong> - ${d.SubcategoryName}<br/>
+                ${startTime} - ${endTime} (${durationText})<br/>
+                ${d.OperatorName ? `Operator: ${d.OperatorName}<br/>` : ""}
+                ${d.BookingNumber ? `Booking: ${d.BookingNumber}` : ""}
+              `)
+              .style("left", (event.pageX + 10) + "px")
+              .style("top", (event.pageY - 28) + "px");
+          })
+          .on("mouseout", function () {
+            d3.select(this)
+              .attr("stroke", "#fff")
+              .attr("stroke-width", 0.5);
 
-      try {
-        // Buat dan render chart
-        const chart = new ApexCharts(document.querySelector("#minuteVisualizationChart"), options);
-        chart.render();
+            tooltip.transition()
+              .duration(500)
+              .style("opacity", 0);
+          })
+          .on("click", function (event, d) {
+            // Tampilkan detail aktivitas saat diklik
+            displayActivityDetails(d);
+          });
 
-        // Inisialisasi dengan segmen pertama jika ada
-        if (minuteData.length > 0) {
-          displayActivityDetails(minuteData[0]);
-        }
-      } catch (error) {
-        console.error("Error rendering chart:", error);
-        document.getElementById('minuteVisualizationChart').innerHTML =
-          `<div class="text-center py-5">
-          <p>Error saat rendering chart: ${error.message}</p>
-          <p>Silakan refresh halaman atau hubungi dukungan teknis.</p>
-        </div>`;
+        // Label sumbu Y
+        svg.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 0 - margin.left)
+          .attr("x", 0 - (height / 2))
+          .attr("dy", "1em")
+          .style("text-anchor", "middle")
+          .style("font-size", "12px")
+          .text("Jam");
+
+        // Judul chart
+        svg.append("text")
+          .attr("x", width / 2)
+          .attr("y", 0 - (margin.top / 2))
+          .attr("text-anchor", "middle")
+          .style("font-size", "14px")
+          .style("font-weight", "bold")
+          .text("Detail Penggunaan Crane per Menit");
       }
+
+      // Gambar visualisasi
+      drawVisualization(minuteData);
+
+      // Inisialisasi dengan segmen pertama jika ada
+      if (minuteData.length > 0) {
+        displayActivityDetails(minuteData[0]);
+      }
+
+      // Event listener untuk resize window
+      window.addEventListener('resize', function () {
+        drawVisualization(minuteData);
+      });
     });
   </script>
 }
