@@ -241,10 +241,24 @@ namespace AspnetCoreMvcFull.Controllers
         }
 
         // Get existing entry from database to verify it exists
-        var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
+        var existingEntry = await _context.CraneUsageEntries
+            .Include(e => e.CraneUsageRecord)
+            .FirstOrDefaultAsync(e => e.Id == entry.Id);
+
         if (existingEntry == null)
         {
           return Json(new { success = false, message = "Entri tidak ditemukan." });
+        }
+
+        // Get all entries for this date and crane to check for conflicts
+        var craneId = existingEntry.CraneUsageRecord.CraneId;
+        var date = existingEntry.CraneUsageRecord.Date;
+        var allEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(craneId, date);
+
+        // Validate no time conflicts
+        if (!_craneUsageService.ValidateNoTimeConflicts(allEntries, entry))
+        {
+          return Json(new { success = false, message = "Terdapat konflik waktu dengan entri yang sudah ada." });
         }
 
         // Updating entry via service
@@ -255,14 +269,12 @@ namespace AspnetCoreMvcFull.Controllers
           // Get updated entry with all navigation properties
           var updatedEntry = await _craneUsageService.GetCraneUsageEntryByIdAsync(entry.Id);
 
-          // PERBAIKAN: Log respons untuk memastikan operatorName ada
           _logger.LogInformation($"Updated entry response: ID={updatedEntry.Id}, Operator={updatedEntry.OperatorName}");
 
           return Json(new
           {
             success = true,
             entry = updatedEntry,
-            // PERBAIKAN: Tambahkan operator name secara eksplisit sebagai property terpisah
             operatorName = updatedEntry.OperatorName
           });
         }
@@ -676,8 +688,34 @@ namespace AspnetCoreMvcFull.Controllers
       {
         _logger.LogInformation($"Updating booking entry ID: {entry.Id}, Start={entry.StartTime}, End={entry.EndTime}, Operator={entry.OperatorName}");
 
+        // Validate entry ID
+        if (entry == null || entry.Id <= 0)
+        {
+          return Json(new { success = false, message = "ID entri tidak valid." });
+        }
+
+        // Get existing entry from database to verify it exists
+        var existingEntry = await _context.CraneUsageEntries
+            .Include(e => e.CraneUsageRecord)
+            .FirstOrDefaultAsync(e => e.Id == entry.Id);
+
+        if (existingEntry == null)
+        {
+          return Json(new { success = false, message = "Entri tidak ditemukan." });
+        }
+
+        // Get all entries for this date and crane to check for conflicts
+        var craneId = existingEntry.CraneUsageRecord.CraneId;
+        var date = existingEntry.CraneUsageRecord.Date;
+        var allEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(craneId, date);
+
+        // Validate no time conflicts
+        if (!_craneUsageService.ValidateNoTimeConflicts(allEntries, entry))
+        {
+          return Json(new { success = false, message = "Terdapat konflik waktu dengan entri yang sudah ada." });
+        }
+
         // The rest is similar to UpdateEntry method
-        // Call the service method directly
         var result = await _craneUsageService.UpdateCraneUsageEntryAsync(entry);
 
         if (result)
@@ -685,15 +723,12 @@ namespace AspnetCoreMvcFull.Controllers
           // Get updated entry with all navigation properties
           var updatedEntry = await _craneUsageService.GetCraneUsageEntryByIdAsync(entry.Id);
 
-          // PERBAIKAN: Log respons untuk memastikan operatorName ada
           _logger.LogInformation($"Updated booking entry: ID={updatedEntry.Id}, Operator={updatedEntry.OperatorName}");
 
-          // Return success and updated entry
           return Json(new
           {
             success = true,
             entry = updatedEntry,
-            // PERBAIKAN: Tambahkan operator name secara eksplisit
             operatorName = updatedEntry.OperatorName
           });
         }

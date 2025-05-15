@@ -231,16 +231,18 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       {
         _logger.LogInformation($"Service - Update entry dengan ID: {entry.Id}");
         _logger.LogInformation($"Service - Waktu yang diterima - Start: {entry.StartTime}, End: {entry.EndTime}");
-        _logger.LogInformation($"Service - Operator Name: {entry.OperatorName}"); // Logging operator name
+        _logger.LogInformation($"Service - Operator Name: {entry.OperatorName}");
 
-        var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
+        var existingEntry = await _context.CraneUsageEntries
+            .Include(e => e.CraneUsageRecord)
+            .FirstOrDefaultAsync(e => e.Id == entry.Id);
+
         if (existingEntry == null)
         {
           _logger.LogWarning($"Service - Entry dengan ID {entry.Id} tidak ditemukan");
           return false;
         }
 
-        // PERBAIKAN: Pastikan konversi waktu benar
         // Parse waktu dengan format yang benar
         string startTimeStr = entry.StartTime.ToString();
         string endTimeStr = entry.EndTime.ToString();
@@ -270,14 +272,33 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           return false;
         }
 
+        // Tambahkan validasi konflik waktu
+        var craneId = existingEntry.CraneUsageRecord.CraneId;
+        var date = existingEntry.CraneUsageRecord.Date;
+        var allEntries = await GetCraneUsageEntriesForDateAsync(craneId, date);
+
+        // Convert entry to viewmodel for validation
+        var entryToValidate = new CraneUsageEntryViewModel
+        {
+          Id = entry.Id,
+          StartTime = startTime,
+          EndTime = endTime,
+          Category = entry.Category,
+          UsageSubcategoryId = entry.UsageSubcategoryId
+        };
+
+        if (!ValidateNoTimeConflicts(allEntries, entryToValidate))
+        {
+          _logger.LogWarning($"Service - Konflik waktu terdeteksi");
+          return false;
+        }
+
         // Update entry dengan nilai waktu yang benar
         existingEntry.StartTime = startTime;
         existingEntry.EndTime = endTime;
         existingEntry.Category = entry.Category;
         existingEntry.UsageSubcategoryId = entry.UsageSubcategoryId;
-
-        // PERBAIKAN: Update OperatorName dengan nilai dari ViewModel
-        existingEntry.OperatorName = entry.OperatorName?.Trim(); // Trim untuk menghindari whitespace
+        existingEntry.OperatorName = entry.OperatorName?.Trim();
         _logger.LogInformation($"Service - Setting operator name to: {existingEntry.OperatorName}");
 
         // Pastikan BookingId tetap ada
