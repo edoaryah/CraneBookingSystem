@@ -783,6 +783,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
     }
 
     // Services/CraneUsage/CraneUsageService.cs - Add the following method
+    // Services/CraneUsage/CraneUsageService.cs - Method GetMinuteVisualizationDataAsync
     public async Task<CraneUsageMinuteVisualizationViewModel> GetMinuteVisualizationDataAsync(int craneId, DateTime date)
     {
       var crane = await _context.Cranes.FindAsync(craneId);
@@ -903,12 +904,42 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         }
       }
 
-      // Calculate percentages
+      // Calculate original percentages (mungkin masih dibutuhkan di tempat lain)
       summary.OperatingPercentage = Math.Round((summary.OperatingHours * 60 / totalMinutes) * 100, 1);
       summary.DelayPercentage = Math.Round((summary.DelayHours * 60 / totalMinutes) * 100, 1);
       summary.StandbyPercentage = Math.Round((summary.StandbyHours * 60 / totalMinutes) * 100, 1);
       summary.ServicePercentage = Math.Round((summary.ServiceHours * 60 / totalMinutes) * 100, 1);
       summary.BreakdownPercentage = Math.Round((summary.BreakdownHours * 60 / totalMinutes) * 100, 1);
+
+      // Calculate new metrics
+      double calendarHours = summary.OperatingHours + summary.DelayHours + summary.StandbyHours +
+                              summary.ServiceHours + summary.BreakdownHours; // Total 24 jam
+      double availableHours = summary.OperatingHours + summary.DelayHours + summary.StandbyHours;
+      double utilizedHours = summary.OperatingHours + summary.DelayHours;
+
+      // Availability = Available Time / Calendar Time
+      if (calendarHours > 0)
+      {
+        summary.AvailabilityPercentage = Math.Round((availableHours / calendarHours) * 100, 1);
+
+        // Utilisation = Operating / Calendar Time
+        summary.UtilisationPercentage = Math.Round((summary.OperatingHours / calendarHours) * 100, 1);
+      }
+      else
+      {
+        summary.AvailabilityPercentage = 0;
+        summary.UtilisationPercentage = 0;
+      }
+
+      // Usage = Utilized Time / Available Time
+      if (availableHours > 0)
+      {
+        summary.UsagePercentage = Math.Round((utilizedHours / availableHours) * 100, 1);
+      }
+      else
+      {
+        summary.UsagePercentage = 0;
+      }
 
       viewModel.Summary = summary;
 

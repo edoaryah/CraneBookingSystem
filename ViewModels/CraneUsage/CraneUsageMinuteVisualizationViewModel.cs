@@ -41,8 +41,11 @@ namespace AspnetCoreMvcFull.ViewModels.CraneUsage
     public int DurationMinutes => (int)(EndTime - StartTime).TotalMinutes;
   }
 
+  // Di file ViewModels/CraneUsage/CraneUsageMinuteVisualizationViewModel.cs
+  // Di ViewModels/CraneUsage/CraneUsageMinuteVisualizationViewModel.cs
   public class UsageSummary
   {
+    // Existing properties
     public double OperatingHours { get; set; }
     public double DelayHours { get; set; }
     public double StandbyHours { get; set; }
@@ -55,10 +58,15 @@ namespace AspnetCoreMvcFull.ViewModels.CraneUsage
     public double ServicePercentage { get; set; }
     public double BreakdownPercentage { get; set; }
 
+    // Original computed properties
     public double AvailableHours => OperatingHours + DelayHours + StandbyHours;
     public double MaintenanceHours => ServiceHours + BreakdownHours;
-
     public double AvailablePercentage => OperatingPercentage + DelayPercentage + StandbyPercentage;
     public double MaintenancePercentage => ServicePercentage + BreakdownPercentage;
+
+    // New metrics
+    public double AvailabilityPercentage { get; set; } // Available Time / Calendar Time
+    public double UtilisationPercentage { get; set; }  // Operating / Calendar Time
+    public double UsagePercentage { get; set; }        // Utilized Time / Available Time
   }
 }

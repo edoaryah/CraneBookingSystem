@@ -242,12 +242,41 @@
             <td>@Model.Summary.BreakdownHours.ToString("0.0") jam</td>
             <td>@Model.Summary.BreakdownPercentage.ToString("0.0")%</td>
           </tr>
-          <tr class="table-active">
+          <!-- Tambahkan divider untuk memisahkan metrik asli dengan metrik baru -->
+          <tr class="table-secondary">
+            <td colspan="2" class="text-center">
+              <strong>Key Performance Indicators</strong>
+            </td>
+          </tr>
+          <!-- Metrik baru -->
+          <tr class="table-primary">
+            <th>Availability</th>
+            <th>@Model.Summary.AvailabilityPercentage.ToString("0.0")%</th>
+            @* <th>
+              <small>Available Time / Calendar Time</small>
+            </th> *@
+          </tr>
+          <tr class="table-info">
+            <th>Utilisation</th>
+            <th>@Model.Summary.UtilisationPercentage.ToString("0.0")%</th>
+            @* <th>
+              <small>Operating / Calendar Time</small>
+            </th> *@
+          </tr>
+          <tr class="table-success">
+            <th>Usage</th>
+            <th>@Model.Summary.UsagePercentage.ToString("0.0")%</th>
+            @* <th>
+              <small>Utilized Time / Available Time</small>
+            </th> *@
+          </tr>
+          <!-- Optional: metrik asli jika masih ingin ditampilkan -->
+          <tr class="table-active" style="display: none;">
             <th>Available Time</th>
             <th>@Model.Summary.AvailableHours.ToString("0.0") jam</th>
             <th>@Model.Summary.AvailablePercentage.ToString("0.0")%</th>
           </tr>
-          <tr class="table-active">
+          <tr class="table-active" style="display: none;">
             <th>Maintenance Time</th>
             <th>@Model.Summary.MaintenanceHours.ToString("0.0") jam</th>
             <th>@Model.Summary.MaintenancePercentage.ToString("0.0")%</th>
@@ -261,9 +290,6 @@
 <div class="d-flex justify-content-between mb-4">
   <a asp-action="Index" class="btn btn-secondary">
     <i class="bx bx-arrow-left me-1"></i> Kembali ke Daftar
-  </a>
-  <a asp-action="Visualization" class="btn btn-info me-2">
-    <i class="bx bx-bar-chart me-1"></i> Visualisasi Per Jam
   </a>
   <a asp-action="Form" asp-route-craneId="@Model.CraneId" asp-route-date="@Model.Date.ToString("yyyy-MM-dd")"
     class="btn btn-success">
@@ -337,12 +363,12 @@
         const color = getCategoryColor(activity.Category);
 
         let detailHtml = `
-                    <div class="detail-segment">
-                      <div class="detail-time">${startTime} - ${endTime}</div>
-                      <span class="badge mb-2" style="background-color: ${color}">${activity.Category}</span>
-                      <div class="detail-category">${activity.SubcategoryName}</div>
-                      <div class="detail-duration mb-3">Durasi: ${durationText}</div>
-                  `;
+                              <div class="detail-segment">
+                                <div class="detail-time">${startTime} - ${endTime}</div>
+                                <span class="badge mb-2" style="background-color: ${color}">${activity.Category}</span>
+                                <div class="detail-category">${activity.SubcategoryName}</div>
+                                <div class="detail-duration mb-3">Durasi: ${durationText}</div>
+                            `;
 
         // Tambahkan informasi opsional jika tersedia
         if (activity.OperatorName) {
@@ -557,11 +583,11 @@
               .duration(200)
               .style("opacity", 0.9);
             tooltip.html(`
-                        <strong>${d.Category}</strong> - ${d.SubcategoryName}<br/>
-                        ${startTime} - ${endTime} (${durationText})<br/>
-                        ${d.OperatorName ? `Operator: ${d.OperatorName}<br/>` : ""}
-                        ${d.BookingNumber ? `Booking: ${d.BookingNumber}` : ""}
-                      `)
+                                  <strong>${d.Category}</strong> - ${d.SubcategoryName}<br/>
+                                  ${startTime} - ${endTime} (${durationText})<br/>
+                                  ${d.OperatorName ? `Operator: ${d.OperatorName}<br/>` : ""}
+                                  ${d.BookingNumber ? `Booking: ${d.BookingNumber}` : ""}
+                                `)
               .style("left", (event.pageX + 10) + "px")
               .style("top", (event.pageY - 28) + "px");
           })
