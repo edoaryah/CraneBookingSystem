@@ -254,13 +254,13 @@ namespace AspnetCoreMvcFull.Services
         await _context.SaveChangesAsync();
 
         // Publish event untuk relokasi booking yang terdampak
-        await _eventPublisher.PublishAsync(new CraneMaintenanceEvent
-        {
-          CraneId = schedule.CraneId,
-          MaintenanceStartTime = schedule.StartDate,
-          MaintenanceEndTime = schedule.EndDate,
-          Reason = $"Scheduled Maintenance: {schedule.Title}"
-        });
+        // await _eventPublisher.PublishAsync(new CraneMaintenanceEvent
+        // {
+        //   CraneId = schedule.CraneId,
+        //   MaintenanceStartTime = schedule.StartDate,
+        //   MaintenanceEndTime = schedule.EndDate,
+        //   Reason = $"Scheduled Maintenance: {schedule.Title}"
+        // });
 
         // Return the created maintenance schedule with details
         return await GetMaintenanceScheduleByIdAsync(schedule.Id);
@@ -432,14 +432,14 @@ namespace AspnetCoreMvcFull.Services
             // Tidak perlu merelokasi booking pada crane lama
           }
 
-          // Publish event untuk relokasi booking yang terdampak pada crane baru
-          await _eventPublisher.PublishAsync(new CraneMaintenanceEvent
-          {
-            CraneId = schedule.CraneId,
-            MaintenanceStartTime = schedule.StartDate,
-            MaintenanceEndTime = schedule.EndDate,
-            Reason = $"Updated Scheduled Maintenance: {schedule.Title}"
-          });
+          // // Publish event untuk relokasi booking yang terdampak pada crane baru
+          // await _eventPublisher.PublishAsync(new CraneMaintenanceEvent
+          // {
+          //   CraneId = schedule.CraneId,
+          //   MaintenanceStartTime = schedule.StartDate,
+          //   MaintenanceEndTime = schedule.EndDate,
+          //   Reason = $"Updated Scheduled Maintenance: {schedule.Title}"
+          // });
         }
 
         // Return the updated maintenance schedule with details

@@ -198,14 +198,14 @@ namespace AspnetCoreMvcFull.Services
           breakdown.HangfireJobId = jobId;
           await _context.SaveChangesAsync();
 
-          // Publish event for relocation
-          await _eventPublisher.PublishAsync(new CraneMaintenanceEvent
-          {
-            CraneId = existingCrane.Id,
-            MaintenanceStartTime = breakdown.UrgentStartTime,
-            MaintenanceEndTime = breakdown.UrgentEndTime,
-            Reason = breakdown.Reasons
-          });
+          // // Publish event for relocation
+          // await _eventPublisher.PublishAsync(new CraneMaintenanceEvent
+          // {
+          //   CraneId = existingCrane.Id,
+          //   MaintenanceStartTime = breakdown.UrgentStartTime,
+          //   MaintenanceEndTime = breakdown.UrgentEndTime,
+          //   Reason = breakdown.Reasons
+          // });
         }
         else
         {
@@ -353,14 +353,14 @@ namespace AspnetCoreMvcFull.Services
           await _context.SaveChangesAsync();
           _logger.LogInformation("Crane {CraneId} status automatically changed to Available via Hangfire job", craneId);
 
-          // Publish event for checking any necessary relocations after maintenance
-          await _eventPublisher.PublishAsync(new CraneMaintenanceEvent
-          {
-            CraneId = craneId,
-            MaintenanceStartTime = latestLog.UrgentStartTime,
-            MaintenanceEndTime = DateTime.Now,
-            Reason = latestLog.Reasons
-          });
+          // // Publish event for checking any necessary relocations after maintenance
+          // await _eventPublisher.PublishAsync(new CraneMaintenanceEvent
+          // {
+          //   CraneId = craneId,
+          //   MaintenanceStartTime = latestLog.UrgentStartTime,
+          //   MaintenanceEndTime = DateTime.Now,
+          //   Reason = latestLog.Reasons
+          // });
         }
         else
         {
