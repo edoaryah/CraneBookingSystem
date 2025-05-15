@@ -361,42 +361,6 @@ namespace AspnetCoreMvcFull.Controllers
       }
     }
 
-    // GET: CraneUsage/Visualization
-    public async Task<IActionResult> Visualization(int craneId = 0, DateTime? date = null)
-    {
-      try
-      {
-        if (craneId == 0)
-        {
-          // Default to first crane if none specified
-          var firstCrane = await _context.Cranes.OrderBy(c => c.Code).FirstOrDefaultAsync();
-          if (firstCrane != null)
-          {
-            craneId = firstCrane.Id;
-          }
-        }
-
-        var viewDate = date ?? DateTime.Today;
-        var viewModel = await _craneUsageService.GetUsageVisualizationDataAsync(craneId, viewDate);
-
-        // Menggunakan ViewBag untuk pesan dari TempData
-        ViewBag.SuccessMessage = TempData["CraneUsageSuccessMessage"] as string;
-        ViewBag.ErrorMessage = TempData["CraneUsageErrorMessage"] as string;
-
-        // Hapus TempData setelah digunakan
-        TempData.Remove("CraneUsageSuccessMessage");
-        TempData.Remove("CraneUsageErrorMessage");
-
-        return View(viewModel);
-      }
-      catch (Exception ex)
-      {
-        _logger.LogError(ex, "Error retrieving crane usage visualization data");
-        TempData["CraneUsageErrorMessage"] = "Terjadi kesalahan saat memuat visualisasi penggunaan crane: " + ex.Message;
-        return View(new CraneUsageVisualizationViewModel());
-      }
-    }
-
     // AJAX: CraneUsage/SearchBookings
     [HttpGet]
     public async Task<IActionResult> SearchBookings(string term, int craneId)
