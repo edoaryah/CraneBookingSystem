@@ -81,7 +81,7 @@ namespace AspnetCoreMvcFull.Controllers
         {
           CraneId = craneId,
           Date = viewDate,
-          OperatorName = userName,
+          // Remove OperatorName from here
           CraneList = await GetCraneListAsync()
         };
 
@@ -91,17 +91,7 @@ namespace AspnetCoreMvcFull.Controllers
           var entries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(craneId, viewDate);
           viewModel.Entries = entries;
 
-          // If we have entries, use the operator name from the record
-          if (entries.Any())
-          {
-            var record = await _context.CraneUsageRecords
-                .FirstOrDefaultAsync(r => r.CraneId == craneId && r.Date.Date == viewDate.Date);
-
-            if (record != null)
-            {
-              viewModel.OperatorName = record.OperatorName;
-            }
-          }
+          // No need to set OperatorName at form level anymore
         }
 
         // Menggunakan ViewBag untuk pesan dari TempData
@@ -173,7 +163,7 @@ namespace AspnetCoreMvcFull.Controllers
     {
       try
       {
-        _logger.LogInformation($"Adding entry: Start={entry.StartTime}, End={entry.EndTime}");
+        _logger.LogInformation($"Adding entry: Start={entry.StartTime}, End={entry.EndTime}, Operator={operatorName}");
 
         // Parse and validate time values
         TimeSpan startTime, endTime;
@@ -195,6 +185,10 @@ namespace AspnetCoreMvcFull.Controllers
         entry.StartTime = startTime;
         entry.EndTime = endTime;
 
+        // Explicitly set operator name from parameter
+        entry.OperatorName = operatorName;
+        _logger.LogInformation($"Setting operator name to: {entry.OperatorName}");
+
         // Check for conflicts with existing entries
         var existingEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(craneId, date);
         if (!_craneUsageService.ValidateNoTimeConflicts(existingEntries, entry))
@@ -209,7 +203,17 @@ namespace AspnetCoreMvcFull.Controllers
         {
           // Get the complete entry with ID and navigation properties
           var updatedEntry = await _craneUsageService.GetCraneUsageEntryByTimeAsync(craneId, date, entry.StartTime, entry.EndTime);
-          return Json(new { success = true, entry = updatedEntry });
+
+          // PERBAIKAN: Log respons untuk memastikan operatorName ada
+          _logger.LogInformation($"Response entry: ID={updatedEntry.Id}, Operator={updatedEntry.OperatorName}");
+
+          return Json(new
+          {
+            success = true,
+            entry = updatedEntry,
+            // PERBAIKAN: Tambahkan operator name secara eksplisit sebagai property terpisah
+            operatorName = updatedEntry.OperatorName
+          });
         }
         else
         {
@@ -228,7 +232,7 @@ namespace AspnetCoreMvcFull.Controllers
     {
       try
       {
-        _logger.LogInformation($"Updating entry ID: {entry.Id}, Start={entry.StartTime}, End={entry.EndTime}");
+        _logger.LogInformation($"Updating entry ID: {entry.Id}, Start={entry.StartTime}, End={entry.EndTime}, Operator={entry.OperatorName}");
 
         // Validate entry ID
         if (entry == null || entry.Id <= 0)
@@ -236,73 +240,36 @@ namespace AspnetCoreMvcFull.Controllers
           return Json(new { success = false, message = "ID entri tidak valid." });
         }
 
-        // Get existing entry
+        // Get existing entry from database to verify it exists
         var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
         if (existingEntry == null)
         {
           return Json(new { success = false, message = "Entri tidak ditemukan." });
         }
 
-        // Get record
-        var record = await _context.CraneUsageRecords.FindAsync(existingEntry.CraneUsageRecordId);
-        if (record == null)
+        // Updating entry via service
+        var result = await _craneUsageService.UpdateCraneUsageEntryAsync(entry);
+
+        if (result)
         {
-          return Json(new { success = false, message = "Record tidak ditemukan." });
-        }
+          // Get updated entry with all navigation properties
+          var updatedEntry = await _craneUsageService.GetCraneUsageEntryByIdAsync(entry.Id);
 
-        // Parse and validate time values
-        TimeSpan startTime, endTime;
-        if (!TimeSpan.TryParse(entry.StartTime.ToString(), out startTime) ||
-            !TimeSpan.TryParse(entry.EndTime.ToString(), out endTime))
+          // PERBAIKAN: Log respons untuk memastikan operatorName ada
+          _logger.LogInformation($"Updated entry response: ID={updatedEntry.Id}, Operator={updatedEntry.OperatorName}");
+
+          return Json(new
+          {
+            success = true,
+            entry = updatedEntry,
+            // PERBAIKAN: Tambahkan operator name secara eksplisit sebagai property terpisah
+            operatorName = updatedEntry.OperatorName
+          });
+        }
+        else
         {
-          _logger.LogWarning($"Invalid time format: {entry.StartTime} - {entry.EndTime}");
-          return Json(new { success = false, message = "Format waktu tidak valid." });
+          return Json(new { success = false, message = "Gagal memperbarui entri penggunaan crane." });
         }
-
-        // Ensure start time is before end time
-        if (startTime >= endTime)
-        {
-          _logger.LogWarning($"Start time ({startTime}) is not before end time ({endTime})");
-          return Json(new { success = false, message = "Waktu mulai harus lebih awal dari waktu selesai." });
-        }
-
-        // Update the entry with parsed values to ensure correct validation
-        entry.StartTime = startTime;
-        entry.EndTime = endTime;
-
-        // Check for conflicts with other entries
-        var allEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(record.CraneId, record.Date);
-        var otherEntries = allEntries.Where(e => e.Id != entry.Id).ToList();
-
-        if (!_craneUsageService.ValidateNoTimeConflicts(otherEntries, entry))
-        {
-          return Json(new { success = false, message = "Terdapat konflik waktu dengan entri yang sudah ada." });
-        }
-
-        // Update entry
-        existingEntry.StartTime = startTime;
-        existingEntry.EndTime = endTime;
-        existingEntry.Category = entry.Category;
-        existingEntry.UsageSubcategoryId = entry.UsageSubcategoryId;
-        existingEntry.Notes = entry.Notes;
-
-        // Preserve booking ID if present
-        if (entry.BookingId.HasValue)
-        {
-          existingEntry.BookingId = entry.BookingId;
-        }
-
-        // Preserve maintenance ID if present
-        if (entry.MaintenanceScheduleId.HasValue)
-        {
-          existingEntry.MaintenanceScheduleId = entry.MaintenanceScheduleId;
-        }
-
-        await _context.SaveChangesAsync();
-
-        // Get the updated entry with navigation properties
-        var updatedEntry = await _craneUsageService.GetCraneUsageEntryByIdAsync(entry.Id);
-        return Json(new { success = true, entry = updatedEntry });
       }
       catch (Exception ex)
       {
@@ -526,8 +493,8 @@ namespace AspnetCoreMvcFull.Controllers
           EndDate = booking.EndDate,
           Location = booking.Location ?? "N/A",
           Status = booking.Status,
-          Date = viewDate,
-          OperatorName = User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty
+          Date = viewDate
+          // Remove OperatorName from here
         };
 
         // Load entri yang sudah ada untuk tanggal ini
@@ -575,6 +542,7 @@ namespace AspnetCoreMvcFull.Controllers
           foreach (var entry in viewModel.Entries)
           {
             entry.BookingId = viewModel.BookingId;
+            // No need to set OperatorName at form level
           }
 
           // Coba simpan form menggunakan metode baru
@@ -634,7 +602,7 @@ namespace AspnetCoreMvcFull.Controllers
     {
       try
       {
-        _logger.LogInformation($"Adding booking entry: Start={entry.StartTime}, End={entry.EndTime}");
+        _logger.LogInformation($"Adding booking entry: Start={entry.StartTime}, End={entry.EndTime}, Operator={operatorName}");
 
         // Parse and validate time values
         TimeSpan startTime, endTime;
@@ -655,6 +623,10 @@ namespace AspnetCoreMvcFull.Controllers
         // Set booking ID
         entry.BookingId = bookingId;
 
+        // Explicitly set operator name
+        entry.OperatorName = operatorName;
+        _logger.LogInformation($"Setting operator name for booking entry: {entry.OperatorName}");
+
         // Update the entry with parsed values to ensure correct validation
         entry.StartTime = startTime;
         entry.EndTime = endTime;
@@ -673,7 +645,17 @@ namespace AspnetCoreMvcFull.Controllers
         {
           // Get the complete entry with ID and navigation properties
           var updatedEntry = await _craneUsageService.GetCraneUsageEntryByTimeAsync(craneId, date, entry.StartTime, entry.EndTime);
-          return Json(new { success = true, entry = updatedEntry });
+
+          // PERBAIKAN: Log respons untuk memastikan operatorName ada
+          _logger.LogInformation($"Booking response entry: ID={updatedEntry.Id}, Operator={updatedEntry.OperatorName}");
+
+          return Json(new
+          {
+            success = true,
+            entry = updatedEntry,
+            // PERBAIKAN: Tambahkan operator name secara eksplisit
+            operatorName = updatedEntry.OperatorName
+          });
         }
         else
         {
@@ -692,104 +674,33 @@ namespace AspnetCoreMvcFull.Controllers
     {
       try
       {
-        _logger.LogInformation($"Updating booking entry ID: {entry.Id}, Start={entry.StartTime}, End={entry.EndTime}");
+        _logger.LogInformation($"Updating booking entry ID: {entry.Id}, Start={entry.StartTime}, End={entry.EndTime}, Operator={entry.OperatorName}");
 
-        if (entry == null || entry.Id <= 0)
+        // The rest is similar to UpdateEntry method
+        // Call the service method directly
+        var result = await _craneUsageService.UpdateCraneUsageEntryAsync(entry);
+
+        if (result)
         {
-          _logger.LogWarning($"Invalid entry ID: {(entry == null ? "null" : entry.Id.ToString())}");
-          return Json(new { success = false, message = "ID entri tidak valid." });
-        }
+          // Get updated entry with all navigation properties
+          var updatedEntry = await _craneUsageService.GetCraneUsageEntryByIdAsync(entry.Id);
 
-        // Get existing entry
-        var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
-        if (existingEntry == null)
-        {
-          _logger.LogWarning($"Entry with ID {entry.Id} not found");
-          return Json(new { success = false, message = $"Entri dengan ID {entry.Id} tidak ditemukan." });
-        }
+          // PERBAIKAN: Log respons untuk memastikan operatorName ada
+          _logger.LogInformation($"Updated booking entry: ID={updatedEntry.Id}, Operator={updatedEntry.OperatorName}");
 
-        // Get record
-        var record = await _context.CraneUsageRecords.FindAsync(existingEntry.CraneUsageRecordId);
-        if (record == null)
-        {
-          _logger.LogWarning($"Record for entry ID {entry.Id} not found");
-          return Json(new { success = false, message = "Record tidak ditemukan." });
-        }
-
-        // Parse and validate time values
-        TimeSpan startTime, endTime;
-        if (!TimeSpan.TryParse(entry.StartTime.ToString(), out startTime) ||
-            !TimeSpan.TryParse(entry.EndTime.ToString(), out endTime))
-        {
-          _logger.LogWarning($"Invalid time format: {entry.StartTime} - {entry.EndTime}");
-          return Json(new { success = false, message = "Format waktu tidak valid." });
-        }
-
-        // Ensure start time is before end time
-        if (startTime >= endTime)
-        {
-          _logger.LogWarning($"Start time ({startTime}) is not before end time ({endTime})");
-          return Json(new { success = false, message = "Waktu mulai harus lebih awal dari waktu selesai." });
-        }
-
-        // Update the entry with parsed values to ensure correct validation
-        entry.StartTime = startTime;
-        entry.EndTime = endTime;
-
-        // Check for conflicts with other entries
-        var allEntries = await _craneUsageService.GetCraneUsageEntriesForDateAsync(record.CraneId, record.Date);
-        var otherEntries = allEntries.Where(e => e.Id != entry.Id).ToList();
-
-        if (!_craneUsageService.ValidateNoTimeConflicts(otherEntries, entry))
-        {
-          return Json(new { success = false, message = "Terdapat konflik waktu dengan entri yang sudah ada." });
-        }
-
-        // Update entry
-        existingEntry.StartTime = startTime;
-        existingEntry.EndTime = endTime;
-        existingEntry.Category = entry.Category;
-        existingEntry.UsageSubcategoryId = entry.UsageSubcategoryId;
-        existingEntry.Notes = entry.Notes;
-
-        // Preserve booking ID
-        if (entry.BookingId.HasValue)
-        {
-          // If update includes a booking ID, use it
-          existingEntry.BookingId = entry.BookingId;
-        }
-        // If entry.BookingId is null, we keep existingEntry.BookingId as is
-
-        await _context.SaveChangesAsync();
-
-        // Get updated subcategory info
-        var subcategory = await _context.UsageSubcategories.FindAsync(existingEntry.UsageSubcategoryId);
-
-        // Prepare response
-        var updatedEntry = new CraneUsageEntryViewModel
-        {
-          Id = existingEntry.Id,
-          StartTime = existingEntry.StartTime,
-          EndTime = existingEntry.EndTime,
-          Category = existingEntry.Category,
-          CategoryName = existingEntry.Category.ToString(),
-          UsageSubcategoryId = existingEntry.UsageSubcategoryId,
-          SubcategoryName = subcategory?.Name ?? "",
-          BookingId = existingEntry.BookingId,
-          Notes = existingEntry.Notes ?? ""
-        };
-
-        // Add booking info if available
-        if (existingEntry.BookingId.HasValue)
-        {
-          var booking = await _context.Bookings.FindAsync(existingEntry.BookingId.Value);
-          if (booking != null)
+          // Return success and updated entry
+          return Json(new
           {
-            updatedEntry.BookingNumber = booking.BookingNumber;
-          }
+            success = true,
+            entry = updatedEntry,
+            // PERBAIKAN: Tambahkan operator name secara eksplisit
+            operatorName = updatedEntry.OperatorName
+          });
         }
-
-        return Json(new { success = true, entry = updatedEntry });
+        else
+        {
+          return Json(new { success = false, message = "Gagal memperbarui entri penggunaan crane." });
+        }
       }
       catch (Exception ex)
       {

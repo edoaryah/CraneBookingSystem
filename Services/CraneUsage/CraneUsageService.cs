@@ -45,6 +45,8 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         BookingId = e.BookingId,
         MaintenanceScheduleId = e.MaintenanceScheduleId,
         Notes = e.Notes,
+        // Ambil OperatorName dari entry, bukan dari record
+        OperatorName = e.OperatorName,
         CategoryName = e.Category.ToString(),
         SubcategoryName = e.UsageSubcategory?.Name ?? string.Empty,
         BookingNumber = e.Booking?.BookingNumber,
@@ -75,7 +77,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           {
             CraneId = viewModel.CraneId,
             Date = viewModel.Date.Date,
-            OperatorName = viewModel.OperatorName,
+            // Remove OperatorName assignment here
             CreatedAt = DateTime.Now,
             CreatedBy = userName
           };
@@ -85,8 +87,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         }
         else
         {
-          // Update operator name
-          record.OperatorName = viewModel.OperatorName;
+          // No need to update operator name on record level anymore
           await _context.SaveChangesAsync();
         }
 
@@ -122,6 +123,8 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
               existingEntry.BookingId = viewModelEntry.BookingId;
               existingEntry.MaintenanceScheduleId = viewModelEntry.MaintenanceScheduleId;
               existingEntry.Notes = viewModelEntry.Notes;
+              // Update OperatorName at entry level
+              existingEntry.OperatorName = viewModelEntry.OperatorName;
             }
           }
           else
@@ -136,7 +139,9 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
               UsageSubcategoryId = viewModelEntry.UsageSubcategoryId,
               BookingId = viewModelEntry.BookingId,
               MaintenanceScheduleId = viewModelEntry.MaintenanceScheduleId,
-              Notes = viewModelEntry.Notes
+              Notes = viewModelEntry.Notes,
+              // Add OperatorName at entry level
+              OperatorName = viewModelEntry.OperatorName
             };
 
             _context.CraneUsageEntries.Add(newEntry);
@@ -168,7 +173,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         {
           CraneId = craneId,
           Date = date.Date,
-          OperatorName = userName,
           CreatedAt = DateTime.Now,
           CreatedBy = userName
         };
@@ -177,18 +181,42 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         await _context.SaveChangesAsync();
       }
 
+      // Lakukan validasi untuk waktu
+      string startTimeStr = entry.StartTime.ToString();
+      string endTimeStr = entry.EndTime.ToString();
+
+      // Pastikan format HH:mm
+      if (startTimeStr.Count(c => c == ':') > 1)
+        startTimeStr = string.Join(":", startTimeStr.Split(':').Take(2));
+      if (endTimeStr.Count(c => c == ':') > 1)
+        endTimeStr = string.Join(":", endTimeStr.Split(':').Take(2));
+
+      TimeSpan startTime, endTime;
+
+      // Gunakan TryParse untuk menghindari error
+      if (!TimeSpan.TryParse(startTimeStr, out startTime) ||
+          !TimeSpan.TryParse(endTimeStr, out endTime))
+      {
+        _logger.LogError($"Service - Gagal parsing waktu: {startTimeStr} atau {endTimeStr}");
+        return false;
+      }
+
       // Create new entry
       var newEntry = new CraneUsageEntry
       {
         CraneUsageRecordId = record.Id,
-        StartTime = entry.StartTime,
-        EndTime = entry.EndTime,
+        StartTime = startTime,
+        EndTime = endTime,
         Category = entry.Category,
         UsageSubcategoryId = entry.UsageSubcategoryId,
         BookingId = entry.BookingId,
         MaintenanceScheduleId = entry.MaintenanceScheduleId,
-        Notes = entry.Notes
+        Notes = entry.Notes,
+        // Set OperatorName dari parameter
+        OperatorName = entry.OperatorName?.Trim()  // Trim untuk menghindari whitespace
       };
+
+      _logger.LogInformation($"Service - Adding new entry with operator name: {newEntry.OperatorName}");
 
       _context.CraneUsageEntries.Add(newEntry);
       await _context.SaveChangesAsync();
@@ -203,6 +231,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       {
         _logger.LogInformation($"Service - Update entry dengan ID: {entry.Id}");
         _logger.LogInformation($"Service - Waktu yang diterima - Start: {entry.StartTime}, End: {entry.EndTime}");
+        _logger.LogInformation($"Service - Operator Name: {entry.OperatorName}"); // Logging operator name
 
         var existingEntry = await _context.CraneUsageEntries.FindAsync(entry.Id);
         if (existingEntry == null)
@@ -246,6 +275,10 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         existingEntry.EndTime = endTime;
         existingEntry.Category = entry.Category;
         existingEntry.UsageSubcategoryId = entry.UsageSubcategoryId;
+
+        // PERBAIKAN: Update OperatorName dengan nilai dari ViewModel
+        existingEntry.OperatorName = entry.OperatorName?.Trim(); // Trim untuk menghindari whitespace
+        _logger.LogInformation($"Service - Setting operator name to: {existingEntry.OperatorName}");
 
         // Pastikan BookingId tetap ada
         if (entry.BookingId.HasValue)
@@ -319,6 +352,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         BookingId = entry.BookingId,
         MaintenanceScheduleId = entry.MaintenanceScheduleId,
         Notes = entry.Notes,
+        OperatorName = entry.OperatorName,
         CategoryName = entry.Category.ToString(),
         SubcategoryName = entry.UsageSubcategory?.Name ?? string.Empty,
         BookingNumber = entry.Booking?.BookingNumber,
@@ -359,6 +393,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         BookingId = entry.BookingId,
         MaintenanceScheduleId = entry.MaintenanceScheduleId,
         Notes = entry.Notes,
+        OperatorName = entry.OperatorName,
         CategoryName = entry.Category.ToString(),
         SubcategoryName = entry.UsageSubcategory?.Name ?? string.Empty,
         BookingNumber = entry.Booking?.BookingNumber,
@@ -599,7 +634,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
     {
       var query = _context.CraneUsageEntries
           .Include(e => e.CraneUsageRecord)
-              .ThenInclude(r => r!.Crane) // Use null-forgiving operator
+              .ThenInclude(r => r!.Crane)
           .Include(e => e.UsageSubcategory)
           .Include(e => e.Booking)
           .Include(e => e.MaintenanceSchedule)
@@ -649,11 +684,12 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           SubcategoryName = e.UsageSubcategory?.Name ?? string.Empty,
           BookingNumber = e.Booking?.BookingNumber ?? string.Empty,
           MaintenanceTitle = e.MaintenanceSchedule?.Title ?? string.Empty,
-          // Tambahkan properti yang dibutuhkan view Index
+          // Use OperatorName from entry level
+          OperatorName = e.OperatorName,
+          // Properties needed for Index view
           CraneId = e.CraneUsageRecord?.CraneId ?? 0,
           CraneName = e.CraneUsageRecord?.Crane?.Code ?? string.Empty,
-          Date = e.CraneUsageRecord?.Date ?? DateTime.MinValue,
-          OperatorName = e.CraneUsageRecord?.OperatorName ?? string.Empty
+          Date = e.CraneUsageRecord?.Date ?? DateTime.MinValue
         }).ToList(),
         Filter = filter
       };
@@ -696,17 +732,103 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
 
     public async Task<bool> SaveBookingUsageFormAsync(BookingUsageFormViewModel viewModel, string userName)
     {
-      // Konversi ke CraneUsageFormViewModel untuk memanfaatkan kode yang sudah ada
-      var craneViewModel = new CraneUsageFormViewModel
+      // Validate no time conflicts (reuse existing logic)
+      if (!ValidateNoTimeConflicts(viewModel.Entries))
       {
-        CraneId = viewModel.CraneId,
-        Date = viewModel.Date,
-        OperatorName = viewModel.OperatorName,
-        Entries = viewModel.Entries
-      };
+        return false;
+      }
 
-      // Gunakan metode yang sudah ada
-      return await SaveCraneUsageFormAsync(craneViewModel, userName);
+      using var transaction = await _context.Database.BeginTransactionAsync();
+
+      try
+      {
+        // Find or create record
+        var record = await _context.CraneUsageRecords
+            .FirstOrDefaultAsync(r => r.CraneId == viewModel.CraneId && r.Date.Date == viewModel.Date.Date);
+
+        if (record == null)
+        {
+          // Create new record
+          record = new CraneUsageRecord
+          {
+            CraneId = viewModel.CraneId,
+            Date = viewModel.Date.Date,
+            // No OperatorName at record level anymore
+            CreatedAt = DateTime.Now,
+            CreatedBy = userName
+          };
+
+          _context.CraneUsageRecords.Add(record);
+          await _context.SaveChangesAsync();
+        }
+
+        // Process entries - handle deletes, updates, and inserts
+        var existingEntries = await _context.CraneUsageEntries
+            .Where(e => e.CraneUsageRecordId == record.Id && e.BookingId == viewModel.BookingId)
+            .ToListAsync();
+
+        // Delete entries not in viewModel
+        var entriesToDelete = existingEntries
+            .Where(e => !viewModel.Entries.Any(ve => ve.Id == e.Id))
+            .ToList();
+
+        foreach (var entry in entriesToDelete)
+        {
+          _context.CraneUsageEntries.Remove(entry);
+        }
+
+        // Update or add entries
+        foreach (var viewModelEntry in viewModel.Entries)
+        {
+          // Ensure BookingId is set
+          viewModelEntry.BookingId = viewModel.BookingId;
+
+          if (viewModelEntry.Id > 0)
+          {
+            // Update existing entry
+            var existingEntry = existingEntries.FirstOrDefault(e => e.Id == viewModelEntry.Id);
+            if (existingEntry != null)
+            {
+              existingEntry.StartTime = viewModelEntry.StartTime;
+              existingEntry.EndTime = viewModelEntry.EndTime;
+              existingEntry.Category = viewModelEntry.Category;
+              existingEntry.UsageSubcategoryId = viewModelEntry.UsageSubcategoryId;
+              existingEntry.BookingId = viewModelEntry.BookingId;
+              existingEntry.Notes = viewModelEntry.Notes;
+              // Update OperatorName at entry level
+              existingEntry.OperatorName = viewModelEntry.OperatorName;
+            }
+          }
+          else
+          {
+            // Add new entry
+            var newEntry = new CraneUsageEntry
+            {
+              CraneUsageRecordId = record.Id,
+              StartTime = viewModelEntry.StartTime,
+              EndTime = viewModelEntry.EndTime,
+              Category = viewModelEntry.Category,
+              UsageSubcategoryId = viewModelEntry.UsageSubcategoryId,
+              BookingId = viewModelEntry.BookingId,
+              Notes = viewModelEntry.Notes,
+              // Add OperatorName at entry level
+              OperatorName = viewModelEntry.OperatorName
+            };
+
+            _context.CraneUsageEntries.Add(newEntry);
+          }
+        }
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return true;
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error saving booking usage form");
+        await transaction.RollbackAsync();
+        return false;
+      }
     }
   }
 }

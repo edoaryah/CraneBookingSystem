@@ -1,14 +1,10 @@
-<!-- Views/CraneUsage/Form.cshtml -->
+<!-- Views/CraneUsage/Form.cshtml (Continued) -->
 @model AspnetCoreMvcFull.ViewModels.CraneUsage.CraneUsageFormViewModel
 
 @{
   ViewData["Title"] = "Input Penggunaan Crane";
   Layout = "_ContentNavbarLayout";
 }
-
-@* <div class="container-fluid">
-  <h1 class="mt-4">Input Penggunaan Crane</h1>
-  <p class="lead">Catat penggunaan crane dalam satu hari</p> *@
 
 @if (ViewBag.SuccessMessage != null)
 {
@@ -25,8 +21,8 @@
   </div>
 }
 
-@* <h1>Input Penggunaan Crane</h1>
-<p class="lead">Catat penggunaan crane dalam satu hari</p> *@
+<h1>Input Penggunaan Crane</h1>
+<p class="lead">Catat penggunaan crane dalam satu hari</p>
 <div class="card mb-4">
   <div class="card-header">
     <i class="bx bx-calendar-alt me-1"></i>
@@ -62,22 +58,6 @@
     <input type="hidden" asp-for="Date" />
 
     <div class="card mb-4">
-      <div class="card-header">
-        <i class="bx bx-user me-1"></i>
-        Informasi Operator
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-6">
-            <label asp-for="OperatorName" class="form-label">Nama Operator</label>
-            <input asp-for="OperatorName" class="form-control" required />
-            <span asp-validation-for="OperatorName" class="text-danger"></span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">
         <div>
           <i class="bx bx-time me-1"></i>
@@ -96,6 +76,7 @@
                 <th>Jam Selesai</th>
                 <th>Kategori</th>
                 <th>Subkategori</th>
+                <th>Operator</th>
                 <th>Booking</th>
                 <th>Catatan</th>
                 <th>Aksi</th>
@@ -116,6 +97,7 @@
                       </span>
                     </td>
                     <td>@entry.SubcategoryName</td>
+                    <td>@entry.OperatorName</td>
                     <td>
                       @if (!string.IsNullOrEmpty(entry.BookingNumber))
                       {
@@ -132,8 +114,8 @@
                         <button type="button" class="btn btn-sm btn-warning text-white edit-entry" data-id="@entry.Id"
                           data-start="@entry.StartTime.ToString(@"hh\:mm")" data-end="@entry.EndTime.ToString(@"hh\:mm")"
                           data-category="@((int)entry.Category)" data-subcategory="@entry.UsageSubcategoryId"
-                          data-booking="@entry.BookingId" data-maintenance="@entry.MaintenanceScheduleId"
-                          data-notes="@entry.Notes">
+                          data-operator="@entry.OperatorName" data-booking="@entry.BookingId"
+                          data-maintenance="@entry.MaintenanceScheduleId" data-notes="@entry.Notes">
                           <i class="bx bx-edit"></i>
                         </button>
                         <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="@entry.Id">
@@ -147,6 +129,7 @@
                     <input type="hidden" name="Entries[@i].EndTime" value="@entry.EndTime" />
                     <input type="hidden" name="Entries[@i].Category" value="@((int)entry.Category)" />
                     <input type="hidden" name="Entries[@i].UsageSubcategoryId" value="@entry.UsageSubcategoryId" />
+                    <input type="hidden" name="Entries[@i].OperatorName" value="@entry.OperatorName" />
                     <input type="hidden" name="Entries[@i].BookingId" value="@entry.BookingId" />
                     <input type="hidden" name="Entries[@i].MaintenanceScheduleId" value="@entry.MaintenanceScheduleId" />
                     <input type="hidden" name="Entries[@i].Notes" value="@entry.Notes" />
@@ -156,7 +139,7 @@
               else
               {
                 <tr id="noEntriesRow">
-                  <td colspan="7" class="text-center">Belum ada data penggunaan. Klik "Tambah Penggunaan" untuk
+                  <td colspan="8" class="text-center">Belum ada data penggunaan. Klik "Tambah Penggunaan" untuk
                     menambahkan.</td>
                 </tr>
               }
@@ -228,6 +211,18 @@
                 </div>
               </div>
             </div>
+
+            <!-- Tambahkan field untuk operator -->
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <div class="form-group">
+                  <label for="operatorName" class="form-label">Nama Operator</label>
+                  <input type="text" id="operatorName" class="form-control" required />
+                  <div class="invalid-feedback">Nama operator harus diisi.</div>
+                </div>
+              </div>
+            </div>
+
             <div class="mb-3">
               <label for="notes" class="form-label">Catatan (opsional)</label>
               <textarea id="notes" class="form-control" rows="3"></textarea>
@@ -249,7 +244,6 @@ else
     Silakan pilih crane dan tanggal untuk melihat atau menambahkan data penggunaan.
   </div>
 }
-@* </div> *@
 
 @functions {
   public string GetCategoryColor(UsageCategory category)
@@ -313,6 +307,9 @@ else
       var searchTimeout;
       var selectedBooking = null;
 
+      // Get current user name from claims to prefill operator field
+      var currentUser = '@User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value';
+
       // Load subcategories when category changes
       $('#category').change(function () {
         var categoryId = $(this).val();
@@ -329,67 +326,6 @@ else
           });
         }
       });
-
-      // Handle booking search
-      $('#searchBookingBtn').click(function () {
-        searchBookings();
-      });
-
-      $('#bookingSearch').keyup(function (e) {
-        clearTimeout(searchTimeout);
-
-        // If Enter key is pressed, perform search immediately
-        if (e.keyCode === 13) {
-          searchBookings();
-          return;
-        }
-
-        // Otherwise, set a timeout to avoid too many requests
-        searchTimeout = setTimeout(function () {
-          if ($('#bookingSearch').val().length >= 3) {
-            searchBookings();
-          }
-        }, 500);
-      });
-
-      // Ganti fungsi searchBookings dengan yang baru
-      function searchBookings() {
-        var searchTerm = $('#bookingSearch').val();
-        if (!searchTerm || searchTerm.length < 2) {
-          $('#bookingSearchResults').hide();
-          return;
-        }
-
-        var craneId = '@Model.CraneId';
-
-        // Show loading indicator
-        $('#bookingSearchResults').html('<div class="p-2 text-center"><i class="bx bx-loader-alt bx-spin"></i> Mencari...</div>').show();
-
-        // Gunakan endpoint baru yang khusus untuk pencarian booking
-        $.getJSON('@Url.Action("SearchBookings")?term=' + searchTerm + '&craneId=' + craneId,
-          function (data) {
-            if (!data || data.length === 0) {
-              $('#bookingSearchResults').html('<div class="p-2 text-center">Tidak ada booking yang ditemukan</div>');
-              return;
-            }
-
-            // Display results
-            var resultHtml = '';
-            $.each(data, function (index, item) {
-              resultHtml += '<div class="result-item" data-id="' + item.value + '" data-text="' + item.text + '">' + item.text + '</div>';
-            });
-
-            $('#bookingSearchResults').html(resultHtml).show();
-
-            // Add click event to result items
-            $('.result-item').click(function () {
-              var id = $(this).data('id');
-              var text = $(this).data('text');
-              selectBooking(id, text);
-              $('#bookingSearchResults').hide();
-            });
-          });
-      }
 
       function selectBooking(id, text) {
         selectedBooking = { id: id, text: text };
@@ -460,9 +396,7 @@ else
           $('#endTime').val('09:00');
           $('#category').val('');
           $('#subcategory').empty().append($('<option></option>').val('').text('-- Pilih Subkategori --'));
-          $('#booking').val('');
-          $('#bookingSearch').val('');
-          $('#selectedBookingInfo').empty();
+          $('#operatorName').val(currentUser); // Default to current user
           $('#maintenance').empty().append($('<option></option>').val('').text('-- Tidak ada maintenance terkait --'));
           $('#notes').val('');
 
@@ -480,6 +414,7 @@ else
         var endTime = $(this).data('end');
         var category = $(this).data('category');
         var subcategory = $(this).data('subcategory');
+        var operatorName = $(this).data('operator');
         var booking = $(this).data('booking');
         var maintenance = $(this).data('maintenance');
         var notes = $(this).data('notes');
@@ -487,6 +422,7 @@ else
         console.log("Edit - Data Atribut - ID:", id);
         console.log("Edit - Data Atribut - Start:", startTime);
         console.log("Edit - Data Atribut - End:", endTime);
+        console.log("Edit - Data Atribut - Operator:", operatorName);
 
         // PENTING: Pastikan format waktu adalah HH:MM
         startTime = formatTime(startTime);
@@ -500,23 +436,13 @@ else
         $('#startTime').val(startTime);
         $('#endTime').val(endTime);
         $('#category').val(category);
-        $('#booking').val(booking || '');
+        $('#operatorName').val(operatorName || '');
         $('#notes').val(notes);
 
         // Tampilkan nilai form untuk debugging
         console.log("Edit - Nilai Form Setelah Diset - Start:", $('#startTime').val());
         console.log("Edit - Nilai Form Setelah Diset - End:", $('#endTime').val());
-
-        // Hapus semua booking yang dipilih sebelumnya
-        $('#selectedBookingInfo').empty();
-
-        // Setel informasi booking jika ada
-        if (booking) {
-          var bookingInfo = $('tr[data-entry-id="' + id + '"] td:eq(4) .badge.bg-primary').text();
-          if (bookingInfo) {
-            selectBooking(booking, bookingInfo);
-          }
-        }
+        console.log("Edit - Nilai Form Setelah Diset - Operator:", $('#operatorName').val());
 
         // Muat subcategory
         $('#category').trigger('change');
@@ -543,7 +469,6 @@ else
         $('#addEntryModal').modal('show');
       });
 
-      // Save entry button click
       $('#saveEntryBtn').click(function () {
         // Validasi form
         var form = $('#entryForm')[0];
@@ -558,6 +483,7 @@ else
         var endTime = $('#endTime').val();     // Format HH:MM juga
         var category = $('#category').val();
         var subcategory = $('#subcategory').val();
+        var operatorName = $('#operatorName').val(); // Get operator name
         var booking = $('#booking').val();
         var maintenance = $('#maintenance').val();
         var notes = $('#notes').val();
@@ -565,6 +491,7 @@ else
         console.log("Simpan - Nilai Form - ID:", entryId);
         console.log("Simpan - Nilai Form - Start:", startTime);
         console.log("Simpan - Nilai Form - End:", endTime);
+        console.log("Simpan - Nilai Form - Operator:", operatorName);
 
         // PENTING: Validasi client-side dengan Date objects
         var today = new Date();
@@ -603,6 +530,7 @@ else
           EndTime: endTime,      // Gunakan nilai dari form yang telah diformat
           Category: parseInt(category),
           UsageSubcategoryId: parseInt(subcategory),
+          OperatorName: operatorName, // Include operator name
           BookingId: booking ? parseInt(booking) : null,
           MaintenanceScheduleId: maintenance ? parseInt(maintenance) : null,
           Notes: notes
@@ -621,13 +549,21 @@ else
             success: function (response) {
               console.log("Response dari server:", response);
               if (response.success) {
+                console.log("Server response for update:", response);
+                console.log("Received operator name:", response.entry.operatorName || response.operatorName || '');
+
+                // PERBAIKAN: Pastikan operatorName ada sebelum memperbarui baris
+                if (!response.entry.operatorName && response.operatorName) {
+                  response.entry.operatorName = response.operatorName;
+                }
+
                 // Update baris di tabel
                 updateTableRow(response.entry);
 
                 // Tutup modal
                 $('#addEntryModal').modal('hide');
 
-                // Reset mode edit
+                // Reset edit mode
                 isEditMode = false;
               } else {
                 alert(response.message);
@@ -648,10 +584,18 @@ else
               entry: entryData,
               craneId: '@Model.CraneId',
               date: '@Model.Date.ToString("yyyy-MM-dd")',
-              operatorName: $('#OperatorName').val()
+              operatorName: operatorName // Pass operator name directly
             },
             success: function (response) {
               if (response.success) {
+                console.log("Server response for new entry:", response);
+                console.log("Received operator name:", response.entry.operatorName || response.operatorName || '');
+
+                // PERBAIKAN: Pastikan operatorName ada sebelum menambahkan baris
+                if (!response.entry.operatorName && response.operatorName) {
+                  response.entry.operatorName = response.operatorName;
+                }
+
                 // Add the row to the table
                 addTableRow(response.entry);
 
@@ -661,7 +605,9 @@ else
                 alert(response.message);
               }
             },
-            error: function () {
+            error: function (xhr, status, error) {
+              console.error("Error adding entry:", error);
+              console.error("Response:", xhr.responseText);
               alert('Terjadi kesalahan saat menambahkan data.');
             }
           });
@@ -687,7 +633,7 @@ else
 
                   // If no entries remain, show "no entries" row
                   if ($('#entriesTableBody tr').length === 0) {
-                    $('#entriesTableBody').html('<tr id="noEntriesRow"><td colspan="7" class="text-center">Belum ada data penggunaan. Klik "Tambah Penggunaan" untuk menambahkan.</td></tr>');
+                    $('#entriesTableBody').html('<tr id="noEntriesRow"><td colspan="8" class="text-center">Belum ada data penggunaan. Klik "Tambah Penggunaan" untuk menambahkan.</td></tr>');
                   }
 
                   // Re-index the remaining entries
@@ -706,7 +652,7 @@ else
 
             // If no entries remain, show "no entries" row
             if ($('#entriesTableBody tr').length === 0) {
-              $('#entriesTableBody').html('<tr id="noEntriesRow"><td colspan="7" class="text-center">Belum ada data penggunaan. Klik "Tambah Penggunaan" untuk menambahkan.</td></tr>');
+              $('#entriesTableBody').html('<tr id="noEntriesRow"><td colspan="8" class="text-center">Belum ada data penggunaan. Klik "Tambah Penggunaan" untuk menambahkan.</td></tr>');
             }
 
             // Re-index the remaining entries
@@ -715,20 +661,19 @@ else
         }
       });
 
-      // Close search results when clicking outside
-      $(document).click(function (e) {
-        if (!$(e.target).closest('#bookingSearch, #searchBookingBtn, #bookingSearchResults').length) {
-          $('#bookingSearchResults').hide();
-        }
-      });
-
       // Function to add a new row to the table
       function addTableRow(entry) {
+        console.log("Adding row with entry:", entry);
+
         // Remove "no entries" row if it exists
         $('#noEntriesRow').remove();
 
         var index = entryCount++;
         var categoryColor = getCategoryColor(entry.category);
+
+        // PERBAIKAN: Pastikan operatorName diterima dari response dan ditampilkan
+        var operatorNameValue = entry.operatorName || '';
+        console.log("Operator name for new row:", operatorNameValue);
 
         var relatedItems = '';
         if (entry.bookingNumber) {
@@ -739,52 +684,57 @@ else
         }
 
         var newRow = `
-              <tr data-entry-id="${entry.id}">
-                <td>${formatTime(entry.startTime)}</td>
-                <td>${formatTime(entry.endTime)}</td>
-                <td>
-                  <span class="badge" style="background-color: ${categoryColor}">
-                    ${entry.categoryName}
-                  </span>
-                </td>
-                <td>${entry.subcategoryName}</td>
-                <td>${relatedItems}</td>
-                <td>${entry.notes || ''}</td>
-                <td>
-                  <div class="btn-group">
-                    <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
-                      data-id="${entry.id}"
-                      data-start="${formatTime(entry.startTime)}"
-                      data-end="${formatTime(entry.endTime)}"
-                      data-category="${entry.category}"
-                      data-subcategory="${entry.usageSubcategoryId}"
-                      data-booking="${entry.bookingId || ''}"
-                      data-maintenance="${entry.maintenanceScheduleId || ''}"
-                      data-notes="${entry.notes || ''}">
-                      <i class="bx bx-edit"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
-                      <i class="bx bx-trash"></i>
-                    </button>
-                  </div>
-                </td>
+                    <tr data-entry-id="${entry.id}">
+                      <td>${formatTime(entry.startTime)}</td>
+                      <td>${formatTime(entry.endTime)}</td>
+                      <td>
+                        <span class="badge" style="background-color: ${categoryColor}">
+                          ${entry.categoryName}
+                        </span>
+                      </td>
+                      <td>${entry.subcategoryName}</td>
+                      <td>${operatorNameValue}</td>
+                      <td>${relatedItems}</td>
+                      <td>${entry.notes || ''}</td>
+                      <td>
+                        <div class="btn-group">
+                          <button type="button" class="btn btn-sm btn-warning text-white edit-entry"
+                            data-id="${entry.id}"
+                            data-start="${formatTime(entry.startTime)}"
+                            data-end="${formatTime(entry.endTime)}"
+                            data-category="${entry.category}"
+                            data-subcategory="${entry.usageSubcategoryId}"
+                            data-operator="${operatorNameValue}"
+                            data-booking="${entry.bookingId || ''}"
+                            data-maintenance="${entry.maintenanceScheduleId || ''}"
+                            data-notes="${entry.notes || ''}">
+                            <i class="bx bx-edit"></i>
+                          </button>
+                          <button type="button" class="btn btn-sm btn-danger delete-entry" data-id="${entry.id}">
+                            <i class="bx bx-trash"></i>
+                          </button>
+                        </div>
+                      </td>
 
-                <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
-                <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
-                <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
-                <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
-                <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
-                <input type="hidden" name="Entries[${index}].BookingId" value="${entry.bookingId || ''}" />
-                <input type="hidden" name="Entries[${index}].MaintenanceScheduleId" value="${entry.maintenanceScheduleId || ''}" />
-                <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
-              </tr>
-            `;
+                      <input type="hidden" name="Entries[${index}].Id" value="${entry.id}" />
+                      <input type="hidden" name="Entries[${index}].StartTime" value="${entry.startTime}" />
+                      <input type="hidden" name="Entries[${index}].EndTime" value="${entry.endTime}" />
+                      <input type="hidden" name="Entries[${index}].Category" value="${entry.category}" />
+                      <input type="hidden" name="Entries[${index}].UsageSubcategoryId" value="${entry.usageSubcategoryId}" />
+                      <input type="hidden" name="Entries[${index}].OperatorName" value="${operatorNameValue}" />
+                      <input type="hidden" name="Entries[${index}].BookingId" value="${entry.bookingId || ''}" />
+                      <input type="hidden" name="Entries[${index}].MaintenanceScheduleId" value="${entry.maintenanceScheduleId || ''}" />
+                      <input type="hidden" name="Entries[${index}].Notes" value="${entry.notes || ''}" />
+                    </tr>
+                  `;
 
         $('#entriesTableBody').append(newRow);
       }
 
       // Function to update an existing row in the table
       function updateTableRow(entry) {
+        console.log("Updating row with entry:", entry);
+
         var row = $(`tr[data-entry-id="${entry.id}"]`);
         var categoryColor = getCategoryColor(entry.category);
 
@@ -792,11 +742,16 @@ else
         var startTimeFormatted = formatTime(entry.startTime);
         var endTimeFormatted = formatTime(entry.endTime);
 
+        // PERBAIKAN: Pastikan operatorName diterima dari response dan ditampilkan
+        var operatorNameValue = entry.operatorName || '';
+        console.log("Operator name for updating row:", operatorNameValue);
+
         console.log("Update Row - ID:", entry.id);
         console.log("Update Row - Raw Start:", entry.startTime);
         console.log("Update Row - Raw End:", entry.endTime);
         console.log("Update Row - Formatted Start:", startTimeFormatted);
         console.log("Update Row - Formatted End:", endTimeFormatted);
+        console.log("Update Row - Operator:", operatorNameValue);
 
         var relatedItems = '';
         if (entry.bookingNumber) {
@@ -811,8 +766,9 @@ else
         row.find('td').eq(1).text(endTimeFormatted);
         row.find('td').eq(2).html(`<span class="badge" style="background-color: ${categoryColor}">${entry.categoryName}</span>`);
         row.find('td').eq(3).text(entry.subcategoryName);
-        row.find('td').eq(4).html(relatedItems);
-        row.find('td').eq(5).text(entry.notes || '');
+        row.find('td').eq(4).text(operatorNameValue); // PERBAIKAN: Update operator cell explicitly
+        row.find('td').eq(5).html(relatedItems);
+        row.find('td').eq(6).text(entry.notes || '');
 
         // Update data attributes for edit button
         var editButton = row.find('.edit-entry');
@@ -820,6 +776,7 @@ else
         editButton.data('end', endTimeFormatted);
         editButton.data('category', entry.category);
         editButton.data('subcategory', entry.usageSubcategoryId);
+        editButton.data('operator', operatorNameValue); // PERBAIKAN: Update operator data attribute
         editButton.data('booking', entry.bookingId || '');
         editButton.data('maintenance', entry.maintenanceScheduleId || '');
         editButton.data('notes', entry.notes || '');
@@ -829,6 +786,7 @@ else
         row.find('input[name$=".EndTime"]').val(entry.endTime);
         row.find('input[name$=".Category"]').val(entry.category);
         row.find('input[name$=".UsageSubcategoryId"]').val(entry.usageSubcategoryId);
+        row.find('input[name$=".OperatorName"]').val(operatorNameValue); // PERBAIKAN: Update operator hidden input
         row.find('input[name$=".BookingId"]').val(entry.bookingId || '');
         row.find('input[name$=".MaintenanceScheduleId"]').val(entry.maintenanceScheduleId || '');
         row.find('input[name$=".Notes"]').val(entry.notes || '');

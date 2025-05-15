@@ -1,4 +1,4 @@
-// AspnetCoreMvcFull.ViewModels.CraneUsage.BookingUsageFormViewModel
+// ViewModels/CraneUsage/BookingUsageFormViewModel.cs (Updated)
 using AspnetCoreMvcFull.Models;
 
 namespace AspnetCoreMvcFull.ViewModels.CraneUsage
@@ -16,7 +16,10 @@ namespace AspnetCoreMvcFull.ViewModels.CraneUsage
     public string Location { get; set; } = string.Empty;
     public BookingStatus Status { get; set; }
     public DateTime Date { get; set; } = DateTime.Today;
-    public string OperatorName { get; set; } = string.Empty;
+
+    // Operator name has been moved to individual entries, so we remove it from here
+    // public string OperatorName { get; set; } = string.Empty;
+
     public List<CraneUsageEntryViewModel> Entries { get; set; } = new List<CraneUsageEntryViewModel>();
   }
 }

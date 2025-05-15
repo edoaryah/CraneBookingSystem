@@ -1,4 +1,4 @@
-// ViewModels/CraneUsage/CraneUsageEntryViewModel.cs (Revisi)
+// ViewModels/CraneUsage/CraneUsageEntryViewModel.cs (Updated)
 using AspnetCoreMvcFull.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
@@ -35,15 +35,17 @@ namespace AspnetCoreMvcFull.ViewModels.CraneUsage
     [StringLength(500)]
     public string? Notes { get; set; }
 
+    // Tambahkan operator name di sini
+    [Display(Name = "Operator")]
+    [StringLength(100)]
+    public string? OperatorName { get; set; }
+
     // Properti untuk view Index
     [Display(Name = "Crane")]
     public int CraneId { get; set; }
 
     [Display(Name = "Tanggal")]
     public DateTime? Date { get; set; }
-
-    [Display(Name = "Operator")]
-    public string? OperatorName { get; set; }
 
     // Properti tambahan untuk tampilan
     public string? CraneName { get; set; }

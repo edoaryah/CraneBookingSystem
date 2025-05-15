@@ -1,4 +1,4 @@
-// Services/CraneUsage/ICraneUsageService.cs
+// Services/CraneUsage/ICraneUsageService.cs (Updated)
 using AspnetCoreMvcFull.Models;
 using AspnetCoreMvcFull.ViewModels.CraneUsage;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -28,7 +28,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
     // Metode untuk list dan filter
     Task<CraneUsageListViewModel> GetFilteredUsageRecordsAsync(CraneUsageFilterViewModel filter);
 
-    // Tambahkan ke ICraneUsageService
+    // Untuk booking
     Task<bool> SaveBookingUsageFormAsync(BookingUsageFormViewModel viewModel, string userName);
   }
 }

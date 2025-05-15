@@ -30,6 +30,10 @@ namespace AspnetCoreMvcFull.Models
     [StringLength(500)]
     public string? Notes { get; set; }
 
+    // Pindahkan OperatorName dari CraneUsageRecord ke sini
+    [StringLength(100)]
+    public string? OperatorName { get; set; }
+
     // Navigation properties
     public virtual CraneUsageRecord? CraneUsageRecord { get; set; }
     public virtual UsageSubcategory? UsageSubcategory { get; set; }

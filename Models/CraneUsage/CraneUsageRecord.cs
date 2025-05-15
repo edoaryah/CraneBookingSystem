@@ -14,9 +14,9 @@ namespace AspnetCoreMvcFull.Models
     [Required]
     public DateTime Date { get; set; } // Hanya menyimpan tanggal
 
-    // Operator yang menjalankan crane
-    [StringLength(100)]
-    public string? OperatorName { get; set; }
+    // Hapus OperatorName dari sini karena sudah dipindah ke CraneUsageEntry
+    // [StringLength(100)]
+    // public string? OperatorName { get; set; }
 
     // Audit fields
     [Required]
