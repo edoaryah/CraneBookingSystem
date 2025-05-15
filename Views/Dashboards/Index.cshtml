@@ -1,3 +1,4 @@
+@model AspnetCoreMvcFull.ViewModels.Dashboard.DashboardViewModel
 @{
   ViewData["Title"] = "Dashboard - Analytics";
 }
@@ -52,42 +53,45 @@
 @section PageScripts {
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Data crane
-      const craneData = [
-        { code: 'LC008', availability: 85.2, utilisation: 65.7, usage: 77.1 },
-        { code: 'LC009', availability: 78.3, utilisation: 61.5, usage: 78.5 },
-        { code: 'LC010', availability: 92.1, utilisation: 72.4, usage: 78.6 },
-        { code: 'LC011', availability: 65.8, utilisation: 45.2, usage: 68.7 },
-        { code: 'LC012', availability: 88.5, utilisation: 71.3, usage: 80.6 },
-        { code: 'LC013', availability: 76.2, utilisation: 55.8, usage: 73.2 }
-      ];
+      // Data crane dari model
+      const craneData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.CraneMetrics));
 
-      // Hitung rata-rata untuk metrik
-      const avgAvailability = craneData.reduce((acc, cur) => acc + cur.availability, 0) / craneData.length;
-      const avgUtilisation = craneData.reduce((acc, cur) => acc + cur.utilisation, 0) / craneData.length;
-      const avgUsage = craneData.reduce((acc, cur) => acc + cur.usage, 0) / craneData.length;
+      // Tampilkan di console untuk debugging
+      console.log("Crane Data:", craneData);
+
+      // Verifikasi data tidak kosong
+      if (!craneData || craneData.length === 0) {
+        console.warn("No crane data available");
+        document.querySelector(".chart-container").innerHTML = "<p class='text-center text-muted'>Data crane tidak tersedia</p>";
+        return;
+      }
+
+      // Hitung rata-rata untuk metrik - ambil dari model
+      const avgAvailability = @Model.SummaryMetrics.AvailabilityPercentage.ToString("0.0");
+      const avgUtilisation = @Model.SummaryMetrics.UtilisationPercentage.ToString("0.0");
+      const avgUsage = @Model.SummaryMetrics.UsagePercentage.ToString("0.0");
 
       // Update nilai metrik pada card
-      document.getElementById('avgAvailability').textContent = avgAvailability.toFixed(1) + '%';
-      document.getElementById('avgUtilisation').textContent = avgUtilisation.toFixed(1) + '%';
-      document.getElementById('avgUsage').textContent = avgUsage.toFixed(1) + '%';
+      document.getElementById('avgAvailability').textContent = avgAvailability + '%';
+      document.getElementById('avgUtilisation').textContent = avgUtilisation + '%';
+      document.getElementById('avgUsage').textContent = avgUsage + '%';
 
       // Update progress bar
       document.getElementById('availabilityProgress').style.width = avgAvailability + '%';
       document.getElementById('utilisationProgress').style.width = avgUtilisation + '%';
       document.getElementById('usageProgress').style.width = avgUsage + '%';
 
-      // Membuat chart
+      // Membuat chart - PERBAIKAN: Gunakan properti yang benar
       const options = {
         series: [{
           name: 'Availability',
-          data: craneData.map(crane => crane.availability)
+          data: craneData.map(crane => crane.AvailabilityPercentage) // Gunakan PascalCase
         }, {
           name: 'Utilisation',
-          data: craneData.map(crane => crane.utilisation)
+          data: craneData.map(crane => crane.UtilisationPercentage) // Gunakan PascalCase
         }, {
           name: 'Usage',
-          data: craneData.map(crane => crane.usage)
+          data: craneData.map(crane => crane.UsagePercentage) // Gunakan PascalCase
         }],
         chart: {
           type: 'bar',
@@ -122,7 +126,7 @@
           colors: ['transparent']
         },
         xaxis: {
-          categories: craneData.map(crane => crane.code),
+          categories: craneData.map(crane => crane.Code), // Gunakan PascalCase
           title: {
             text: 'Kode Crane'
           }
@@ -164,13 +168,16 @@
         <div class="dropdown">
           <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="metricDropdown"
             data-bs-toggle="dropdown" aria-expanded="false">
-            Periode: Bulan Ini
+            Periode: @(Model.SelectedPeriod == "day" ? "Hari Ini" :
+                        Model.SelectedPeriod == "week" ? "Minggu Ini" : "Bulan Ini")
           </button>
           <ul class="dropdown-menu" aria-labelledby="metricDropdown">
-            <li><a class="dropdown-item" href="javascript:void(0);">Hari Ini</a></li>
-            <li><a class="dropdown-item" href="javascript:void(0);">Minggu Ini</a></li>
-            <li><a class="dropdown-item" href="javascript:void(0);">Bulan Ini</a></li>
-            <li><a class="dropdown-item" href="javascript:void(0);">3 Bulan Terakhir</a></li>
+            <li><a class="dropdown-item @(Model.SelectedPeriod == "day" ? "active" : "")"
+                href="@Url.Action("Index", new { period = "day" })">Hari Ini</a></li>
+            <li><a class="dropdown-item @(Model.SelectedPeriod == "week" ? "active" : "")"
+                href="@Url.Action("Index", new { period = "week" })">Minggu Ini</a></li>
+            <li><a class="dropdown-item @(Model.SelectedPeriod == "month" ? "active" : "")"
+                href="@Url.Action("Index", new { period = "month" })">Bulan Ini</a></li>
           </ul>
         </div>
       </div>
@@ -189,10 +196,12 @@
                     <small class="text-muted">Kesiapan alat untuk digunakan</small>
                   </div>
                 </div>
-                <h2 id="avgAvailability" class="mb-2">0%</h2>
+                <h2 id="avgAvailability" class="mb-2">@Model.SummaryMetrics.AvailabilityPercentage.ToString("0.0")%</h2>
                 <div class="progress small-progress mb-1">
-                  <div id="availabilityProgress" class="progress-bar bg-primary" role="progressbar" style="width: 0%"
-                    aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                  <div id="availabilityProgress" class="progress-bar bg-primary" role="progressbar"
+                    style="width: @Model.SummaryMetrics.AvailabilityPercentage%"
+                    aria-valuenow="@Model.SummaryMetrics.AvailabilityPercentage" aria-valuemin="0" aria-valuemax="100">
+                  </div>
                 </div>
                 <small class="text-muted">Available Time / Calendar Time</small>
               </div>
@@ -212,10 +221,12 @@
                     <small class="text-muted">Tingkat manfaat dari sisi investasi</small>
                   </div>
                 </div>
-                <h2 id="avgUtilisation" class="mb-2">0%</h2>
+                <h2 id="avgUtilisation" class="mb-2">@Model.SummaryMetrics.UtilisationPercentage.ToString("0.0")%</h2>
                 <div class="progress small-progress mb-1">
-                  <div id="utilisationProgress" class="progress-bar bg-info" role="progressbar" style="width: 0%"
-                    aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                  <div id="utilisationProgress" class="progress-bar bg-info" role="progressbar"
+                    style="width: @Model.SummaryMetrics.UtilisationPercentage%"
+                    aria-valuenow="@Model.SummaryMetrics.UtilisationPercentage" aria-valuemin="0" aria-valuemax="100">
+                  </div>
                 </div>
                 <small class="text-muted">Operating / Calendar Time</small>
               </div>
@@ -235,10 +246,11 @@
                     <small class="text-muted">Tingkat pemakaian alat pada kondisi siap pakai</small>
                   </div>
                 </div>
-                <h2 id="avgUsage" class="mb-2">0%</h2>
+                <h2 id="avgUsage" class="mb-2">@Model.SummaryMetrics.UsagePercentage.ToString("0.0")%</h2>
                 <div class="progress small-progress mb-1">
-                  <div id="usageProgress" class="progress-bar bg-warning" role="progressbar" style="width: 0%"
-                    aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                  <div id="usageProgress" class="progress-bar bg-warning" role="progressbar"
+                    style="width: @Model.SummaryMetrics.UsagePercentage%"
+                    aria-valuenow="@Model.SummaryMetrics.UsagePercentage" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
                 <small class="text-muted">Utilized Time / Available Time</small>
               </div>
@@ -265,7 +277,7 @@
       <div class="card-header d-flex justify-content-between">
         <div class="card-title mb-0">
           <h5 class="mb-1 me-2">Statistik Crane</h5>
-          <p class="card-subtitle">Total 6 unit crane</p>
+          <p class="card-subtitle">Total @Model.CraneStatistics.TotalCranes unit crane</p>
         </div>
         <div class="dropdown">
           <button class="btn text-muted p-0" type="button" id="craneStatistics" data-bs-toggle="dropdown"
@@ -282,7 +294,7 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-6">
           <div class="d-flex flex-column align-items-center gap-1">
-            <h3 class="mb-1">76.5%</h3>
+            <h3 class="mb-1">@Model.SummaryMetrics.AvailabilityPercentage.ToString("0.0")%</h3>
             <small>Rata-rata Availability</small>
           </div>
           <div id="craneStatisticsChart"></div>
@@ -295,10 +307,10 @@
             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
               <div class="me-2">
                 <h6 class="mb-0">Operasional</h6>
-                <small>5 unit crane</small>
+                <small>@Model.CraneStatistics.OperationalCranes unit crane</small>
               </div>
               <div class="user-progress">
-                <h6 class="mb-0">83.3%</h6>
+                <h6 class="mb-0">@Model.CraneStatistics.OperationalPercentage.ToString("0.0")%</h6>
               </div>
             </div>
           </li>
@@ -309,10 +321,10 @@
             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
               <div class="me-2">
                 <h6 class="mb-0">Standby</h6>
-                <small>0 unit crane</small>
+                <small>@Model.CraneStatistics.StandbyCranes unit crane</small>
               </div>
               <div class="user-progress">
-                <h6 class="mb-0">0%</h6>
+                <h6 class="mb-0">@Model.CraneStatistics.StandbyPercentage.ToString("0.0")%</h6>
               </div>
             </div>
           </li>
@@ -323,10 +335,10 @@
             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
               <div class="me-2">
                 <h6 class="mb-0">Maintenance</h6>
-                <small>1 unit crane</small>
+                <small>@Model.CraneStatistics.MaintenanceCranes unit crane</small>
               </div>
               <div class="user-progress">
-                <h6 class="mb-0">16.7%</h6>
+                <h6 class="mb-0">@Model.CraneStatistics.MaintenancePercentage.ToString("0.0")%</h6>
               </div>
             </div>
           </li>
@@ -335,6 +347,8 @@
     </div>
   </div>
 
+  <!-- Bagian Latest Bookings dan Breakdown History tetap sama -->
+  <!-- ... -->
   <!-- Latest Bookings -->
   <div class="col-md-6 col-lg-4 order-1 mb-6">
     <div class="card h-100">

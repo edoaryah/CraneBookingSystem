@@ -61,6 +61,9 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<ICraneService, CraneService>();
 builder.Services.AddScoped<IMaintenanceScheduleService, MaintenanceScheduleService>();
 
+// Tambahkan di Program.cs sebelum app.Build()
+builder.Services.AddScoped<AspnetCoreMvcFull.Services.Dashboard.IDashboardService, AspnetCoreMvcFull.Services.Dashboard.DashboardService>();
+
 // Register Role service
 builder.Services.AddScoped<IRoleService, RoleService>();
 
