@@ -481,5 +481,57 @@ namespace AspnetCoreMvcFull.Controllers
         SelectedShiftIds = g.ShiftIds
       }).ToList();
     }
+
+    // GET: /Booking/Search
+    [HttpGet]
+    public async Task<IActionResult> Search(string searchTerm)
+    {
+      try
+      {
+        // Return to home page if search term is empty
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+          return RedirectToAction("Index", "Dashboards");
+        }
+
+        // Get current user's LDAP
+        var ldapUser = User.FindFirst("ldapuser")?.Value;
+        var userName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        if (string.IsNullOrEmpty(ldapUser))
+        {
+          _logger.LogWarning("User LDAP username not found in claims during search");
+          return RedirectToAction("Login", "Auth", new { returnUrl = Url.Action("Search", "Booking", new { searchTerm }) });
+        }
+
+        // Check user roles for access control
+        bool isPic = await _roleService.UserHasRoleAsync(ldapUser, "pic");
+        bool isAdmin = await _roleService.UserHasRoleAsync(ldapUser, "admin");
+
+        // Get search results
+        var searchResults = await _bookingService.SearchBookingsAsync(searchTerm, ldapUser, isPic, isAdmin);
+
+        // Create view model for results
+        var viewModel = new BookingSearchViewModel
+        {
+          SearchTerm = searchTerm,
+          Bookings = searchResults,
+          SuccessMessage = TempData["BookingSuccessMessage"] as string,
+          ErrorMessage = TempData["BookingErrorMessage"] as string
+        };
+
+        // Clear TempData after use
+        TempData.Remove("BookingSuccessMessage");
+        TempData.Remove("BookingErrorMessage");
+
+        return View(viewModel);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error searching bookings with term: {SearchTerm}", searchTerm);
+        TempData["BookingErrorMessage"] = "Error searching bookings: " + ex.Message;
+        return RedirectToAction("Index", "Dashboards");
+      }
+    }
   }
 }

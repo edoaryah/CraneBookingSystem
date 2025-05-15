@@ -1074,6 +1074,61 @@ namespace AspnetCoreMvcFull.Services
       return bookingShifts;
     }
 
+    // Add this method to BookingService class (Services/Booking/BookingService.cs)
+    public async Task<IEnumerable<BookingViewModel>> SearchBookingsAsync(string searchTerm, string currentUser, bool isPic, bool isAdmin)
+    {
+      try
+      {
+        _logger.LogInformation("Searching bookings with term: {SearchTerm}, user: {CurrentUser}", searchTerm, currentUser);
+
+        // Normalize search term (lowercase and trim)
+        searchTerm = searchTerm.ToLower().Trim();
+
+        // Query bookings based on search term (BookingNumber or Name)
+        var query = _context.Bookings
+            .Include(b => b.Crane)
+            .Where(b => b.BookingNumber.ToLower().Contains(searchTerm) ||
+                        b.Name.ToLower().Contains(searchTerm));
+
+        // Apply access control - if not PIC or admin, only show user's own bookings
+        if (!isPic && !isAdmin)
+        {
+          query = query.Where(b => b.Name == currentUser);
+        }
+
+        // Execute query and order by submission time (newest first)
+        var bookings = await query
+            .OrderByDescending(b => b.SubmitTime)
+            .ToListAsync();
+
+        // Map to view models
+        return bookings.Select(b => new BookingViewModel
+        {
+          Id = b.Id,
+          BookingNumber = b.BookingNumber,
+          DocumentNumber = b.DocumentNumber,
+          Name = b.Name,
+          Department = b.Department,
+          CraneId = b.CraneId,
+          CraneCode = b.Crane?.Code,
+          StartDate = b.StartDate,
+          EndDate = b.EndDate,
+          SubmitTime = b.SubmitTime,
+          Location = b.Location,
+          Status = b.Status,
+          ProjectSupervisor = b.ProjectSupervisor,
+          CostCode = b.CostCode,
+          PhoneNumber = b.PhoneNumber,
+          Description = b.Description
+        }).ToList();
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error searching bookings with term: {SearchTerm}", searchTerm);
+        throw;
+      }
+    }
+
     public async Task<bool> IsShiftBookingConflictAsync(int craneId, DateTime date, int shiftDefinitionId, int? excludeBookingId = null)
     {
       return await _scheduleConflictService.IsBookingConflictAsync(craneId, date, shiftDefinitionId, excludeBookingId);

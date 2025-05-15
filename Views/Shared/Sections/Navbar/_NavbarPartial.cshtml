@@ -69,9 +69,11 @@
   <!-- Search -->
   <div class="navbar-nav align-items-center">
     <div class="nav-item d-flex align-items-center">
-      <i class="bx bx-search bx-md"></i>
-      <input type="text" class="form-control border-0 shadow-none ps-1 ps-sm-2" placeholder="Search Booking ID..."
-        aria-label="Search...">
+      <form id="searchForm" method="get" action="/Booking/Search" class="d-flex align-items-center w-100">
+        <i class="bx bx-search bx-md"></i>
+        <input type="text" id="searchTerm" name="searchTerm" class="form-control border-0 shadow-none ps-1 ps-sm-2"
+          placeholder="Search Booking by Number or Name..." aria-label="Search...">
+      </form>
     </div>
   </div>
   <!-- /Search -->
