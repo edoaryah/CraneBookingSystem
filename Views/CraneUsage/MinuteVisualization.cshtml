@@ -282,13 +282,6 @@
       // Ambil data dari model
       const minuteData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.MinuteData));
 
-      // Periksa apakah data tersedia
-      if (!minuteData || minuteData.length === 0) {
-        document.getElementById('minuteVisualizationChart').innerHTML =
-          '<div class="text-center py-5"><p>Tidak ada data tersedia untuk tanggal ini</p></div>';
-        return;
-      }
-
       // Helper function untuk mendapatkan warna berdasarkan kategori
       function getCategoryColor(category) {
         const categoryColors = {
@@ -344,12 +337,12 @@
         const color = getCategoryColor(activity.Category);
 
         let detailHtml = `
-            <div class="detail-segment">
-              <div class="detail-time">${startTime} - ${endTime}</div>
-              <span class="badge mb-2" style="background-color: ${color}">${activity.Category}</span>
-              <div class="detail-category">${activity.SubcategoryName}</div>
-              <div class="detail-duration mb-3">Durasi: ${durationText}</div>
-          `;
+                    <div class="detail-segment">
+                      <div class="detail-time">${startTime} - ${endTime}</div>
+                      <span class="badge mb-2" style="background-color: ${color}">${activity.Category}</span>
+                      <div class="detail-category">${activity.SubcategoryName}</div>
+                      <div class="detail-duration mb-3">Durasi: ${durationText}</div>
+                  `;
 
         // Tambahkan informasi opsional jika tersedia
         if (activity.OperatorName) {
@@ -379,89 +372,102 @@
         .attr("class", "tooltip")
         .style("opacity", 0);
 
-      // Persiapkan data untuk visualisasi
-      function prepareData(data) {
-        // Urutkan data berdasarkan waktu mulai
-        const sortedData = [...data].sort((a, b) => {
-          return new Date(a.StartTime) - new Date(b.StartTime);
-        });
+      // Menggambar visualisasi dengan D3.js
+      function drawVisualization() {
+        // Hapus visualisasi yang ada (jika ada)
+        d3.select("#minuteVisualizationChart").html("");
 
-        // Buat array untuk segmen stanby
-        let segments = [];
-        let currentHour = 0;
+        // Fix the data first - adjust any segments that go to next day
+        const processedData = (minuteData || []).map(segment => {
+          const result = { ...segment };
 
-        // Proses untuk setiap aktivitas
-        sortedData.forEach(activity => {
-          const startHour = new Date(activity.StartTime).getHours() +
-            (new Date(activity.StartTime).getMinutes() / 60);
-          const endHour = new Date(activity.EndTime).getHours() +
-            (new Date(activity.EndTime).getMinutes() / 60);
-
-          // Jika ada gap sebelum aktivitas ini, tambahkan segmen standby
-          if (startHour > currentHour) {
-            segments.push({
-              Category: 'Standby',
-              SubcategoryName: 'Standby',
-              StartTime: new Date(new Date(activity.StartTime).setHours(
-                Math.floor(currentHour),
-                Math.round((currentHour % 1) * 60), 0, 0)),
-              EndTime: new Date(new Date(activity.StartTime).setHours(
-                Math.floor(startHour),
-                Math.round((startHour % 1) * 60), 0, 0)),
-              OperatorName: null,
-              BookingNumber: null,
-              MaintenanceTitle: null,
-              Notes: null,
-              DurationMinutes: Math.round((startHour - currentHour) * 60)
-            });
+          // Convert to Date objects if they're strings
+          if (typeof result.StartTime === 'string') {
+            result.StartTime = new Date(result.StartTime);
+          }
+          if (typeof result.EndTime === 'string') {
+            result.EndTime = new Date(result.EndTime);
           }
 
-          // Tambahkan aktivitas saat ini
-          segments.push(activity);
+          // Ensure end time doesn't go to next day for visualization purposes
+          if (result.EndTime.getDate() > result.StartTime.getDate()) {
+            // Create a new date at 23:59:59 on the same day as start
+            const endOfDay = new Date(result.StartTime);
+            endOfDay.setHours(23, 59, 59, 999);
+            result.EndTime = endOfDay;
+          }
 
-          // Update posisi waktu saat ini
-          currentHour = Math.max(currentHour, endHour);
+          return result;
         });
 
-        // Tambahkan standby di akhir hari jika diperlukan
-        if (currentHour < 24) {
-          let startDateTime = new Date(data[0]?.StartTime || new Date());
-          startDateTime.setHours(Math.floor(currentHour), Math.round((currentHour % 1) * 60), 0, 0);
+        console.log("Processed data:", processedData);
 
-          let endDateTime = new Date(startDateTime);
-          endDateTime.setHours(24, 0, 0, 0);
+        // Ensure all 24 hours are covered
+        const dateStr = '@Model.Date.ToString("yyyy-MM-dd")';
+        let segments = [];
 
-          segments.push({
+        if (processedData.length === 0) {
+          // If no data, create a full-day standby segment
+          segments = [{
             Category: 'Standby',
             SubcategoryName: 'Standby',
-            StartTime: startDateTime,
-            EndTime: endDateTime,
+            StartTime: new Date(dateStr + 'T00:00:00'),
+            EndTime: new Date(dateStr + 'T23:59:59'),
             OperatorName: null,
             BookingNumber: null,
             MaintenanceTitle: null,
             Notes: null,
-            DurationMinutes: Math.round((24 - currentHour) * 60)
+            DurationMinutes: 24 * 60 - 1
+          }];
+        } else {
+          // Sort segments by start time
+          const sortedData = [...processedData].sort((a, b) => a.StartTime - b.StartTime);
+
+          // Start tracking from beginning of day
+          let currentTime = new Date(dateStr + 'T00:00:00');
+          const dayEnd = new Date(dateStr + 'T23:59:59');
+
+          // Process each segment, filling gaps with standby
+          sortedData.forEach(segment => {
+            if (segment.StartTime > currentTime) {
+              // Add a standby segment for the gap
+              segments.push({
+                Category: 'Standby',
+                SubcategoryName: 'Standby',
+                StartTime: new Date(currentTime),
+                EndTime: new Date(segment.StartTime),
+                OperatorName: null,
+                BookingNumber: null,
+                MaintenanceTitle: null,
+                Notes: null,
+                DurationMinutes: (segment.StartTime - currentTime) / 60000
+              });
+            }
+
+            // Add the actual segment
+            segments.push(segment);
+
+            // Update current time
+            currentTime = new Date(segment.EndTime);
           });
+
+          // Fill remaining time until end of day if needed
+          if (currentTime < dayEnd) {
+            segments.push({
+              Category: 'Standby',
+              SubcategoryName: 'Standby',
+              StartTime: new Date(currentTime),
+              EndTime: new Date(dayEnd),
+              OperatorName: null,
+              BookingNumber: null,
+              MaintenanceTitle: null,
+              Notes: null,
+              DurationMinutes: (dayEnd - currentTime) / 60000
+            });
+          }
         }
 
-        return segments;
-      }
-
-      // Menggambar visualisasi dengan D3.js
-      function drawVisualization(data) {
-        // Hapus visualisasi yang ada (jika ada)
-        d3.select("#minuteVisualizationChart").html("");
-
-        // Persiapkan data
-        const segments = data.length > 0 ? prepareData(data) : [
-          {
-            Category: 'Standby',
-            SubcategoryName: 'Standby',
-            StartTime: new Date(new Date().setHours(0, 0, 0, 0)),
-            EndTime: new Date(new Date().setHours(24, 0, 0, 0)),
-            DurationMinutes: 24 * 60
-          }
-        ];
+        console.log("Segments to render:", segments);
 
         // Siapkan dimensi dan margin
         const margin = { top: 20, right: 20, bottom: 40, left: 50 },
@@ -483,7 +489,7 @@
           .domain([0, 24])
           .range([0, height]);
 
-        // Tentukan lebar batang (50% dari lebar chart)
+        // Tentukan lebar batang (30% dari lebar chart)
         const barWidth = width * 0.3;
         const barX = (width - barWidth) / 2;
 
@@ -509,6 +515,11 @@
           .attr("stroke", "#eee")
           .attr("stroke-width", 1);
 
+        // Helper function untuk mendapatkan jam sebagai desimal
+        function getHourDecimal(dateObj) {
+          return dateObj.getHours() + dateObj.getMinutes() / 60 + dateObj.getSeconds() / 3600;
+        }
+
         // Buat dan tambahkan segmen
         svg.selectAll(".segment")
           .data(segments)
@@ -516,12 +527,14 @@
           .append("rect")
           .attr("class", "segment")
           .attr("x", barX)
-          .attr("y", d => yScale(new Date(d.StartTime).getHours() + new Date(d.StartTime).getMinutes() / 60))
+          .attr("y", d => yScale(getHourDecimal(d.StartTime)))
           .attr("width", barWidth)
           .attr("height", d => {
-            const startHour = new Date(d.StartTime).getHours() + new Date(d.StartTime).getMinutes() / 60;
-            const endHour = new Date(d.EndTime).getHours() + new Date(d.EndTime).getMinutes() / 60;
-            return yScale(endHour) - yScale(startHour);
+            const startHour = getHourDecimal(d.StartTime);
+            const endHour = getHourDecimal(d.EndTime);
+
+            // Ensure positive height (important)
+            return Math.max(0.1, yScale(endHour) - yScale(startHour));
           })
           .attr("fill", d => getCategoryColor(d.Category))
           .attr("stroke", "#fff")
@@ -544,11 +557,11 @@
               .duration(200)
               .style("opacity", 0.9);
             tooltip.html(`
-                <strong>${d.Category}</strong> - ${d.SubcategoryName}<br/>
-                ${startTime} - ${endTime} (${durationText})<br/>
-                ${d.OperatorName ? `Operator: ${d.OperatorName}<br/>` : ""}
-                ${d.BookingNumber ? `Booking: ${d.BookingNumber}` : ""}
-              `)
+                        <strong>${d.Category}</strong> - ${d.SubcategoryName}<br/>
+                        ${startTime} - ${endTime} (${durationText})<br/>
+                        ${d.OperatorName ? `Operator: ${d.OperatorName}<br/>` : ""}
+                        ${d.BookingNumber ? `Booking: ${d.BookingNumber}` : ""}
+                      `)
               .style("left", (event.pageX + 10) + "px")
               .style("top", (event.pageY - 28) + "px");
           })
@@ -584,20 +597,18 @@
           .style("font-size", "14px")
           .style("font-weight", "bold")
           .text("Detail Penggunaan Crane per Menit");
+
+        // Tampilkan detail segmen pertama secara default
+        if (segments.length > 0) {
+          displayActivityDetails(segments[0]);
+        }
       }
 
       // Gambar visualisasi
-      drawVisualization(minuteData);
-
-      // Inisialisasi dengan segmen pertama jika ada
-      if (minuteData.length > 0) {
-        displayActivityDetails(minuteData[0]);
-      }
+      drawVisualization();
 
       // Event listener untuk resize window
-      window.addEventListener('resize', function () {
-        drawVisualization(minuteData);
-      });
+      window.addEventListener('resize', drawVisualization);
     });
   </script>
 }
