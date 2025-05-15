@@ -754,5 +754,42 @@ namespace AspnetCoreMvcFull.Controllers
         Text = $"{c.Code} - {c.Capacity} Ton"
       }).ToList();
     }
+
+    // Controllers/CraneUsageController.cs - Add the following method
+    [HttpGet]
+    public async Task<IActionResult> MinuteVisualization(int craneId = 0, DateTime? date = null)
+    {
+      try
+      {
+        if (craneId == 0)
+        {
+          // Default to first crane if none specified
+          var firstCrane = await _context.Cranes.OrderBy(c => c.Code).FirstOrDefaultAsync();
+          if (firstCrane != null)
+          {
+            craneId = firstCrane.Id;
+          }
+        }
+
+        var viewDate = date ?? DateTime.Today;
+        var viewModel = await _craneUsageService.GetMinuteVisualizationDataAsync(craneId, viewDate);
+
+        // Messages from TempData
+        ViewBag.SuccessMessage = TempData["CraneUsageSuccessMessage"] as string;
+        ViewBag.ErrorMessage = TempData["CraneUsageErrorMessage"] as string;
+
+        // Clear TempData after use
+        TempData.Remove("CraneUsageSuccessMessage");
+        TempData.Remove("CraneUsageErrorMessage");
+
+        return View(viewModel);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error retrieving crane usage minute visualization data");
+        TempData["CraneUsageErrorMessage"] = "Terjadi kesalahan saat memuat visualisasi penggunaan crane: " + ex.Message;
+        return View(new CraneUsageMinuteVisualizationViewModel());
+      }
+    }
   }
 }

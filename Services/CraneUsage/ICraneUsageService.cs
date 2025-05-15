@@ -30,5 +30,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
 
     // Untuk booking
     Task<bool> SaveBookingUsageFormAsync(BookingUsageFormViewModel viewModel, string userName);
+
+    Task<CraneUsageMinuteVisualizationViewModel> GetMinuteVisualizationDataAsync(int craneId, DateTime date);
   }
 }

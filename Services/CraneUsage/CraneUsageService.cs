@@ -851,5 +851,138 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         return false;
       }
     }
+
+    // Services/CraneUsage/CraneUsageService.cs - Add the following method
+    public async Task<CraneUsageMinuteVisualizationViewModel> GetMinuteVisualizationDataAsync(int craneId, DateTime date)
+    {
+      var crane = await _context.Cranes.FindAsync(craneId);
+      if (crane == null)
+      {
+        throw new KeyNotFoundException($"Crane with ID {craneId} not found");
+      }
+
+      var viewModel = new CraneUsageMinuteVisualizationViewModel
+      {
+        CraneId = craneId,
+        Date = date,
+        CraneName = crane.Code,
+        CraneList = await _context.Cranes
+              .OrderBy(c => c.Code)
+              .Select(c => new SelectListItem
+              {
+                Value = c.Id.ToString(),
+                Text = $"{c.Code} - {c.Capacity} Ton"
+              })
+              .ToListAsync()
+      };
+
+      // Get all entries for this crane and date with precise time data
+      var entries = await _context.CraneUsageEntries
+          .Include(e => e.CraneUsageRecord)
+          .Include(e => e.UsageSubcategory)
+          .Include(e => e.Booking)
+          .Include(e => e.MaintenanceSchedule)
+          .Where(e => e.CraneUsageRecord != null &&
+                     e.CraneUsageRecord.CraneId == craneId &&
+                     e.CraneUsageRecord.Date.Date == date.Date)
+          .OrderBy(e => e.StartTime)
+          .ToListAsync();
+
+      // Convert to minute-level data
+      var minuteData = new List<MinuteUsageData>();
+      DateTime dayStart = date.Date;
+
+      // Create standby entries for any gaps
+      TimeSpan currentTime = new TimeSpan(0, 0, 0); // 00:00:00
+      TimeSpan endOfDay = new TimeSpan(24, 0, 0); // 24:00:00
+
+      foreach (var entry in entries)
+      {
+        // If there's a gap before this entry, add a Standby entry
+        if (entry.StartTime > currentTime)
+        {
+          minuteData.Add(new MinuteUsageData
+          {
+            StartTime = dayStart.Add(currentTime),
+            EndTime = dayStart.Add(entry.StartTime),
+            Category = "Standby",
+            SubcategoryName = "Standby",
+            ColorCode = GetCategoryColorCode(UsageCategory.Standby)
+          });
+        }
+
+        // Add the actual entry
+        minuteData.Add(new MinuteUsageData
+        {
+          StartTime = dayStart.Add(entry.StartTime),
+          EndTime = dayStart.Add(entry.EndTime),
+          Category = entry.Category.ToString(),
+          SubcategoryName = entry.UsageSubcategory?.Name ?? entry.Category.ToString(),
+          ColorCode = GetCategoryColorCode(entry.Category),
+          BookingNumber = entry.Booking?.BookingNumber ?? string.Empty,
+          MaintenanceTitle = entry.MaintenanceSchedule?.Title ?? string.Empty,
+          Notes = entry.Notes ?? string.Empty,
+          OperatorName = entry.OperatorName ?? string.Empty
+        });
+
+        // Update current time pointer
+        currentTime = entry.EndTime;
+      }
+
+      // If there's remaining time in the day, add final Standby entry
+      if (currentTime < endOfDay)
+      {
+        minuteData.Add(new MinuteUsageData
+        {
+          StartTime = dayStart.Add(currentTime),
+          EndTime = dayStart.Add(endOfDay),
+          Category = "Standby",
+          SubcategoryName = "Standby",
+          ColorCode = GetCategoryColorCode(UsageCategory.Standby)
+        });
+      }
+
+      viewModel.MinuteData = minuteData;
+
+      // Calculate summary
+      var summary = new UsageSummary();
+      double totalMinutes = 24 * 60; // Total minutes in a day
+
+      // Calculate totals by category
+      foreach (var item in minuteData)
+      {
+        double durationMinutes = item.DurationMinutes;
+
+        switch (item.Category)
+        {
+          case "Operating":
+            summary.OperatingHours += durationMinutes / 60;
+            break;
+          case "Delay":
+            summary.DelayHours += durationMinutes / 60;
+            break;
+          case "Standby":
+            summary.StandbyHours += durationMinutes / 60;
+            break;
+          case "Service":
+            summary.ServiceHours += durationMinutes / 60;
+            break;
+          case "Breakdown":
+            summary.BreakdownHours += durationMinutes / 60;
+            break;
+        }
+      }
+
+      // Calculate percentages
+      summary.OperatingPercentage = Math.Round((summary.OperatingHours * 60 / totalMinutes) * 100, 1);
+      summary.DelayPercentage = Math.Round((summary.DelayHours * 60 / totalMinutes) * 100, 1);
+      summary.StandbyPercentage = Math.Round((summary.StandbyHours * 60 / totalMinutes) * 100, 1);
+      summary.ServicePercentage = Math.Round((summary.ServiceHours * 60 / totalMinutes) * 100, 1);
+      summary.BreakdownPercentage = Math.Round((summary.BreakdownHours * 60 / totalMinutes) * 100, 1);
+
+      viewModel.Summary = summary;
+
+      return viewModel;
+    }
   }
 }
