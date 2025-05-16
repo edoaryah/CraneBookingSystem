@@ -9,7 +9,7 @@ namespace AspnetCoreMvcFull.Services.Auth
     Task<AuthResponse> RefreshTokenAsync(string token, string refreshToken);
     Task<EmployeeDetails?> GetEmployeeByLdapUserAsync(string ldapUser);
     Task<bool> LogoutAsync(string username);
-    Task<bool> IsAccountLockedAsync(string username);
-    Task RecordLoginAttemptAsync(string username, bool successful);
+    // Task<bool> IsAccountLockedAsync(string username);
+    // Task RecordLoginAttemptAsync(string username, bool successful);
   }
 }

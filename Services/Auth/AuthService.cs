@@ -1,3 +1,5 @@
+// Services/Auth/AuthService.cs - kode yang dimodifikasi
+
 using System.Net.Http.Json;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
@@ -16,9 +18,6 @@ namespace AspnetCoreMvcFull.Services.Auth
     private readonly ICacheService _cacheService;
     private readonly ISecurityService _securityService;
 
-    private readonly int _maxFailedAttempts;
-    private readonly TimeSpan _lockoutDuration;
-
     public AuthService(
         IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
@@ -34,9 +33,6 @@ namespace AspnetCoreMvcFull.Services.Auth
 
       _sqlServerConnectionString = configuration.GetConnectionString("SqlServerConnection")
           ?? throw new InvalidOperationException("SQL Server connection string 'SqlServerConnection' not found");
-
-      _maxFailedAttempts = configuration.GetValue<int>("Security:MaxFailedLoginAttempts", 5);
-      _lockoutDuration = TimeSpan.FromMinutes(configuration.GetValue<int>("Security:LockoutDurationMinutes", 15));
     }
 
     public async Task<AuthResponse> LoginAsync(string username, string password)
@@ -46,22 +42,10 @@ namespace AspnetCoreMvcFull.Services.Auth
         // Sanitize input
         username = _securityService.SanitizeInput(username);
 
-        // Check for account lockout
-        if (await IsAccountLockedAsync(username))
-        {
-          _logger.LogWarning("Login attempt on locked account: {Username}", username);
-          return new AuthResponse
-          {
-            Success = false,
-            Message = "Akun terkunci karena terlalu banyak percobaan gagal. Coba lagi dalam beberapa menit."
-          };
-        }
-
         // For development environment, use mock login
         if (_configuration.GetValue<string>("AppSettings:Environment") == "Development")
         {
           var result = await MockLoginAsync(username, password);
-          await RecordLoginAttemptAsync(username, result.Success);
           return result;
         }
 
@@ -88,7 +72,6 @@ namespace AspnetCoreMvcFull.Services.Auth
           if (authResponse != null && authResponse.Success)
           {
             _logger.LogInformation("User {Username} successfully authenticated", username);
-            await RecordLoginAttemptAsync(username, true);
 
             // Enhance with refresh token if the API doesn't provide one
             if (string.IsNullOrEmpty(authResponse.RefreshToken))
@@ -106,14 +89,12 @@ namespace AspnetCoreMvcFull.Services.Auth
           _logger.LogWarning("Authentication failed for user {Username} with message: {Message}",
               username, authResponse?.Message ?? "Unknown error");
 
-          await RecordLoginAttemptAsync(username, false);
           return authResponse ?? new AuthResponse { Success = false, Message = "Gagal memproses respons autentikasi" };
         }
 
         _logger.LogWarning("Authentication failed for user {Username}. Status code: {StatusCode}",
             username, response.StatusCode);
 
-        await RecordLoginAttemptAsync(username, false);
         return new AuthResponse
         {
           Success = false,
@@ -231,7 +212,6 @@ namespace AspnetCoreMvcFull.Services.Auth
       {
         // Clear cache entries
         await _cacheService.RemoveAsync($"refresh_token:{username}");
-        await _cacheService.RemoveAsync($"login_attempts:{username}");
 
         // For development, simple logout is enough
         if (_configuration.GetValue<string>("AppSettings:Environment") == "Development")
@@ -254,61 +234,6 @@ namespace AspnetCoreMvcFull.Services.Auth
       {
         _logger.LogError(ex, "Error during logout for user {Username}", username);
         return false;
-      }
-    }
-
-    public async Task<bool> IsAccountLockedAsync(string username)
-    {
-      try
-      {
-        var attempts = await _cacheService.GetAsync<int?>($"login_attempts:{username}");
-        if (attempts.HasValue && attempts.Value >= _maxFailedAttempts)
-        {
-          var lockTime = await _cacheService.GetAsync<DateTime?>($"lockout:{username}");
-          if (lockTime.HasValue)
-          {
-            // Check if lockout period has passed
-            return DateTime.Now < lockTime.Value.Add(_lockoutDuration);
-          }
-        }
-        return false;
-      }
-      catch (Exception ex)
-      {
-        _logger.LogError(ex, "Error checking account lock status for {Username}", username);
-        return false; // Default to not locked in case of error
-      }
-    }
-
-    public async Task RecordLoginAttemptAsync(string username, bool successful)
-    {
-      try
-      {
-        if (successful)
-        {
-          // Reset failed attempts on successful login
-          await _cacheService.RemoveAsync($"login_attempts:{username}");
-          await _cacheService.RemoveAsync($"lockout:{username}");
-          return;
-        }
-
-        // Increment failed attempts
-        var attempts = await _cacheService.GetAsync<int?>($"login_attempts:{username}") ?? 0;
-        attempts++;
-
-        await _cacheService.SetAsync($"login_attempts:{username}", attempts, TimeSpan.FromHours(24));
-
-        // If max attempts reached, set lockout
-        if (attempts >= _maxFailedAttempts)
-        {
-          await _cacheService.SetAsync($"lockout:{username}", DateTime.Now, _lockoutDuration.Add(TimeSpan.FromMinutes(5)));
-          _logger.LogWarning("Account {Username} locked due to {FailedAttempts} failed login attempts",
-              username, attempts);
-        }
-      }
-      catch (Exception ex)
-      {
-        _logger.LogError(ex, "Error recording login attempt for {Username}", username);
       }
     }
 
