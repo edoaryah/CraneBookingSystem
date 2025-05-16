@@ -3,7 +3,7 @@ using AspnetCoreMvcFull.Data;
 using AspnetCoreMvcFull.Models;
 using AspnetCoreMvcFull.ViewModels.BookingManagement;
 using AspnetCoreMvcFull.ViewModels.HazardManagement;
-using AspnetCoreMvcFull.Events;
+// using AspnetCoreMvcFull.Events;
 
 namespace AspnetCoreMvcFull.Services
 {

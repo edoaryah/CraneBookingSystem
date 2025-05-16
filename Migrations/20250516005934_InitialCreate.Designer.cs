@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AspnetCoreMvcFull.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250508030830_InitialCreate")]
+    [Migration("20250516005934_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -350,7 +350,7 @@ namespace AspnetCoreMvcFull.Migrations
                         });
                 });
 
-            modelBuilder.Entity("AspnetCoreMvcFull.Models.CraneUsageRecord", b =>
+            modelBuilder.Entity("AspnetCoreMvcFull.Models.CraneUsageEntry", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -365,19 +365,11 @@ namespace AspnetCoreMvcFull.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("CraneId")
+                    b.Property<int>("CraneUsageRecordId")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("EndTime")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("interval");
 
                     b.Property<int?>("MaintenanceScheduleId")
                         .HasColumnType("integer");
@@ -390,8 +382,8 @@ namespace AspnetCoreMvcFull.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp without time zone");
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("interval");
 
                     b.Property<int>("UsageSubcategoryId")
                         .HasColumnType("integer");
@@ -400,11 +392,40 @@ namespace AspnetCoreMvcFull.Migrations
 
                     b.HasIndex("BookingId");
 
-                    b.HasIndex("CraneId");
+                    b.HasIndex("CraneUsageRecordId");
 
                     b.HasIndex("MaintenanceScheduleId");
 
                     b.HasIndex("UsageSubcategoryId");
+
+                    b.ToTable("CraneUsageEntries");
+                });
+
+            modelBuilder.Entity("AspnetCoreMvcFull.Models.CraneUsageRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CraneId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CraneId");
 
                     b.ToTable("CraneUsageRecords");
                 });
@@ -906,16 +927,16 @@ namespace AspnetCoreMvcFull.Migrations
                     b.Navigation("Crane");
                 });
 
-            modelBuilder.Entity("AspnetCoreMvcFull.Models.CraneUsageRecord", b =>
+            modelBuilder.Entity("AspnetCoreMvcFull.Models.CraneUsageEntry", b =>
                 {
                     b.HasOne("AspnetCoreMvcFull.Models.Booking", "Booking")
                         .WithMany()
                         .HasForeignKey("BookingId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("AspnetCoreMvcFull.Models.Crane", "Crane")
-                        .WithMany()
-                        .HasForeignKey("CraneId")
+                    b.HasOne("AspnetCoreMvcFull.Models.CraneUsageRecord", "CraneUsageRecord")
+                        .WithMany("Entries")
+                        .HasForeignKey("CraneUsageRecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -932,11 +953,22 @@ namespace AspnetCoreMvcFull.Migrations
 
                     b.Navigation("Booking");
 
-                    b.Navigation("Crane");
+                    b.Navigation("CraneUsageRecord");
 
                     b.Navigation("MaintenanceSchedule");
 
                     b.Navigation("UsageSubcategory");
+                });
+
+            modelBuilder.Entity("AspnetCoreMvcFull.Models.CraneUsageRecord", b =>
+                {
+                    b.HasOne("AspnetCoreMvcFull.Models.Crane", "Crane")
+                        .WithMany()
+                        .HasForeignKey("CraneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Crane");
                 });
 
             modelBuilder.Entity("AspnetCoreMvcFull.Models.MaintenanceSchedule", b =>
@@ -981,6 +1013,11 @@ namespace AspnetCoreMvcFull.Migrations
             modelBuilder.Entity("AspnetCoreMvcFull.Models.Crane", b =>
                 {
                     b.Navigation("Breakdowns");
+                });
+
+            modelBuilder.Entity("AspnetCoreMvcFull.Models.CraneUsageRecord", b =>
+                {
+                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("AspnetCoreMvcFull.Models.MaintenanceSchedule", b =>

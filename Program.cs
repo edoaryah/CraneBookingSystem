@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
-using AspnetCoreMvcFull.Events;
-using AspnetCoreMvcFull.Events.Handlers;
+// using AspnetCoreMvcFull.Events;
+// using AspnetCoreMvcFull.Events.Handlers;
 using AspnetCoreMvcFull.Filters;
 using AspnetCoreMvcFull.Middleware;
 using AspnetCoreMvcFull.Services.Auth;
@@ -35,8 +35,8 @@ builder.Services.AddScoped<RateLimitFilter>();
 
 // Tambahkan setelah registrasi service yang ada
 // Registrasi event infrastructure
-builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
-builder.Services.AddScoped<IEventHandler<CraneMaintenanceEvent>, BookingRelocationHandler>();
+// builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
+// builder.Services.AddScoped<IEventHandler<CraneMaintenanceEvent>, BookingRelocationHandler>();
 
 builder.Services.AddScoped<IHazardService, HazardService>();
 builder.Services.AddScoped<IShiftDefinitionService, ShiftDefinitionService>();

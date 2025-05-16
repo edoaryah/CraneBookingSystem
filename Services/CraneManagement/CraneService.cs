@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
 using AspnetCoreMvcFull.Models;
 using AspnetCoreMvcFull.ViewModels.CraneManagement;
-using AspnetCoreMvcFull.Events;
+// using AspnetCoreMvcFull.Events;
 
 namespace AspnetCoreMvcFull.Services
 {
@@ -12,15 +12,17 @@ namespace AspnetCoreMvcFull.Services
   {
     private readonly AppDbContext _context;
     private readonly ILogger<CraneService> _logger;
-    private readonly IEventPublisher _eventPublisher;
+    // private readonly IEventPublisher _eventPublisher;
     private readonly IFileStorageService _fileStorage;
     private const string ContainerName = "cranes";
 
-    public CraneService(AppDbContext context, ILogger<CraneService> logger, IEventPublisher eventPublisher, IFileStorageService fileStorage)
+    // public CraneService(AppDbContext context, ILogger<CraneService> logger, IEventPublisher eventPublisher, IFileStorageService fileStorage)
+    public CraneService(AppDbContext context, ILogger<CraneService> logger, IFileStorageService fileStorage)
+
     {
       _context = context;
       _logger = logger;
-      _eventPublisher = eventPublisher;
+      // _eventPublisher = eventPublisher;
       _fileStorage = fileStorage;
     }
 

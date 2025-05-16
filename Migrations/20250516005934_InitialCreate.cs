@@ -168,6 +168,28 @@ namespace AspnetCoreMvcFull.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "CraneUsageRecords",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    CraneId = table.Column<int>(type: "integer", nullable: false),
+                    Date = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CraneUsageRecords", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CraneUsageRecords_Cranes_CraneId",
+                        column: x => x.CraneId,
+                        principalTable: "Cranes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "MaintenanceSchedules",
                 columns: table => new
                 {
@@ -273,46 +295,44 @@ namespace AspnetCoreMvcFull.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "CraneUsageRecords",
+                name: "CraneUsageEntries",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    CraneId = table.Column<int>(type: "integer", nullable: false),
-                    StartTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    EndTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CraneUsageRecordId = table.Column<int>(type: "integer", nullable: false),
+                    StartTime = table.Column<TimeSpan>(type: "interval", nullable: false),
+                    EndTime = table.Column<TimeSpan>(type: "interval", nullable: false),
                     Category = table.Column<string>(type: "text", nullable: false),
                     UsageSubcategoryId = table.Column<int>(type: "integer", nullable: false),
                     BookingId = table.Column<int>(type: "integer", nullable: true),
                     MaintenanceScheduleId = table.Column<int>(type: "integer", nullable: true),
                     Notes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    OperatorName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
+                    OperatorName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_CraneUsageRecords", x => x.Id);
+                    table.PrimaryKey("PK_CraneUsageEntries", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_CraneUsageRecords_Bookings_BookingId",
+                        name: "FK_CraneUsageEntries_Bookings_BookingId",
                         column: x => x.BookingId,
                         principalTable: "Bookings",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_CraneUsageRecords_Cranes_CraneId",
-                        column: x => x.CraneId,
-                        principalTable: "Cranes",
+                        name: "FK_CraneUsageEntries_CraneUsageRecords_CraneUsageRecordId",
+                        column: x => x.CraneUsageRecordId,
+                        principalTable: "CraneUsageRecords",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_CraneUsageRecords_MaintenanceSchedules_MaintenanceScheduleId",
+                        name: "FK_CraneUsageEntries_MaintenanceSchedules_MaintenanceScheduleId",
                         column: x => x.MaintenanceScheduleId,
                         principalTable: "MaintenanceSchedules",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_CraneUsageRecords_UsageSubcategories_UsageSubcategoryId",
+                        name: "FK_CraneUsageEntries_UsageSubcategories_UsageSubcategoryId",
                         column: x => x.UsageSubcategoryId,
                         principalTable: "UsageSubcategories",
                         principalColumn: "Id",
@@ -455,24 +475,29 @@ namespace AspnetCoreMvcFull.Migrations
                 column: "CraneId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_CraneUsageRecords_BookingId",
-                table: "CraneUsageRecords",
+                name: "IX_CraneUsageEntries_BookingId",
+                table: "CraneUsageEntries",
                 column: "BookingId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CraneUsageEntries_CraneUsageRecordId",
+                table: "CraneUsageEntries",
+                column: "CraneUsageRecordId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CraneUsageEntries_MaintenanceScheduleId",
+                table: "CraneUsageEntries",
+                column: "MaintenanceScheduleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CraneUsageEntries_UsageSubcategoryId",
+                table: "CraneUsageEntries",
+                column: "UsageSubcategoryId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CraneUsageRecords_CraneId",
                 table: "CraneUsageRecords",
                 column: "CraneId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_CraneUsageRecords_MaintenanceScheduleId",
-                table: "CraneUsageRecords",
-                column: "MaintenanceScheduleId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_CraneUsageRecords_UsageSubcategoryId",
-                table: "CraneUsageRecords",
-                column: "UsageSubcategoryId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_MaintenanceSchedules_CraneId",
@@ -512,7 +537,7 @@ namespace AspnetCoreMvcFull.Migrations
                 name: "Breakdowns");
 
             migrationBuilder.DropTable(
-                name: "CraneUsageRecords");
+                name: "CraneUsageEntries");
 
             migrationBuilder.DropTable(
                 name: "MaintenanceScheduleShifts");
@@ -525,6 +550,9 @@ namespace AspnetCoreMvcFull.Migrations
 
             migrationBuilder.DropTable(
                 name: "Bookings");
+
+            migrationBuilder.DropTable(
+                name: "CraneUsageRecords");
 
             migrationBuilder.DropTable(
                 name: "UsageSubcategories");

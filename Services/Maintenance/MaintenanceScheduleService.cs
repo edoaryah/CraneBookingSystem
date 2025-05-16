@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using AspnetCoreMvcFull.Data;
 using AspnetCoreMvcFull.Models;
-using AspnetCoreMvcFull.Events;
+// using AspnetCoreMvcFull.Events;
 using AspnetCoreMvcFull.ViewModels.MaintenanceManagement;
 
 namespace AspnetCoreMvcFull.Services
@@ -12,7 +12,7 @@ namespace AspnetCoreMvcFull.Services
     private readonly ICraneService _craneService;
     private readonly IShiftDefinitionService _shiftDefinitionService;
     private readonly IScheduleConflictService _scheduleConflictService;
-    private readonly IEventPublisher _eventPublisher;
+    // private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<MaintenanceScheduleService> _logger;
 
     public MaintenanceScheduleService(
@@ -20,14 +20,14 @@ namespace AspnetCoreMvcFull.Services
         ICraneService craneService,
         IShiftDefinitionService shiftDefinitionService,
         IScheduleConflictService scheduleConflictService,
-        IEventPublisher eventPublisher,
+        // IEventPublisher eventPublisher,
         ILogger<MaintenanceScheduleService> logger)
     {
       _context = context;
       _craneService = craneService;
       _shiftDefinitionService = shiftDefinitionService;
       _scheduleConflictService = scheduleConflictService;
-      _eventPublisher = eventPublisher;
+      // _eventPublisher = eventPublisher;
       _logger = logger;
     }
 
