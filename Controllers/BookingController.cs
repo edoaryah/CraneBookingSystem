@@ -41,6 +41,26 @@ namespace AspnetCoreMvcFull.Controllers
     // GET: /Booking
     public async Task<IActionResult> Index()
     {
+      // Bersihkan TempData umum untuk mencegah "bocor" dari controller lain
+      TempData.Remove("SuccessMessage");
+      TempData.Remove("ErrorMessage");
+
+      // Menandai bahwa kita telah membaca TempData spesifik halaman ini
+      bool hasSuccessMessage = TempData.ContainsKey("BookingFormSuccessMessage");
+      bool hasDocumentNumber = TempData.ContainsKey("BookingDocumentNumber");
+
+      if (hasSuccessMessage)
+      {
+        // Simpan ke TempData.Peek agar bisa dibaca di view tapi akan dihapus setelah request
+        TempData.Keep("BookingFormSuccessMessage");
+      }
+
+      if (hasDocumentNumber)
+      {
+        // Simpan ke TempData.Peek agar bisa dibaca di view tapi akan dihapus setelah request
+        TempData.Keep("BookingDocumentNumber");
+      }
+
       try
       {
         var viewModel = new BookingFormViewModel
@@ -49,14 +69,30 @@ namespace AspnetCoreMvcFull.Controllers
           ShiftDefinitions = await _shiftService.GetAllShiftDefinitionsAsync(),
           AvailableHazards = await _hazardService.GetAllHazardsAsync()
         };
+
+        // Tambahkan flag untuk membersihkan TempData
+        ViewData["CleanTempData"] = hasSuccessMessage || hasDocumentNumber;
+
         return View(viewModel);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading booking form");
-        TempData["BookingErrorMessage"] = "Error loading booking form: " + ex.Message;
+        TempData["BookingFormErrorMessage"] = "Error loading booking form: " + ex.Message;
         return View("Error");
       }
+    }
+
+    // POST: /Booking/ClearTempData
+    [HttpPost]
+    public IActionResult ClearTempData()
+    {
+      // Hapus semua TempData yang digunakan oleh halaman Booking/Index
+      TempData.Remove("BookingFormSuccessMessage");
+      TempData.Remove("BookingDocumentNumber");
+      TempData.Remove("BookingFormErrorMessage");
+
+      return Ok(new { success = true });
     }
 
     // GET: /Booking/List
@@ -156,8 +192,12 @@ namespace AspnetCoreMvcFull.Controllers
         {
           var createdBooking = await _bookingService.CreateBookingAsync(viewModel);
 
-          TempData["BookingSuccessMessage"] = "Booking berhasil dibuat";
-          return RedirectToAction(nameof(Details), new { documentNumber = createdBooking.DocumentNumber });
+          // Simpan data untuk ditampilkan di modal
+          TempData["BookingFormSuccessMessage"] = "Booking berhasil dibuat";
+          TempData["BookingDocumentNumber"] = createdBooking.DocumentNumber;
+
+          // Redirect ke Index (bukan ke Details) agar modal ditampilkan dulu
+          return RedirectToAction(nameof(Index));
         }
 
         // Jika validasi gagal, kembali ke form dengan data yang dibutuhkan
@@ -178,7 +218,7 @@ namespace AspnetCoreMvcFull.Controllers
         _logger.LogError(ex, "Error creating booking");
 
         // Redirect ke Index dengan pesan error
-        TempData["BookingErrorMessage"] = "Error membuat booking: " + ex.Message;
+        TempData["BookingFormErrorMessage"] = "Error membuat booking: " + ex.Message;
         return RedirectToAction("Index");
       }
     }
