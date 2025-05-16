@@ -409,25 +409,24 @@ namespace AspnetCoreMvcFull.Migrations
                 columns: new[] { "Id", "Category", "Description", "IsActive", "Name" },
                 values: new object[,]
                 {
-                    { 1, "Operating", "Crane used for production lifting operations", true, "Production Lifting" },
-                    { 2, "Operating", "Crane used for equipment installation", true, "Equipment Installation" },
-                    { 3, "Operating", "Crane used for general material handling", true, "Material Handling" },
-                    { 4, "Delay", "Delay due to bad weather conditions", true, "Weather" },
-                    { 5, "Delay", "Delay due to planning or coordination issues", true, "Planning" },
-                    { 6, "Delay", "Scheduled operator break time", true, "Operator Break" },
-                    { 7, "Delay", "Delay for refueling operations", true, "Refueling" },
-                    { 8, "Standby", "Crane on standby at work site", true, "On-site Standby" },
-                    { 9, "Standby", "Crane available but not assigned any tasks", true, "No Work Assignment" },
-                    { 10, "Standby", "Planned standby period", true, "Scheduled Standby" },
-                    { 11, "Service", "Regular scheduled maintenance", true, "Scheduled Maintenance" },
-                    { 12, "Service", "Safety or regulatory inspection", true, "Inspection" },
-                    { 13, "Service", "Planned replacement of components", true, "Component Replacement" },
-                    { 14, "Service", "Regular lubrication service", true, "Lubrication" },
-                    { 15, "Breakdown", "Breakdown due to mechanical problems", true, "Mechanical Failure" },
-                    { 16, "Breakdown", "Breakdown due to electrical problems", true, "Electrical Failure" },
-                    { 17, "Breakdown", "Breakdown due to hydraulic system problems", true, "Hydraulic Failure" },
-                    { 18, "Breakdown", "Breakdown due to control system issues", true, "Control System Failure" },
-                    { 19, "Breakdown", "Breakdown due to accident or incident", true, "Accident" }
+                    { 1, "Operating", "Crane used for production lifting operations", true, "Pengangkatan" },
+                    { 2, "Operating", "Crane used for equipment installation", true, "Menggantung Beban" },
+                    { 3, "Delay", "Delay due to bad weather conditions", true, "Traveling" },
+                    { 4, "Delay", "Delay due to bad weather conditions", true, "Prestart Check" },
+                    { 5, "Delay", "Delay due to planning or coordination issues", true, "Menunggu User" },
+                    { 6, "Delay", "Scheduled operator break time", true, "Menunggu Kesiapan Pengangkatan" },
+                    { 7, "Delay", "Delay for refueling operations", true, "Menunggu Pengawalan" },
+                    { 8, "Standby", "Crane on standby at work site", true, "Tidak ada Operator" },
+                    { 9, "Standby", "Crane available but not assigned any tasks", true, "Tidak diperlukan" },
+                    { 10, "Standby", "Planned standby period", true, "Tidak ada pengawal" },
+                    { 11, "Service", "Regular scheduled maintenance", true, "Servis Rutin Terjadwal" },
+                    { 15, "Breakdown", "Breakdown due to mechanical problems", true, "Rusak" },
+                    { 16, "Breakdown", "Breakdown due to electrical problems", true, "Perbaikan" },
+                    { 20, "Delay", "Delay for refueling operations", true, "Fueling" },
+                    { 21, "Delay", "Delay for refueling operations", true, "Cuaca" },
+                    { 22, "Standby", "Planned standby period", true, "Istirahat" },
+                    { 23, "Standby", "Planned standby period", true, "Ganti Shift" },
+                    { 24, "Standby", "Planned standby period", true, "Tidak Bisa Lewat" }
                 });
 
             migrationBuilder.InsertData(

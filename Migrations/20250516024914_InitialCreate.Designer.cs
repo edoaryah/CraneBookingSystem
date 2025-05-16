@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AspnetCoreMvcFull.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250516005934_InitialCreate")]
+    [Migration("20250516024914_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -708,7 +708,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Operating",
                             Description = "Crane used for production lifting operations",
                             IsActive = true,
-                            Name = "Production Lifting"
+                            Name = "Pengangkatan"
                         },
                         new
                         {
@@ -716,15 +716,15 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Operating",
                             Description = "Crane used for equipment installation",
                             IsActive = true,
-                            Name = "Equipment Installation"
+                            Name = "Menggantung Beban"
                         },
                         new
                         {
                             Id = 3,
-                            Category = "Operating",
-                            Description = "Crane used for general material handling",
+                            Category = "Delay",
+                            Description = "Delay due to bad weather conditions",
                             IsActive = true,
-                            Name = "Material Handling"
+                            Name = "Traveling"
                         },
                         new
                         {
@@ -732,7 +732,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Delay",
                             Description = "Delay due to bad weather conditions",
                             IsActive = true,
-                            Name = "Weather"
+                            Name = "Prestart Check"
                         },
                         new
                         {
@@ -740,7 +740,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Delay",
                             Description = "Delay due to planning or coordination issues",
                             IsActive = true,
-                            Name = "Planning"
+                            Name = "Menunggu User"
                         },
                         new
                         {
@@ -748,7 +748,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Delay",
                             Description = "Scheduled operator break time",
                             IsActive = true,
-                            Name = "Operator Break"
+                            Name = "Menunggu Kesiapan Pengangkatan"
                         },
                         new
                         {
@@ -756,7 +756,23 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Delay",
                             Description = "Delay for refueling operations",
                             IsActive = true,
-                            Name = "Refueling"
+                            Name = "Menunggu Pengawalan"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Category = "Delay",
+                            Description = "Delay for refueling operations",
+                            IsActive = true,
+                            Name = "Fueling"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Category = "Delay",
+                            Description = "Delay for refueling operations",
+                            IsActive = true,
+                            Name = "Cuaca"
                         },
                         new
                         {
@@ -764,7 +780,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Standby",
                             Description = "Crane on standby at work site",
                             IsActive = true,
-                            Name = "On-site Standby"
+                            Name = "Tidak ada Operator"
                         },
                         new
                         {
@@ -772,7 +788,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Standby",
                             Description = "Crane available but not assigned any tasks",
                             IsActive = true,
-                            Name = "No Work Assignment"
+                            Name = "Tidak diperlukan"
                         },
                         new
                         {
@@ -780,7 +796,31 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Standby",
                             Description = "Planned standby period",
                             IsActive = true,
-                            Name = "Scheduled Standby"
+                            Name = "Tidak ada pengawal"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Category = "Standby",
+                            Description = "Planned standby period",
+                            IsActive = true,
+                            Name = "Istirahat"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Category = "Standby",
+                            Description = "Planned standby period",
+                            IsActive = true,
+                            Name = "Ganti Shift"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Category = "Standby",
+                            Description = "Planned standby period",
+                            IsActive = true,
+                            Name = "Tidak Bisa Lewat"
                         },
                         new
                         {
@@ -788,31 +828,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Service",
                             Description = "Regular scheduled maintenance",
                             IsActive = true,
-                            Name = "Scheduled Maintenance"
-                        },
-                        new
-                        {
-                            Id = 12,
-                            Category = "Service",
-                            Description = "Safety or regulatory inspection",
-                            IsActive = true,
-                            Name = "Inspection"
-                        },
-                        new
-                        {
-                            Id = 13,
-                            Category = "Service",
-                            Description = "Planned replacement of components",
-                            IsActive = true,
-                            Name = "Component Replacement"
-                        },
-                        new
-                        {
-                            Id = 14,
-                            Category = "Service",
-                            Description = "Regular lubrication service",
-                            IsActive = true,
-                            Name = "Lubrication"
+                            Name = "Servis Rutin Terjadwal"
                         },
                         new
                         {
@@ -820,7 +836,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Breakdown",
                             Description = "Breakdown due to mechanical problems",
                             IsActive = true,
-                            Name = "Mechanical Failure"
+                            Name = "Rusak"
                         },
                         new
                         {
@@ -828,31 +844,7 @@ namespace AspnetCoreMvcFull.Migrations
                             Category = "Breakdown",
                             Description = "Breakdown due to electrical problems",
                             IsActive = true,
-                            Name = "Electrical Failure"
-                        },
-                        new
-                        {
-                            Id = 17,
-                            Category = "Breakdown",
-                            Description = "Breakdown due to hydraulic system problems",
-                            IsActive = true,
-                            Name = "Hydraulic Failure"
-                        },
-                        new
-                        {
-                            Id = 18,
-                            Category = "Breakdown",
-                            Description = "Breakdown due to control system issues",
-                            IsActive = true,
-                            Name = "Control System Failure"
-                        },
-                        new
-                        {
-                            Id = 19,
-                            Category = "Breakdown",
-                            Description = "Breakdown due to accident or incident",
-                            IsActive = true,
-                            Name = "Accident"
+                            Name = "Perbaikan"
                         });
                 });
 

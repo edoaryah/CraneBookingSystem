@@ -70,6 +70,8 @@ builder.Services.AddScoped<IRoleService, RoleService>();
 // Register Crane Usage Record service
 builder.Services.AddScoped<ICraneUsageService, CraneUsageService>();
 
+builder.Services.AddScoped<IUsageSubcategoryService, UsageSubcategoryService>();
+
 // Daftarkan EmailTemplate sebagai singleton karena hanya berisi template
 builder.Services.AddSingleton<EmailTemplate>();
 
