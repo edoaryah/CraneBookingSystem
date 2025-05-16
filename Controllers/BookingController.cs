@@ -17,6 +17,7 @@ namespace AspnetCoreMvcFull.Controllers
     private readonly IHazardService _hazardService;
     private readonly IBookingService _bookingService;
     private readonly IRoleService _roleService;
+    private readonly IScheduleConflictService _scheduleConflictService;
     private readonly ILogger<BookingController> _logger;
 
     public BookingController(
@@ -25,6 +26,7 @@ namespace AspnetCoreMvcFull.Controllers
         IHazardService hazardService,
         IBookingService bookingService,
         IRoleService roleService,
+        IScheduleConflictService scheduleConflictService,
         ILogger<BookingController> logger)
     {
       _craneService = craneService;
@@ -32,6 +34,7 @@ namespace AspnetCoreMvcFull.Controllers
       _hazardService = hazardService;
       _bookingService = bookingService;
       _roleService = roleService;
+      _scheduleConflictService = scheduleConflictService;
       _logger = logger;
     }
 
@@ -531,6 +534,48 @@ namespace AspnetCoreMvcFull.Controllers
         _logger.LogError(ex, "Error searching bookings with term: {SearchTerm}", searchTerm);
         TempData["BookingErrorMessage"] = "Error searching bookings: " + ex.Message;
         return RedirectToAction("Index", "Dashboards");
+      }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetMaintenanceShifts(int craneId, DateTime startDate, DateTime endDate)
+    {
+      try
+      {
+        var maintenanceShifts = new List<BookedShiftViewModel>();
+
+        // Loop melalui rentang tanggal yang diminta
+        var currentDate = startDate.Date;
+        while (currentDate <= endDate.Date)
+        {
+          // Loop melalui semua shift definitions
+          foreach (var shift in await _shiftService.GetAllShiftDefinitionsAsync())
+          {
+            // Periksa apakah ada konflik maintenance
+            bool hasMaintenanceConflict = await _scheduleConflictService.IsMaintenanceConflictAsync(
+                craneId, currentDate, shift.Id);
+
+            if (hasMaintenanceConflict)
+            {
+              // Tambahkan ke daftar
+              maintenanceShifts.Add(new BookedShiftViewModel
+              {
+                CraneId = craneId,
+                Date = currentDate,
+                ShiftDefinitionId = shift.Id
+              });
+            }
+          }
+
+          currentDate = currentDate.AddDays(1);
+        }
+
+        return Json(maintenanceShifts);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error getting maintenance shifts");
+        return StatusCode(500, new { error = ex.Message });
       }
     }
   }

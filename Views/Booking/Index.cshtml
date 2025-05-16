@@ -115,6 +115,12 @@
       color: #dc3545;
       /* Bootstrap danger color */
     }
+
+    /* Tambahkan style untuk maintenance */
+    .shift-status.maintenance {
+      color: #fd7e14;
+      /* Bootstrap warning color */
+    }
   </style>
 }
 
@@ -420,6 +426,7 @@
     // Global variables for data
     let shiftDefinitions = [];
     let bookedShifts = []; // Menyimpan data shift yang sudah di-booking
+    let maintenanceShifts = []; // Menyimpan data shift yang ada jadwal maintenance
 
     // DOM Elements - with validation checks
     const startDateInput = document.getElementById('startDate');
@@ -534,6 +541,20 @@
       );
     }
 
+    // Check if a specific shift has maintenance schedule
+    function isShiftMaintenance(craneId, date, shiftId) {
+      if (!maintenanceShifts || !maintenanceShifts.length || !craneId) return false;
+
+      const dateStr = new Date(date).toISOString().split('T')[0];
+
+      // Find if this specific shift has maintenance
+      return maintenanceShifts.some(maintenance =>
+        maintenance.craneId === parseInt(craneId) &&
+        maintenance.date.split('T')[0] === dateStr &&
+        maintenance.shiftDefinitionId === shiftId
+      );
+    }
+
     // Validation functions
     function validateDates() {
       if (!startDateInput || !endDateInput) {
@@ -568,7 +589,6 @@
     }
 
     // Function to generate shift table
-    // Ubah fungsi generateShiftTable menjadi seperti ini
     async function generateShiftTable() {
       console.log('generateShiftTable called');
 
@@ -620,9 +640,20 @@
           console.error('Failed to fetch booked shifts');
           bookedShifts = [];
         }
+
+        // Tambahkan: Fetch maintenance shifts
+        const maintenanceResponse = await fetch(`/Booking/GetMaintenanceShifts?craneId=${craneId}&startDate=${startDate}&endDate=${endDate}`);
+        if (maintenanceResponse.ok) {
+          maintenanceShifts = await maintenanceResponse.json();
+          console.log('Loaded maintenance shifts for selected date range:', maintenanceShifts);
+        } else {
+          console.error('Failed to fetch maintenance shifts');
+          maintenanceShifts = [];
+        }
       } catch (error) {
-        console.error('Error fetching booked shifts:', error);
+        console.error('Error fetching shifts data:', error);
         bookedShifts = [];
+        maintenanceShifts = [];
       }
 
       // Check active shifts
@@ -703,23 +734,41 @@
           // Check if this shift is booked
           const isBooked = isShiftBooked(craneId, dayShift.date, shiftId);
 
+          // Check if this shift has maintenance
+          const isMaintenance = isShiftMaintenance(craneId, dayShift.date, shiftId);
+
+          // Determine status and class
+          let statusText = "Available";
+          let statusClass = "available";
+          let isDisabled = false;
+
+          if (isBooked) {
+            statusText = "Booked";
+            statusClass = "booked";
+            isDisabled = true;
+          } else if (isMaintenance) {
+            statusText = "Maintenance";
+            statusClass = "maintenance";
+            isDisabled = true;
+          }
+
           const cell = document.createElement('td');
           cell.innerHTML = `
-                <div class="form-check d-flex justify-content-center flex-column align-items-center">
-                  <input type="checkbox" class="form-check-input shift-checkbox"
-                    id="shift-${shiftId}-${dayShift.date}"
-                    name="shiftSelections[${index}].selectedShiftIds[]"
-                    value="${shiftId}"
-                    data-date="${dayShift.date}"
-                    data-shift-id="${shiftId}"
-                    ${isSelected ? 'checked' : ''}
-                    ${isBooked ? 'disabled' : ''} />
-                  <span class="shift-status ${isBooked ? 'booked' : 'available'}">
-                    ${isBooked ? 'Booked' : 'Available'}
-                  </span>
-                  <input type="hidden" name="shiftSelections[${index}].date" value="${dayShift.date}" />
-                </div>
-              `;
+              <div class="form-check d-flex justify-content-center flex-column align-items-center">
+                <input type="checkbox" class="form-check-input shift-checkbox"
+                  id="shift-${shiftId}-${dayShift.date}"
+                  name="shiftSelections[${index}].selectedShiftIds[]"
+                  value="${shiftId}"
+                  data-date="${dayShift.date}"
+                  data-shift-id="${shiftId}"
+                  ${isSelected ? 'checked' : ''}
+                  ${isDisabled ? 'disabled' : ''} />
+                <span class="shift-status ${statusClass}">
+                  ${statusText}
+                </span>
+                <input type="hidden" name="shiftSelections[${index}].date" value="${dayShift.date}" />
+              </div>
+            `;
 
           row.appendChild(cell);
         });
@@ -755,31 +804,31 @@
       const row = document.createElement('tr');
 
       row.innerHTML = `
-            <td style="min-width: 220px; padding-right: 5px;">
-              <input type="text" class="form-control item-name"
-                    name="items[${rowIndex}].itemName" required />
-            </td>
-            <td style="min-width: 140px; padding-right: 5px;">
-              <input type="number" class="form-control item-height"
-                    name="items[${rowIndex}].height"
-                    min="0.01" step="0.01" required />
-            </td>
-            <td style="min-width: 140px; padding-right: 5px;">
-              <input type="number" class="form-control item-weight"
-                    name="items[${rowIndex}].weight"
-                    min="0.01" step="0.01" required />
-            </td>
-            <td style="min-width: 140px; padding-right: 5px;">
-              <input type="number" class="form-control item-quantity"
-                    name="items[${rowIndex}].quantity"
-                    min="1" step="1" value="1" required />
-            </td>
-            <td style="width: 1%; white-space: nowrap;">
-              <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
-                <i class="bx bx-trash"></i>
-              </button>
-            </td>
-          `;
+                      <td style="min-width: 220px; padding-right: 5px;">
+                        <input type="text" class="form-control item-name"
+                              name="items[${rowIndex}].itemName" required />
+                      </td>
+                      <td style="min-width: 140px; padding-right: 5px;">
+                        <input type="number" class="form-control item-height"
+                              name="items[${rowIndex}].height"
+                              min="0.01" step="0.01" required />
+                      </td>
+                      <td style="min-width: 140px; padding-right: 5px;">
+                        <input type="number" class="form-control item-weight"
+                              name="items[${rowIndex}].weight"
+                              min="0.01" step="0.01" required />
+                      </td>
+                      <td style="min-width: 140px; padding-right: 5px;">
+                        <input type="number" class="form-control item-quantity"
+                              name="items[${rowIndex}].quantity"
+                              min="1" step="1" value="1" required />
+                      </td>
+                      <td style="width: 1%; white-space: nowrap;">
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-item-btn">
+                          <i class="bx bx-trash"></i>
+                        </button>
+                      </td>
+                    `;
 
       // Add event listener to remove button
       const removeBtn = row.querySelector('.remove-item-btn');
@@ -956,6 +1005,6 @@
             errorModal.show();
           </text>
       }
-        });
+                  });
   </script>
 }
