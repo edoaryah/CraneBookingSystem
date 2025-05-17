@@ -59,6 +59,13 @@
         <div class="text-truncate" data-i18n="CraneUsage">Crane Usage</div>
       </a>
     </li>
+    <!-- Billing Menu -->
+    <li class='menu-item@(currentPage == "/Billing" || currentPage.StartsWith("/Billing") ? " active" : "")'>
+      <a asp-controller="Billing" asp-action="Index" class="menu-link">
+        <i class="menu-icon tf-icons bx bx-receipt"></i>
+        <div class="text-truncate" data-i18n="Billing">Penagihan</div>
+      </a>
+    </li>
     @* <li class='menu-item@(currentPage == "/CraneUsage/History" ? " active" : "")'>
       <a asp-controller="CraneUsage" asp-action="History" class="menu-link">
         <i class="menu-icon tf-icons bx bx-time"></i>

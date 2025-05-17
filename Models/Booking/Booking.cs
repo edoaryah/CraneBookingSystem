@@ -99,6 +99,12 @@ namespace AspnetCoreMvcFull.Models
     public DateTime LastModifiedAt { get; set; } = DateTime.Now;
     public string LastModifiedBy { get; set; } = string.Empty;
 
+    // Properti untuk penagihan
+    public bool IsBilled { get; set; } = false;
+    public DateTime? BilledDate { get; set; }
+    public string? BilledBy { get; set; }
+    public string? BillingNotes { get; set; }
+
     // Navigation properties
     public virtual Crane? Crane { get; set; }
     public virtual ICollection<BookingShift> BookingShifts { get; set; } = new List<BookingShift>();

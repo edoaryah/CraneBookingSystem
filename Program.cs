@@ -10,6 +10,7 @@ using AspnetCoreMvcFull.Services.Common;
 using AspnetCoreMvcFull.Services.Role;
 using AspnetCoreMvcFull.Services.Security;
 using AspnetCoreMvcFull.Services.CraneUsage;
+using AspnetCoreMvcFull.Services.Billing;
 using AspnetCoreMvcFull.Services;
 using System.Text;
 using Hangfire;
@@ -71,6 +72,9 @@ builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<ICraneUsageService, CraneUsageService>();
 
 builder.Services.AddScoped<IUsageSubcategoryService, UsageSubcategoryService>();
+
+// Di Program.cs tambahkan:
+builder.Services.AddScoped<IBillingService, BillingService>();
 
 // Daftarkan EmailTemplate sebagai singleton karena hanya berisi template
 builder.Services.AddSingleton<EmailTemplate>();
