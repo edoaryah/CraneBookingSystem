@@ -11,8 +11,15 @@ namespace AspnetCoreMvcFull.ViewModels.Billing
     public string DocumentNumber { get; set; } = string.Empty;
     public string RequesterName { get; set; } = string.Empty;
     public string Department { get; set; } = string.Empty;
-    public DateTime StartDate { get; set; }
-    public DateTime EndDate { get; set; }
+
+    // Tanggal dari booking
+    public DateTime BookingStartDate { get; set; }
+    public DateTime BookingEndDate { get; set; }
+
+    // Tanggal penggunaan aktual
+    public DateTime? ActualStartDate { get; set; }
+    public DateTime? ActualEndDate { get; set; }
+
     public string CraneCode { get; set; } = string.Empty;
     public int CraneCapacity { get; set; }
     public BookingStatus Status { get; set; }
@@ -25,6 +32,7 @@ namespace AspnetCoreMvcFull.ViewModels.Billing
     public bool IsBilled { get; set; }
     public DateTime? BilledDate { get; set; }
     public string? BilledBy { get; set; }
+    public string? BillingNotes { get; set; }
   }
 
   public class BillingListViewModel
@@ -35,7 +43,7 @@ namespace AspnetCoreMvcFull.ViewModels.Billing
 
   public class BillingFilterViewModel
   {
-    [Display(Name = "Sudah Ditagih")]
+    [Display(Name = "Status Penagihan")]
     public bool? IsBilled { get; set; }
 
     [Display(Name = "Tanggal Mulai")]

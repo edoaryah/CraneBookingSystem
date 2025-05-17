@@ -51,9 +51,22 @@
           <dt class="col-sm-4">Crane:</dt>
           <dd class="col-sm-8">@Model.Booking.CraneCode (@Model.Booking.CraneCapacity Ton)</dd>
 
-          <dt class="col-sm-4">Tanggal:</dt>
-          <dd class="col-sm-8">@Model.Booking.StartDate.ToString("dd/MM/yyyy") -
-            @Model.Booking.EndDate.ToString("dd/MM/yyyy")</dd>
+          <dt class="col-sm-4">Tanggal Booking:</dt>
+          <dd class="col-sm-8">@Model.Booking.BookingStartDate.ToString("dd/MM/yyyy") -
+            @Model.Booking.BookingEndDate.ToString("dd/MM/yyyy")</dd>
+
+          <dt class="col-sm-4">Tanggal Aktual:</dt>
+          <dd class="col-sm-8">
+            @if (Model.Booking.ActualStartDate.HasValue && Model.Booking.ActualEndDate.HasValue)
+            {
+              @Model.Booking.ActualStartDate.Value.ToString("dd/MM/yyyy") <text> - </text>
+              @Model.Booking.ActualEndDate.Value.ToString("dd/MM/yyyy")
+            }
+            else
+            {
+              <span class="text-muted">Belum ada penggunaan aktual</span>
+            }
+          </dd>
 
           <dt class="col-sm-4">Status:</dt>
           <dd class="col-sm-8">
@@ -74,6 +87,12 @@
 
             <dt class="col-sm-4">Ditagih Oleh:</dt>
             <dd class="col-sm-8">@Model.Booking.BilledBy</dd>
+
+            @if (!string.IsNullOrEmpty(Model.Booking.BillingNotes))
+            {
+              <dt class="col-sm-4">Catatan:</dt>
+              <dd class="col-sm-8">@Model.Booking.BillingNotes</dd>
+            }
           }
         </dl>
       </div>
@@ -242,16 +261,19 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p>Apakah Anda yakin ingin menandai booking @Model.Booking.BookingNumber sebagai sudah ditagih?</p>
-          <p><strong>Ringkasan:</strong></p>
+          <p>Apakah Anda yakin ingin menandai booking <strong>@Model.Booking.BookingNumber</strong> sebagai sudah
+            ditagih?</p>
+
+          <p><strong>Ringkasan Penggunaan:</strong></p>
           <ul>
             <li>Operating: @Model.Calculation.OperatingHours.ToString("0.0") jam</li>
             <li>Delay: @Model.Calculation.DelayHours.ToString("0.0") jam</li>
             <li>Standby: @Model.Calculation.StandbyHours.ToString("0.0") jam</li>
             <li>Service: @Model.Calculation.ServiceHours.ToString("0.0") jam</li>
             <li>Breakdown: @Model.Calculation.BreakdownHours.ToString("0.0") jam</li>
-            <li>Total: @Model.Calculation.TotalHours.ToString("0.0") jam</li>
+            <li><strong>Total: @Model.Calculation.TotalHours.ToString("0.0") jam</strong></li>
           </ul>
+
           <div class="mb-3">
             <label for="BillingNotes" class="form-label">Catatan Penagihan (Opsional)</label>
             <textarea id="BillingNotes" name="BillingNotes" class="form-control" rows="3"></textarea>

@@ -61,6 +61,9 @@ namespace AspnetCoreMvcFull.Services.Billing
       var bookingHoursDict = new Dictionary<int, (double TotalHours, double OperatingHours, double DelayHours,
                                                  double StandbyHours, double ServiceHours, double BreakdownHours)>();
 
+      // Dictionary untuk menyimpan tanggal penggunaan aktual
+      var bookingDatesDict = new Dictionary<int, (DateTime FirstDate, DateTime LastDate)>();
+
       // Mendapatkan semua entri yang terkait booking dan sudah difinalisasi
       var bookingIds = bookings.Select(b => b.Id).ToList();
       var entries = await _context.CraneUsageEntries
@@ -70,12 +73,14 @@ namespace AspnetCoreMvcFull.Services.Billing
                      e.CraneUsageRecord.IsFinalized)
           .ToListAsync();
 
-      // Menghitung total jam per booking
+      // Memproses semua entri
       foreach (var entry in entries)
       {
         var bookingId = entry.BookingId.Value;
         var duration = GetDurationHours(entry.StartTime, entry.EndTime);
+        var usageDate = entry.CraneUsageRecord.Date;
 
+        // Memproses data jam
         if (!bookingHoursDict.ContainsKey(bookingId))
         {
           bookingHoursDict[bookingId] = (0, 0, 0, 0, 0, 0);
@@ -108,6 +113,19 @@ namespace AspnetCoreMvcFull.Services.Billing
         }
 
         bookingHoursDict[bookingId] = newHours;
+
+        // Memproses data tanggal
+        if (!bookingDatesDict.ContainsKey(bookingId))
+        {
+          bookingDatesDict[bookingId] = (usageDate, usageDate);
+        }
+        else
+        {
+          var currentDates = bookingDatesDict[bookingId];
+          var newFirstDate = currentDates.FirstDate < usageDate ? currentDates.FirstDate : usageDate;
+          var newLastDate = currentDates.LastDate > usageDate ? currentDates.LastDate : usageDate;
+          bookingDatesDict[bookingId] = (newFirstDate, newLastDate);
+        }
       }
 
       // Map booking ke view model
@@ -118,8 +136,12 @@ namespace AspnetCoreMvcFull.Services.Billing
         DocumentNumber = b.DocumentNumber,
         RequesterName = b.Name,
         Department = b.Department,
-        StartDate = b.StartDate,
-        EndDate = b.EndDate,
+        // Tanggal dari booking
+        BookingStartDate = b.StartDate,
+        BookingEndDate = b.EndDate,
+        // Tanggal penggunaan aktual
+        ActualStartDate = bookingDatesDict.ContainsKey(b.Id) ? bookingDatesDict[b.Id].FirstDate : (DateTime?)null,
+        ActualEndDate = bookingDatesDict.ContainsKey(b.Id) ? bookingDatesDict[b.Id].LastDate : (DateTime?)null,
         CraneCode = b.Crane?.Code ?? "Unknown",
         CraneCapacity = b.Crane?.Capacity ?? 0,
         Status = b.Status,
@@ -131,7 +153,8 @@ namespace AspnetCoreMvcFull.Services.Billing
         BreakdownHours = bookingHoursDict.ContainsKey(b.Id) ? bookingHoursDict[b.Id].BreakdownHours : 0,
         IsBilled = b.IsBilled,
         BilledDate = b.BilledDate,
-        BilledBy = b.BilledBy
+        BilledBy = b.BilledBy,
+        BillingNotes = b.BillingNotes
       }).ToList();
 
       // Menyiapkan data untuk filter dropdown
@@ -196,6 +219,16 @@ namespace AspnetCoreMvcFull.Services.Billing
       var calculation = new BillingCalculationViewModel();
       var entryViewModels = new List<BillingEntryViewModel>();
 
+      // Hitung tanggal penggunaan aktual
+      DateTime? actualStartDate = null;
+      DateTime? actualEndDate = null;
+
+      if (entries.Any())
+      {
+        actualStartDate = entries.Min(e => e.CraneUsageRecord.Date);
+        actualEndDate = entries.Max(e => e.CraneUsageRecord.Date);
+      }
+
       foreach (var entry in entries)
       {
         var duration = GetDurationHours(entry.StartTime, entry.EndTime);
@@ -246,8 +279,10 @@ namespace AspnetCoreMvcFull.Services.Billing
         DocumentNumber = booking.DocumentNumber,
         RequesterName = booking.Name,
         Department = booking.Department,
-        StartDate = booking.StartDate,
-        EndDate = booking.EndDate,
+        BookingStartDate = booking.StartDate,
+        BookingEndDate = booking.EndDate,
+        ActualStartDate = actualStartDate,
+        ActualEndDate = actualEndDate,
         CraneCode = booking.Crane?.Code ?? "Unknown",
         CraneCapacity = booking.Crane?.Capacity ?? 0,
         Status = booking.Status,
@@ -259,7 +294,8 @@ namespace AspnetCoreMvcFull.Services.Billing
         BreakdownHours = calculation.BreakdownHours,
         IsBilled = booking.IsBilled,
         BilledDate = booking.BilledDate,
-        BilledBy = booking.BilledBy
+        BilledBy = booking.BilledBy,
+        BillingNotes = booking.BillingNotes
       };
 
       return new BillingDetailViewModel

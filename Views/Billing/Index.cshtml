@@ -107,7 +107,18 @@
               <td>@booking.CraneCode (@booking.CraneCapacity Ton)</td>
               <td>@booking.RequesterName</td>
               <td>@booking.Department</td>
-              <td>@booking.StartDate.ToString("dd/MM/yyyy") - @booking.EndDate.ToString("dd/MM/yyyy")</td>
+              <!-- Views/Billing/Index.cshtml - kolom tanggal pada tabel -->
+              <td>
+                @if (booking.ActualStartDate.HasValue && booking.ActualEndDate.HasValue)
+                {
+                  @booking.ActualStartDate.Value.ToString("dd/MM/yyyy") <text> - </text>
+                  @booking.ActualEndDate.Value.ToString("dd/MM/yyyy")
+                }
+                else
+                {
+                  <span class="text-muted">Belum ada penggunaan aktual</span>
+                }
+              </td>
               <td>@booking.OperatingHours.ToString("0.0") jam</td>
               <td>@booking.TotalHours.ToString("0.0") jam</td>
               <td>
