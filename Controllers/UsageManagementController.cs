@@ -26,10 +26,12 @@ namespace AspnetCoreMvcFull.Controllers
 
         var viewModel = new UsageSubcategoryListViewModel
         {
-          Subcategories = subcategories,
-          SuccessMessage = TempData["UsageSuccessMessage"] as string,
-          ErrorMessage = TempData["UsageErrorMessage"] as string
+          Subcategories = subcategories
         };
+
+        // Tampilkan pesan dari TempData
+        ViewBag.SuccessMessage = TempData["UsageSuccessMessage"] as string;
+        ViewBag.ErrorMessage = TempData["UsageErrorMessage"] as string;
 
         // Hapus TempData setelah digunakan, ini akan mencegah
         // pesan muncul kembali saat halaman di-refresh
@@ -41,8 +43,8 @@ namespace AspnetCoreMvcFull.Controllers
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error loading usage subcategories");
-        TempData["UsageErrorMessage"] = "Error loading usage subcategories: " + ex.Message;
-        return View(new UsageSubcategoryListViewModel { ErrorMessage = ex.Message });
+        ViewBag.ErrorMessage = "Error loading usage subcategories: " + ex.Message;
+        return View(new UsageSubcategoryListViewModel());
       }
     }
 
@@ -137,6 +139,7 @@ namespace AspnetCoreMvcFull.Controllers
       return View(viewModel);
     }
 
+    // Updated Delete method - tidak perlu menggunakan TempData untuk error
     public async Task<IActionResult> Delete(int id)
     {
       try
@@ -172,14 +175,19 @@ namespace AspnetCoreMvcFull.Controllers
       }
       catch (InvalidOperationException ex)
       {
-        TempData["UsageErrorMessage"] = ex.Message;
-        return RedirectToAction(nameof(Delete), new { id });
+        // Gunakan ViewBag untuk pesan error dan tetap di halaman Delete
+        // Tidak menggunakan TempData agar pesan tidak muncul di halaman Index
+        var subcategory = await _usageService.GetUsageSubcategoryByIdAsync(id);
+        ViewBag.ErrorMessage = ex.Message;
+        return View(subcategory);
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, "Error deleting usage subcategory with ID {id}", id);
-        TempData["UsageErrorMessage"] = "Error deleting usage subcategory: " + ex.Message;
-        return RedirectToAction(nameof(Index));
+        // Gunakan ViewBag untuk pesan error dan tetap di halaman Delete
+        var subcategory = await _usageService.GetUsageSubcategoryByIdAsync(id);
+        ViewBag.ErrorMessage = "Error deleting usage subcategory: " + ex.Message;
+        return View(subcategory);
       }
     }
 

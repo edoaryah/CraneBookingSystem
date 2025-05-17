@@ -4,6 +4,19 @@
   Layout = "_ContentNavbarLayout";
 }
 
+@section PageScripts {
+  <script>
+    // Script untuk menghilangkan alert secara otomatis setelah 5 detik
+    $(document).ready(function () {
+      setTimeout(function () {
+        $('.auto-close-alert').fadeOut('slow', function () {
+          $(this).remove();
+        });
+      }, 5000); // 5000 milliseconds = 5 detik
+    });
+  </script>
+}
+
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">Usage Subcategory Management</h5>
@@ -12,18 +25,18 @@
     </a>
   </div>
 
-  @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+  @if (ViewBag.SuccessMessage != null)
   {
-    <div class="alert alert-success alert-dismissible m-3" role="alert">
-      @Model.SuccessMessage
+    <div class="alert alert-success alert-dismissible fade show auto-close-alert m-3" role="alert">
+      @ViewBag.SuccessMessage
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
   }
 
-  @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+  @if (ViewBag.ErrorMessage != null)
   {
-    <div class="alert alert-danger alert-dismissible m-3" role="alert">
-      @Model.ErrorMessage
+    <div class="alert alert-danger alert-dismissible fade show auto-close-alert m-3" role="alert">
+      @ViewBag.ErrorMessage
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
   }
@@ -32,7 +45,7 @@
     <table class="table table-hover">
       <thead>
         <tr>
-          <th>ID</th>
+          <th>#</th>
           <th>Category</th>
           <th>Name</th>
           <th>Description</th>
@@ -41,13 +54,21 @@
         </tr>
       </thead>
       <tbody class="table-border-bottom-0">
+        @{
+          int rowNumber = 1;
+        }
         @foreach (var subcategory in Model.Subcategories)
         {
-          <tr>
-            <td><strong>@subcategory.Id</strong></td>
-            <td>@subcategory.CategoryName</td>
+          <tr style="cursor: pointer;"
+            onclick="window.location='@Url.Action("Details", "UsageManagement", new { id = subcategory.Id })'">
+            <td><strong>@(rowNumber++)</strong></td>
+            <td>
+              <span class="badge" style="background-color: @GetCategoryColor(subcategory.Category)">
+                @subcategory.CategoryName
+              </span>
+            </td>
             <td>@subcategory.Name</td>
-            <td>@(string.IsNullOrEmpty(subcategory.Description) ? "-" : subcategory.Description)</td>
+            <td>@(string.IsNullOrEmpty(subcategory.Description) ? "-" : TruncateText(subcategory.Description, 27))</td>
             <td>
               @if (subcategory.IsActive)
               {
@@ -58,22 +79,19 @@
                 <span class="badge bg-secondary">Inactive</span>
               }
             </td>
-            <td>
-              <div class="dropdown">
-                <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
-                  <i class="bx bx-dots-vertical-rounded"></i>
+            <td onclick="event.stopPropagation();">
+              <div class="action-buttons">
+                <button type="button" class="btn btn-sm btn-outline-primary edit-btn"
+                  onclick="window.location='@Url.Action("Edit", "UsageManagement", new { id = subcategory.Id })'"
+                  data-id="@subcategory.Id" title="Edit">
+                  <i class="bx bx-edit-alt"></i>
                 </button>
-                <div class="dropdown-menu">
-                  <a class="dropdown-item" href="@Url.Action("Edit", "UsageManagement", new { id = subcategory.Id })">
-                    <i class="bx bx-edit-alt me-1"></i> Edit
-                  </a>
-                  <a class="dropdown-item" href="@Url.Action("Details", "UsageManagement", new { id = subcategory.Id })">
-                    <i class="bx bx-detail me-1"></i> Details
-                  </a>
-                  <a class="dropdown-item" href="@Url.Action("Delete", "UsageManagement", new { id = subcategory.Id })">
-                    <i class="bx bx-trash me-1"></i> Delete
-                  </a>
-                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
+                  onclick="window.location='@Url.Action("Delete", "UsageManagement", new { id = subcategory.Id })'"
+                  data-id="@subcategory.Id" data-name="@System.Web.HttpUtility.HtmlAttributeEncode(subcategory.Name)"
+                  title="Delete">
+                  <i class="bx bx-trash"></i>
+                </button>
               </div>
             </td>
           </tr>
@@ -82,3 +100,26 @@
     </table>
   </div>
 </div>
+
+@functions {
+  public string GetCategoryColor(UsageCategory category)
+  {
+    return category switch
+    {
+      UsageCategory.Operating => "#28a745", // Green
+      UsageCategory.Delay => "#ffc107", // Yellow
+      UsageCategory.Standby => "#6c757d", // Gray
+      UsageCategory.Service => "#17a2b8", // Cyan
+      UsageCategory.Breakdown => "#dc3545", // Red
+      _ => "#6c757d" // Default Gray
+    };
+  }
+
+  public string TruncateText(string text, int maxLength)
+  {
+    if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+      return text;
+
+    return text.Substring(0, maxLength) + "...";
+  }
+}
