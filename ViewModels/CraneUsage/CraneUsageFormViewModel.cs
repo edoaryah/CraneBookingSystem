@@ -1,4 +1,3 @@
-// ViewModels/CraneUsage/CraneUsageFormViewModel.cs (Updated)
 using AspnetCoreMvcFull.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
@@ -7,24 +6,16 @@ namespace AspnetCoreMvcFull.ViewModels.CraneUsage
 {
   public class CraneUsageFormViewModel
   {
-    [Required(ErrorMessage = "Crane harus dipilih")]
-    [Display(Name = "Crane")]
     public int CraneId { get; set; }
-
-    [Required(ErrorMessage = "Tanggal harus diisi")]
-    [Display(Name = "Tanggal")]
-    [DataType(DataType.Date)]
+    public string CraneCode { get; set; } = string.Empty;
     public DateTime Date { get; set; } = DateTime.Today;
 
-    // Operator name has been moved to individual entries, so we remove it from here
-    // [Display(Name = "Operator")]
-    // [StringLength(100)]
-    // public string? OperatorName { get; set; }
+    // Finalization properties
+    public bool IsFinalized { get; set; }
+    public string? FinalizedBy { get; set; }
+    public DateTime? FinalizedAt { get; set; }
 
     // List of time entries
     public List<CraneUsageEntryViewModel> Entries { get; set; } = new List<CraneUsageEntryViewModel>();
-
-    // Dropdowns
-    public List<SelectListItem> CraneList { get; set; } = new List<SelectListItem>();
   }
 }

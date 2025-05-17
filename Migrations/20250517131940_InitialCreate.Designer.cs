@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AspnetCoreMvcFull.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250516024914_InitialCreate")]
+    [Migration("20250517131940_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -422,6 +422,16 @@ namespace AspnetCoreMvcFull.Migrations
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("FinalizedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("FinalizedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsFinalized")
+                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 

@@ -1,4 +1,3 @@
-// Services/CraneUsage/CraneUsageService.cs
 using AspnetCoreMvcFull.Data;
 using AspnetCoreMvcFull.Models;
 using AspnetCoreMvcFull.ViewModels.CraneUsage;
@@ -26,8 +25,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
               .ThenInclude(e => e.UsageSubcategory)
           .Include(r => r.Entries)
               .ThenInclude(e => e.Booking)
-          .Include(r => r.Entries)
-              .ThenInclude(e => e.MaintenanceSchedule)
           .FirstOrDefaultAsync(r => r.CraneId == craneId && r.Date.Date == date.Date);
 
       if (record == null)
@@ -43,14 +40,11 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         Category = e.Category,
         UsageSubcategoryId = e.UsageSubcategoryId,
         BookingId = e.BookingId,
-        MaintenanceScheduleId = e.MaintenanceScheduleId,
         Notes = e.Notes,
-        // Ambil OperatorName dari entry, bukan dari record
         OperatorName = e.OperatorName,
         CategoryName = e.Category.ToString(),
         SubcategoryName = e.UsageSubcategory?.Name ?? string.Empty,
-        BookingNumber = e.Booking?.BookingNumber,
-        MaintenanceTitle = e.MaintenanceSchedule?.Title
+        BookingNumber = e.Booking?.BookingNumber
       }).OrderBy(e => e.StartTime).ToList();
     }
 
@@ -77,7 +71,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           {
             CraneId = viewModel.CraneId,
             Date = viewModel.Date.Date,
-            // Remove OperatorName assignment here
             CreatedAt = DateTime.Now,
             CreatedBy = userName
           };
@@ -85,10 +78,10 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           _context.CraneUsageRecords.Add(record);
           await _context.SaveChangesAsync();
         }
-        else
+        else if (record.IsFinalized)
         {
-          // No need to update operator name on record level anymore
-          await _context.SaveChangesAsync();
+          // Cannot modify a finalized record
+          return false;
         }
 
         // Get existing entries for this record
@@ -121,9 +114,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
               existingEntry.Category = viewModelEntry.Category;
               existingEntry.UsageSubcategoryId = viewModelEntry.UsageSubcategoryId;
               existingEntry.BookingId = viewModelEntry.BookingId;
-              existingEntry.MaintenanceScheduleId = viewModelEntry.MaintenanceScheduleId;
               existingEntry.Notes = viewModelEntry.Notes;
-              // Update OperatorName at entry level
               existingEntry.OperatorName = viewModelEntry.OperatorName;
             }
           }
@@ -138,9 +129,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
               Category = viewModelEntry.Category,
               UsageSubcategoryId = viewModelEntry.UsageSubcategoryId,
               BookingId = viewModelEntry.BookingId,
-              MaintenanceScheduleId = viewModelEntry.MaintenanceScheduleId,
               Notes = viewModelEntry.Notes,
-              // Add OperatorName at entry level
               OperatorName = viewModelEntry.OperatorName
             };
 
@@ -180,6 +169,11 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         _context.CraneUsageRecords.Add(record);
         await _context.SaveChangesAsync();
       }
+      else if (record.IsFinalized)
+      {
+        // Cannot add entries to a finalized record
+        return false;
+      }
 
       // Lakukan validasi untuk waktu
       string startTimeStr = entry.StartTime.ToString();
@@ -201,6 +195,18 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         return false;
       }
 
+      // Check for time conflicts
+      var existingEntries = await GetCraneUsageEntriesForDateAsync(craneId, date);
+      if (!ValidateNoTimeConflicts(existingEntries, new CraneUsageEntryViewModel
+      {
+        StartTime = startTime,
+        EndTime = endTime,
+        Id = 0 // New entry
+      }))
+      {
+        return false; // Conflict found
+      }
+
       // Create new entry
       var newEntry = new CraneUsageEntry
       {
@@ -210,9 +216,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         Category = entry.Category,
         UsageSubcategoryId = entry.UsageSubcategoryId,
         BookingId = entry.BookingId,
-        MaintenanceScheduleId = entry.MaintenanceScheduleId,
         Notes = entry.Notes,
-        // Set OperatorName dari parameter
         OperatorName = entry.OperatorName?.Trim()  // Trim untuk menghindari whitespace
       };
 
@@ -224,7 +228,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       return true;
     }
 
-    // Di CraneUsageService.cs
     public async Task<bool> UpdateCraneUsageEntryAsync(CraneUsageEntryViewModel entry)
     {
       try
@@ -241,6 +244,11 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         {
           _logger.LogWarning($"Service - Entry dengan ID {entry.Id} tidak ditemukan");
           return false;
+        }
+
+        if (existingEntry.CraneUsageRecord.IsFinalized)
+        {
+          return false; // Cannot update entries in a finalized record
         }
 
         // Parse waktu dengan format yang benar
@@ -322,10 +330,18 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
 
     public async Task<bool> DeleteCraneUsageEntryAsync(int entryId)
     {
-      var entry = await _context.CraneUsageEntries.FindAsync(entryId);
+      var entry = await _context.CraneUsageEntries
+          .Include(e => e.CraneUsageRecord)
+          .FirstOrDefaultAsync(e => e.Id == entryId);
+
       if (entry == null)
       {
         return false;
+      }
+
+      if (entry.CraneUsageRecord.IsFinalized)
+      {
+        return false; // Cannot delete entries from a finalized record
       }
 
       _context.CraneUsageEntries.Remove(entry);
@@ -355,7 +371,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       var entry = await _context.CraneUsageEntries
           .Include(e => e.UsageSubcategory)
           .Include(e => e.Booking)
-          .Include(e => e.MaintenanceSchedule)
           .FirstOrDefaultAsync(e => e.Id == id);
 
       if (entry == null)
@@ -371,13 +386,11 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         Category = entry.Category,
         UsageSubcategoryId = entry.UsageSubcategoryId,
         BookingId = entry.BookingId,
-        MaintenanceScheduleId = entry.MaintenanceScheduleId,
         Notes = entry.Notes,
         OperatorName = entry.OperatorName,
         CategoryName = entry.Category.ToString(),
         SubcategoryName = entry.UsageSubcategory?.Name ?? string.Empty,
-        BookingNumber = entry.Booking?.BookingNumber,
-        MaintenanceTitle = entry.MaintenanceSchedule?.Title
+        BookingNumber = entry.Booking?.BookingNumber
       };
     }
 
@@ -394,7 +407,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       var entry = await _context.CraneUsageEntries
           .Include(e => e.UsageSubcategory)
           .Include(e => e.Booking)
-          .Include(e => e.MaintenanceSchedule)
           .FirstOrDefaultAsync(e => e.CraneUsageRecordId == record.Id &&
                                     e.StartTime == startTime &&
                                     e.EndTime == endTime);
@@ -412,13 +424,11 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         Category = entry.Category,
         UsageSubcategoryId = entry.UsageSubcategoryId,
         BookingId = entry.BookingId,
-        MaintenanceScheduleId = entry.MaintenanceScheduleId,
         Notes = entry.Notes,
         OperatorName = entry.OperatorName,
         CategoryName = entry.Category.ToString(),
         SubcategoryName = entry.UsageSubcategory?.Name ?? string.Empty,
-        BookingNumber = entry.Booking?.BookingNumber,
-        MaintenanceTitle = entry.MaintenanceSchedule?.Title
+        BookingNumber = entry.Booking?.BookingNumber
       };
     }
 
@@ -477,7 +487,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       return true;
     }
 
-    // Also update the validation method for checking conflicts between multiple entries
     public bool ValidateNoTimeConflicts(List<CraneUsageEntryViewModel> entries)
     {
       if (entries == null || !entries.Any())
@@ -523,7 +532,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       return true;
     }
 
-    // Pastikan fungsi di service yang memvalidasi overlap sudah benar
     private bool TimeSpansOverlap(TimeSpan start1, TimeSpan end1, TimeSpan start2, TimeSpan end2)
     {
       return start1 < end2 && start2 < end1;
@@ -544,7 +552,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       return subcategories;
     }
 
-    public async Task<List<SelectListItem>> GetAvailableBookingsAsync(int craneId, DateTime startTime, DateTime endTime, int? currentEntryId = null)
+    public async Task<List<SelectListItem>> GetAvailableBookingsAsync(int craneId, DateTime startTime, DateTime endTime)
     {
       var bookings = await _context.Bookings
           .Where(b => b.CraneId == craneId &&
@@ -562,91 +570,68 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       return bookings;
     }
 
-    public async Task<List<SelectListItem>> GetAvailableMaintenanceSchedulesAsync(int craneId, DateTime startTime, DateTime endTime, int? currentEntryId = null)
+    public async Task<bool> FinalizeRecordAsync(int craneId, DateTime date, string userName)
     {
-      var maintenance = await _context.MaintenanceSchedules
-          .Where(m => m.CraneId == craneId &&
-                     ((m.StartDate <= startTime && m.EndDate >= startTime) ||
-                     (m.StartDate <= endTime && m.EndDate >= endTime) ||
-                     (m.StartDate >= startTime && m.EndDate <= endTime)))
-          .Select(m => new SelectListItem
-          {
-            Value = m.Id.ToString(),
-            Text = $"{m.Title} ({m.StartDate:dd/MM/yyyy HH:mm} - {m.EndDate:dd/MM/yyyy HH:mm})"
-          })
-          .ToListAsync();
+      try
+      {
+        // Find the record
+        var record = await _context.CraneUsageRecords
+            .FirstOrDefaultAsync(r => r.CraneId == craneId && r.Date.Date == date.Date);
 
-      return maintenance;
+        // Check if there are any entries for this date and crane
+        var hasEntries = await _context.CraneUsageEntries
+            .Include(e => e.CraneUsageRecord)
+            .AnyAsync(e => e.CraneUsageRecord.CraneId == craneId && e.CraneUsageRecord.Date.Date == date.Date);
+
+        if (!hasEntries)
+        {
+          return false; // Don't finalize if there are no entries
+        }
+
+        if (record == null)
+        {
+          // Record doesn't exist, create it
+          record = new CraneUsageRecord
+          {
+            CraneId = craneId,
+            Date = date.Date,
+            CreatedBy = userName,
+            CreatedAt = DateTime.Now
+          };
+          _context.CraneUsageRecords.Add(record);
+        }
+
+        // Set finalization properties
+        record.IsFinalized = true;
+        record.FinalizedBy = userName;
+        record.FinalizedAt = DateTime.Now;
+
+        // Save changes
+        await _context.SaveChangesAsync();
+        return true;
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error finalizing record for crane ID {CraneId} on date {Date}", craneId, date);
+        return false;
+      }
     }
 
-    // Di Services/CraneUsage/CraneUsageService.cs, perbaiki method GetFilteredUsageRecordsAsync
-
-    public async Task<CraneUsageListViewModel> GetFilteredUsageRecordsAsync(CraneUsageFilterViewModel filter)
+    public async Task<CraneUsageRecordListViewModel> GetFilteredUsageRecordsAsync(CraneUsageFilterViewModel filter)
     {
-      var query = _context.CraneUsageEntries
-          .Include(e => e.CraneUsageRecord)
-              .ThenInclude(r => r!.Crane)
-          .Include(e => e.UsageSubcategory)
-          .Include(e => e.Booking)
-          .Include(e => e.MaintenanceSchedule)
-          .AsQueryable();
-
-      if (filter.CraneId.HasValue && filter.CraneId > 0)
+      // Default filter values if not provided
+      if (!filter.StartDate.HasValue)
       {
-        query = query.Where(e => e.CraneUsageRecord != null && e.CraneUsageRecord.CraneId == filter.CraneId);
+        filter.StartDate = DateTime.Today.AddDays(-30);
       }
 
-      if (filter.StartDate.HasValue)
+      if (!filter.EndDate.HasValue)
       {
-        var startDate = filter.StartDate.Value.Date;
-        query = query.Where(e => e.CraneUsageRecord != null && e.CraneUsageRecord.Date >= startDate);
+        filter.EndDate = DateTime.Today;
       }
 
-      if (filter.EndDate.HasValue)
-      {
-        var endDate = filter.EndDate.Value.Date.AddDays(1).AddSeconds(-1);
-        query = query.Where(e => e.CraneUsageRecord != null && e.CraneUsageRecord.Date <= endDate);
-      }
-
-      if (filter.Category.HasValue)
-      {
-        query = query.Where(e => e.Category == filter.Category);
-      }
-
-      // Order by date and time with null checks
-      query = query.OrderByDescending(e => e.CraneUsageRecord != null ? e.CraneUsageRecord.Date : DateTime.MinValue)
-                   .ThenBy(e => e.StartTime);
-
-      var entries = await query.ToListAsync();
-
-      var viewModel = new CraneUsageListViewModel
-      {
-        UsageRecords = entries.Select(e => new CraneUsageEntryViewModel
-        {
-          Id = e.Id,
-          StartTime = e.StartTime,
-          EndTime = e.EndTime,
-          Category = e.Category,
-          UsageSubcategoryId = e.UsageSubcategoryId,
-          BookingId = e.BookingId,
-          MaintenanceScheduleId = e.MaintenanceScheduleId,
-          Notes = e.Notes ?? string.Empty,
-          CategoryName = e.Category.ToString(),
-          SubcategoryName = e.UsageSubcategory?.Name ?? string.Empty,
-          BookingNumber = e.Booking?.BookingNumber ?? string.Empty,
-          MaintenanceTitle = e.MaintenanceSchedule?.Title ?? string.Empty,
-          // Use OperatorName from entry level
-          OperatorName = e.OperatorName,
-          // Properties needed for Index view
-          CraneId = e.CraneUsageRecord?.CraneId ?? 0,
-          CraneName = e.CraneUsageRecord?.Crane?.Code ?? string.Empty,
-          Date = e.CraneUsageRecord?.Date ?? DateTime.MinValue
-        }).ToList(),
-        Filter = filter
-      };
-
-      // Populate filter dropdowns
-      filter.CraneList = await _context.Cranes
+      // Get the crane list for the filter dropdown
+      var cranes = await _context.Cranes
           .OrderBy(c => c.Code)
           .Select(c => new SelectListItem
           {
@@ -655,7 +640,54 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           })
           .ToListAsync();
 
-      filter.CategoryList = Enum.GetValues(typeof(UsageCategory))
+      // Start with all records
+      var query = _context.CraneUsageRecords
+          .Include(r => r.Crane)
+          .Include(r => r.Entries)
+          .AsQueryable();
+
+      // Apply filters
+      if (filter.CraneId.HasValue && filter.CraneId.Value > 0)
+      {
+        query = query.Where(r => r.CraneId == filter.CraneId.Value);
+      }
+
+      if (filter.StartDate.HasValue)
+      {
+        query = query.Where(r => r.Date >= filter.StartDate.Value.Date);
+      }
+
+      if (filter.EndDate.HasValue)
+      {
+        query = query.Where(r => r.Date <= filter.EndDate.Value.Date);
+      }
+
+      // Get the records
+      var records = await query
+          .OrderByDescending(r => r.Date)
+          .ToListAsync();
+
+      // Map to view models
+      var recordViewModels = records.Select(r => new CraneUsageRecordViewModel
+      {
+        Id = r.Id,
+        CraneId = r.CraneId,
+        CraneCode = r.Crane?.Code ?? "Unknown",
+        Date = r.Date,
+        IsFinalized = r.IsFinalized,
+        FinalizedBy = r.FinalizedBy,
+        FinalizedAt = r.FinalizedAt,
+        EntryCount = r.Entries.Count,
+        TotalHours = CalculateTotalHours(r.Entries),
+        OperatingHours = CalculateCategoryHours(r.Entries, UsageCategory.Operating),
+        DelayHours = CalculateCategoryHours(r.Entries, UsageCategory.Delay),
+        StandbyHours = CalculateCategoryHours(r.Entries, UsageCategory.Standby),
+        ServiceHours = CalculateCategoryHours(r.Entries, UsageCategory.Service),
+        BreakdownHours = CalculateCategoryHours(r.Entries, UsageCategory.Breakdown)
+      }).ToList();
+
+      // Create category list for the filter dropdown
+      var categoryList = Enum.GetValues(typeof(UsageCategory))
           .Cast<UsageCategory>()
           .Select(c => new SelectListItem
           {
@@ -664,10 +696,62 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           })
           .ToList();
 
-      return viewModel;
+      // Return the view model
+      return new CraneUsageRecordListViewModel
+      {
+        Records = recordViewModels,
+        Filter = new CraneUsageFilterViewModel
+        {
+          CraneId = filter.CraneId,
+          StartDate = filter.StartDate,
+          EndDate = filter.EndDate,
+          CraneList = cranes,
+          CategoryList = categoryList
+        }
+      };
     }
 
-    // Helper methods
+    // Helper methods for calculating hours
+    private double CalculateTotalHours(ICollection<CraneUsageEntry> entries)
+    {
+      double totalHours = 0;
+      foreach (var entry in entries)
+      {
+        TimeSpan duration;
+        if (entry.EndTime > entry.StartTime)
+        {
+          duration = entry.EndTime - entry.StartTime;
+        }
+        else
+        {
+          // Handle entries that span midnight
+          duration = (new TimeSpan(24, 0, 0) - entry.StartTime) + entry.EndTime;
+        }
+        totalHours += duration.TotalHours;
+      }
+      return totalHours;
+    }
+
+    private double CalculateCategoryHours(ICollection<CraneUsageEntry> entries, UsageCategory category)
+    {
+      double categoryHours = 0;
+      foreach (var entry in entries.Where(e => e.Category == category))
+      {
+        TimeSpan duration;
+        if (entry.EndTime > entry.StartTime)
+        {
+          duration = entry.EndTime - entry.StartTime;
+        }
+        else
+        {
+          // Handle entries that span midnight
+          duration = (new TimeSpan(24, 0, 0) - entry.StartTime) + entry.EndTime;
+        }
+        categoryHours += duration.TotalHours;
+      }
+      return categoryHours;
+    }
+
     private string GetCategoryColorCode(UsageCategory category)
     {
       return category switch
@@ -704,13 +788,17 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           {
             CraneId = viewModel.CraneId,
             Date = viewModel.Date.Date,
-            // No OperatorName at record level anymore
             CreatedAt = DateTime.Now,
             CreatedBy = userName
           };
 
           _context.CraneUsageRecords.Add(record);
           await _context.SaveChangesAsync();
+        }
+        else if (record.IsFinalized)
+        {
+          // Cannot modify a finalized record
+          return false;
         }
 
         // Process entries - handle deletes, updates, and inserts
@@ -746,7 +834,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
               existingEntry.UsageSubcategoryId = viewModelEntry.UsageSubcategoryId;
               existingEntry.BookingId = viewModelEntry.BookingId;
               existingEntry.Notes = viewModelEntry.Notes;
-              // Update OperatorName at entry level
               existingEntry.OperatorName = viewModelEntry.OperatorName;
             }
           }
@@ -762,7 +849,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
               UsageSubcategoryId = viewModelEntry.UsageSubcategoryId,
               BookingId = viewModelEntry.BookingId,
               Notes = viewModelEntry.Notes,
-              // Add OperatorName at entry level
               OperatorName = viewModelEntry.OperatorName
             };
 
@@ -782,8 +868,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
       }
     }
 
-    // Services/CraneUsage/CraneUsageService.cs - Add the following method
-    // Services/CraneUsage/CraneUsageService.cs - Method GetMinuteVisualizationDataAsync
     public async Task<CraneUsageMinuteVisualizationViewModel> GetMinuteVisualizationDataAsync(int craneId, DateTime date)
     {
       var crane = await _context.Cranes.FindAsync(craneId);
@@ -812,7 +896,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           .Include(e => e.CraneUsageRecord)
           .Include(e => e.UsageSubcategory)
           .Include(e => e.Booking)
-          .Include(e => e.MaintenanceSchedule)
           .Where(e => e.CraneUsageRecord != null &&
                      e.CraneUsageRecord.CraneId == craneId &&
                      e.CraneUsageRecord.Date.Date == date.Date)
@@ -851,7 +934,6 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
           SubcategoryName = entry.UsageSubcategory?.Name ?? entry.Category.ToString(),
           ColorCode = GetCategoryColorCode(entry.Category),
           BookingNumber = entry.Booking?.BookingNumber ?? string.Empty,
-          MaintenanceTitle = entry.MaintenanceSchedule?.Title ?? string.Empty,
           Notes = entry.Notes ?? string.Empty,
           OperatorName = entry.OperatorName ?? string.Empty
         });
@@ -904,7 +986,7 @@ namespace AspnetCoreMvcFull.Services.CraneUsage
         }
       }
 
-      // Calculate original percentages (mungkin masih dibutuhkan di tempat lain)
+      // Calculate original percentages
       summary.OperatingPercentage = Math.Round((summary.OperatingHours * 60 / totalMinutes) * 100, 1);
       summary.DelayPercentage = Math.Round((summary.DelayHours * 60 / totalMinutes) * 100, 1);
       summary.StandbyPercentage = Math.Round((summary.StandbyHours * 60 / totalMinutes) * 100, 1);

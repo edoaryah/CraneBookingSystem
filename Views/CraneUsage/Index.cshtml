@@ -1,9 +1,10 @@
-@model AspnetCoreMvcFull.ViewModels.CraneUsage.CraneUsageListViewModel
+@model AspnetCoreMvcFull.ViewModels.CraneUsage.CraneUsageRecordListViewModel
 @{
-  ViewData["Title"] = "Crane Usage List";
+  ViewData["Title"] = "Crane Usage Records";
   Layout = "_ContentNavbarLayout";
 }
 
+<!-- Filter Card -->
 <div class="card mb-4">
   <div class="card-header">
     <i class="bx bx-filter-alt me-1"></i>
@@ -12,29 +13,22 @@
   <div class="card-body">
     <form asp-action="Index" method="get" id="filterForm">
       <div class="row g-3">
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label asp-for="Filter.CraneId" class="form-label">Crane</label>
           <select asp-for="Filter.CraneId" asp-items="Model.Filter.CraneList" class="form-select"
             onchange="document.getElementById('filterForm').submit()">
             <option value="">-- All Cranes --</option>
           </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label asp-for="Filter.StartDate" class="form-label">Start Date</label>
           <input asp-for="Filter.StartDate" class="form-control" type="date"
             onchange="document.getElementById('filterForm').submit()" />
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label asp-for="Filter.EndDate" class="form-label">End Date</label>
           <input asp-for="Filter.EndDate" class="form-control" type="date"
             onchange="document.getElementById('filterForm').submit()" />
-        </div>
-        <div class="col-md-3">
-          <label asp-for="Filter.Category" class="form-label">Category</label>
-          <select asp-for="Filter.Category" asp-items="Model.Filter.CategoryList" class="form-select"
-            onchange="document.getElementById('filterForm').submit()">
-            <option value="">-- All Categories --</option>
-          </select>
         </div>
         <div class="col-md-12 d-flex justify-content-end mt-2">
           <a href="@Url.Action("Index")" class="btn btn-outline-secondary btn-sm">
@@ -46,25 +40,20 @@
   </div>
 </div>
 
+<!-- Records Table Card -->
 <div class="card">
   <div class="card-header">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
       <div class="mb-2 mb-md-0">
         <i class="bx bx-table me-1"></i>
-        Crane Usage List
+        Crane Usage Records
       </div>
       <div class="d-flex flex-wrap gap-2">
-        <a asp-action="Form" class="btn btn-success">
-          <i class="bx bx-plus me-1"></i> <span class="d-none d-sm-inline">Other Activity</span><span
-            class="d-inline d-sm-none">Other</span>
-        </a>
-        <a asp-action="List" class="btn btn-primary">
-          <i class="bx bx-plus me-1"></i> <span class="d-none d-sm-inline">Booking Activity</span><span
-            class="d-inline d-sm-none">Booking</span>
-        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#craneSelectionModal">
+          <i class="bx bx-plus me-1"></i> Form
+        </button>
         <a asp-action="MinuteVisualization" class="btn btn-info text-white">
-          <i class="bx bx-bar-chart-alt-2 me-1"></i> <span class="d-none d-sm-inline">Visualization</span><span
-            class="d-inline d-sm-none">Visual</span>
+          <i class="bx bx-bar-chart-alt-2 me-1"></i> Visualization
         </a>
       </div>
     </div>
@@ -86,7 +75,7 @@
     </div>
   }
 
-  @if (Model.UsageRecords != null && Model.UsageRecords.Any())
+  @if (Model.Records != null && Model.Records.Any())
   {
     <div class="table-responsive text-nowrap">
       <table class="table table-hover" id="usageTable">
@@ -94,39 +83,54 @@
           <tr>
             <th>Crane</th>
             <th>Date</th>
-            <th>Time</th>
-            <th>Category</th>
-            <th>Subcategory</th>
-            <th>Operator</th>
-            <th>Reference</th>
+            <th>Entries</th>
+            <th>Total Hours</th>
+            <th>Operating</th>
+            <th>Delay</th>
+            <th>Standby</th>
+            <th>Maintenance</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody class="table-border-bottom-0">
-          @foreach (var item in Model.UsageRecords)
+          @foreach (var record in Model.Records)
           {
-            <tr style="cursor: pointer;"
-              onclick="rowClicked(event, @item.Id, @item.CraneId, '@(item.Date?.ToString("yyyy-MM-dd"))', @(item.BookingId?.ToString() ?? "null"))"
-              data-crane-id="@item.CraneId" data-date="@(item.Date?.ToString("yyyy-MM-dd"))"
-              data-booking-id="@item.BookingId">
-              <td><strong>@item.CraneName</strong></td>
-              <td>@(item.Date.HasValue ? item.Date.Value.ToString("dd-MM-yyyy") : "")</td>
-              <td>@item.StartTime.ToString(@"hh\:mm") - @item.EndTime.ToString(@"hh\:mm")</td>
+            <tr>
+              <td><strong>@record.CraneCode</strong></td>
+              <td>@record.Date.ToString("dd/MM/yyyy")</td>
+              <td>@record.EntryCount entries</td>
+              <td>@record.TotalHours.ToString("0.0") jam</td>
+              <td>@record.OperatingHours.ToString("0.0") jam</td>
+              <td>@record.DelayHours.ToString("0.0") jam</td>
+              <td>@record.StandbyHours.ToString("0.0") jam</td>
+              <td>@(record.ServiceHours + record.BreakdownHours).ToString("0.0") jam</td>
               <td>
-                <span class="badge bg-@(GetCategoryClass(item.Category))">
-                  @item.CategoryName
-                </span>
+                @if (record.IsFinalized)
+                {
+                  <span class="badge bg-success">Finalized</span>
+                }
+                else
+                {
+                  <span class="badge bg-warning">Draft</span>
+                }
               </td>
-              <td>@item.SubcategoryName</td>
-              <td>@item.OperatorName</td>
               <td>
-                @if (!string.IsNullOrEmpty(item.BookingNumber))
-                {
-                  <span class="badge bg-label-primary">Booking: @item.BookingNumber</span>
-                }
-                @if (!string.IsNullOrEmpty(item.MaintenanceTitle))
-                {
-                  <span class="badge bg-label-info">Maintenance: @item.MaintenanceTitle</span>
-                }
+                <div class="dropdown">
+                  <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                    <i class="bx bx-dots-vertical-rounded"></i>
+                  </button>
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item"
+                      href="@Url.Action("Form", new { craneId = record.CraneId, date = record.Date.ToString("yyyy-MM-dd") })">
+                      <i class="bx bx-edit-alt me-1"></i> Edit
+                    </a>
+                    <a class="dropdown-item"
+                      href="@Url.Action("MinuteVisualization", new { craneId = record.CraneId, date = record.Date.ToString("yyyy-MM-dd") })">
+                      <i class="bx bx-bar-chart-alt me-1"></i> Visualize
+                    </a>
+                  </div>
+                </div>
               </td>
             </tr>
           }
@@ -139,37 +143,46 @@
     <div class="text-center py-5">
       <i class="bx bx-calendar-x text-secondary mb-2" style="font-size: 3rem;"></i>
       <p class="mb-0">No usage records found</p>
+      <p class="text-muted">Click "Form" to create a new usage record</p>
     </div>
   }
 </div>
 
-@functions {
-  public string GetCategoryColor(UsageCategory category)
-  {
-    return category switch
-    {
-      UsageCategory.Operating => "#28a745", // Green
-      UsageCategory.Delay => "#ffc107", // Yellow
-      UsageCategory.Standby => "#6c757d", // Gray
-      UsageCategory.Service => "#17a2b8", // Cyan
-      UsageCategory.Breakdown => "#dc3545", // Red
-      _ => "#6c757d" // Default Gray
-    };
-  }
-
-  public string GetCategoryClass(UsageCategory category)
-  {
-    return category switch
-    {
-      UsageCategory.Operating => "success",
-      UsageCategory.Delay => "warning",
-      UsageCategory.Standby => "secondary",
-      UsageCategory.Service => "info",
-      UsageCategory.Breakdown => "danger",
-      _ => "secondary"
-    };
-  }
-}
+<!-- Crane Selection Modal -->
+<div class="modal fade" id="craneSelectionModal" tabindex="-1" aria-labelledby="craneSelectionModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form asp-action="SelectCraneAndDate" method="post">
+        <div class="modal-header">
+          <h5 class="modal-title" id="craneSelectionModalLabel">Select Crane and Date</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="craneId" class="form-label">Select Crane</label>
+            <select name="craneId" id="craneId" class="form-select" required>
+              <option value="">-- Select Crane --</option>
+              @foreach (var crane in Model.Filter.CraneList)
+              {
+                <option value="@crane.Value">@crane.Text</option>
+              }
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="date" class="form-label">Select Date</label>
+            <input type="date" name="date" id="date" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")"
+              required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Continue to Form</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 @section PageScripts {
   <script>
@@ -179,26 +192,9 @@
         language: {
           url: '/lib/datatables/Indonesian.json'
         },
-        order: [[1, 'desc'], [2, 'asc']], // Sort by date desc, then time asc
+        order: [[1, 'desc']], // Sort by date desc
         responsive: true
       });
     });
-
-    function rowClicked(event, id, craneId, date, bookingId) {
-      if (
-        !event.target.closest('.dropdown') &&
-        !event.target.closest('.dropdown-menu') &&
-        !event.target.closest('.dropdown-toggle')
-      ) {
-        // Check if there's a booking ID
-        if (bookingId && bookingId !== 'null') {
-          // If there's a booking ID, go to BookingForm
-          window.location.href = '@Url.Action("BookingForm", "CraneUsage")?bookingId=' + bookingId;
-        } else {
-          // If no booking ID, go to regular Form with crane ID and date
-          window.location.href = '@Url.Action("Form", "CraneUsage")?craneId=' + craneId + '&date=' + date;
-        }
-      }
-    }
   </script>
 }

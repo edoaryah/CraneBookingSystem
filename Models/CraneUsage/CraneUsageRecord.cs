@@ -1,4 +1,3 @@
-// Models/CraneUsageRecord.cs
 using System.ComponentModel.DataAnnotations;
 
 namespace AspnetCoreMvcFull.Models
@@ -14,9 +13,13 @@ namespace AspnetCoreMvcFull.Models
     [Required]
     public DateTime Date { get; set; } // Hanya menyimpan tanggal
 
-    // Hapus OperatorName dari sini karena sudah dipindah ke CraneUsageEntry
-    // [StringLength(100)]
-    // public string? OperatorName { get; set; }
+    // New properties for finalization
+    public bool IsFinalized { get; set; } = false;
+
+    [StringLength(100)]
+    public string? FinalizedBy { get; set; }
+
+    public DateTime? FinalizedAt { get; set; }
 
     // Audit fields
     [Required]

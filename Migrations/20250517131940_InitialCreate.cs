@@ -175,6 +175,9 @@ namespace AspnetCoreMvcFull.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     CraneId = table.Column<int>(type: "integer", nullable: false),
                     Date = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    IsFinalized = table.Column<bool>(type: "boolean", nullable: false),
+                    FinalizedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    FinalizedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     CreatedBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
                 },
